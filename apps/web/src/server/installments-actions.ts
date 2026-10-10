@@ -2,6 +2,7 @@
 
 import { prisma } from '@repo/db/client';
 import { addMonths, splitInstallments, toIsoDate, updateInstallmentPlanSchema } from '@repo/shared';
+import { z } from 'zod';
 
 import { todayInLisbon } from '@/lib/today';
 
@@ -30,6 +31,11 @@ function asDate(value: string): Date {
 }
 
 const PLAN_ID_MAX = 100;
+
+/** Identificador de um plano, para a eliminação. */
+const deleteInstallmentPlanSchema = z.object({
+  planId: z.string().trim().min(1, 'Falta o identificador do plano.').max(PLAN_ID_MAX),
+});
 
 export async function updateInstallmentPlan(
   input: unknown,
@@ -147,4 +153,60 @@ export async function updateInstallmentPlan(
   revalidateCardViews();
 
   return ok({ planId: value.planId, installmentCount, affectedInvoiceIds });
+}
+
+/**
+ * Elimina todas as parcelas de um plano.
+ *
+ * É o caminho de recuperação que a mensagem de recusa da edição sugere: quando um
+ * plano já tem faturas pagas, a única forma honesta de o corrigir é apagá-lo e
+ * criar outro. As mesmas faturas pagas continuam a impedir a operação — apagar
+ * parcelas cuja fatura já recebeu dinheiro deixaria um pagamento sem dívida
+ * correspondente, ou seja, dinheiro a sair sem contrapartida.
+ */
+export async function deleteInstallmentPlan(
+  input: unknown,
+): Promise<ActionResult<{ planId: string; removed: number }>> {
+  const user = await requireUser();
+  const parsed = deleteInstallmentPlanSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fromZodError(parsed.error);
+  }
+
+  const { planId } = parsed.data;
+  const rows = await prisma.transaction.findMany({
+    where: { userId: user.id, installmentPlanId: planId },
+    select: { cardId: true, invoiceId: true },
+  });
+  const first = rows[0];
+
+  if (first === undefined) {
+    return fail('Parcelamento não encontrado.');
+  }
+
+  const today = todayInLisbon();
+  const context = await loadInvoiceContext(user.id, today);
+  const invoiceIds = rows.map((row) => row.invoiceId).filter((id): id is string => id !== null);
+  const paidInvoices = context.summaries.filter(
+    (invoice) => invoiceIds.includes(invoice.id) && invoice.paidInCents > 0,
+  );
+
+  if (paidInvoices.length > 0) {
+    return fail(
+      'Este parcelamento tem faturas com pagamentos, e essas não se apagam por aqui. Elimina os lançamentos no extrato, um a um.',
+    );
+  }
+
+  const removed = await prisma.transaction.deleteMany({
+    where: { userId: user.id, installmentPlanId: planId },
+  });
+
+  if (first.cardId !== null) {
+    await refreshInvoiceCache({ userId: user.id, cardId: first.cardId, today });
+  }
+
+  revalidateCardViews();
+
+  return ok({ planId, removed: removed.count });
 }

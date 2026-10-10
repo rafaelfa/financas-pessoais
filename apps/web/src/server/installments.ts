@@ -20,6 +20,9 @@ export interface InstallmentPlanInvoice {
   readonly dueDate: string;
   readonly amountInCents: number;
   readonly installmentNumber: number;
+  /** Total já pago nesta fatura. */
+  readonly paidInCents: number;
+  /** Totalmente paga. */
   readonly paid: boolean;
 }
 
@@ -38,6 +41,15 @@ export interface InstallmentPlanView {
   readonly nextInvoice: InstallmentPlanInvoice | null;
   /** Soma das parcelas cujas faturas ainda têm valor por pagar. */
   readonly remainingInCents: number;
+  /**
+   * `true` se alguma fatura do plano já recebeu dinheiro.
+   *
+   * O servidor recusa editar um plano nesta situação — não se reescreve história
+   * confirmada. A interface usa este campo para desativar o botão **antes** de o
+   * utilizador tentar: um botão que falha sempre é pior do que um botão
+   * desativado com a razão escrita ao lado.
+   */
+  readonly hasPayments: boolean;
   readonly invoices: readonly InstallmentPlanInvoice[];
 }
 
@@ -81,6 +93,8 @@ export async function listInstallmentPlans(cardId?: string): Promise<Installment
     const invoices: InstallmentPlanInvoice[] = installments.map((installment) => {
       const summary =
         installment.invoiceId === null ? undefined : summaryById.get(installment.invoiceId);
+      const invoiceTotal = summary?.totalInCents ?? 0;
+      const paidInCents = summary?.paidInCents ?? 0;
 
       return {
         id: installment.invoiceId ?? '',
@@ -88,7 +102,8 @@ export async function listInstallmentPlans(cardId?: string): Promise<Installment
         dueDate: summary?.dueDate ?? '',
         amountInCents: Math.abs(installment.amountInCents),
         installmentNumber: installment.installmentNumber ?? 1,
-        paid: summary !== undefined && summary.outstandingInCents === 0,
+        paidInCents,
+        paid: summary !== undefined && invoiceTotal > 0 && summary.outstandingInCents === 0,
       };
     });
 
@@ -115,6 +130,7 @@ export async function listInstallmentPlans(cardId?: string): Promise<Installment
       remainingInCents: sortedInvoices
         .filter((invoice) => !invoice.paid)
         .reduce((total, invoice) => total + invoice.amountInCents, 0),
+      hasPayments: invoices.some((invoice) => invoice.paidInCents > 0),
       invoices: sortedInvoices,
     });
   }

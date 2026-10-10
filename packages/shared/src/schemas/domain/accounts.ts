@@ -86,7 +86,12 @@ export const createCreditCardSchema = z.object({
   paymentAccountId: entityIdSchema,
   closingDay: dayOfMonthSchema,
   dueDay: dayOfMonthSchema,
-  monthlyLimitInCents: positiveCentsSchema.optional(),
+  /**
+   * Limite de crédito. `null` ou vazio significa "sem limite definido" — e é
+   * possível voltar a esse estado: um campo que só se pode preencher e nunca
+   * limpar obriga a inventar um valor.
+   */
+  monthlyLimitInCents: nonNegativeCentsSchema.nullish(),
   annualFeeInCents: nonNegativeCentsSchema.optional(),
 });
 

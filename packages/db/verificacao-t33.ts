@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * T3.3 — Verificação adversarial da camada de dados (script TEMPORÁRIO).
  *

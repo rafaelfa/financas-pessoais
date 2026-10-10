@@ -36,6 +36,16 @@ function revalidateCardViews(): void {
   revalidatePath('/');
 }
 
+/**
+ * Limite de crédito: vazio ou zero significam "sem limite definido".
+ *
+ * Zero como limite seria um cartão sem crédito nenhum, o que não é o que quem
+ * apaga o campo quer dizer.
+ */
+function limitOrNull(value: number | null | undefined): number | null {
+  return value == null || value === 0 ? null : value;
+}
+
 /** Confirma que a conta de pagamento existe e é do utilizador. */
 async function ownsAccount(userId: string, accountId: string): Promise<boolean> {
   const account = await prisma.financialAccount.findFirst({
@@ -83,7 +93,7 @@ export async function createCreditCard(input: unknown): Promise<ActionResult<{ i
         paymentAccountId: value.paymentAccountId,
         closingDay: value.closingDay,
         dueDay: value.dueDay,
-        creditLimitInCents: value.monthlyLimitInCents ?? null,
+        creditLimitInCents: limitOrNull(value.monthlyLimitInCents),
         annualFeeInCents: value.annualFeeInCents ?? null,
       },
       select: { id: true },
@@ -155,7 +165,7 @@ export async function updateCreditCard(input: unknown): Promise<ActionResult<{ i
         ...(value.closingDay !== undefined ? { closingDay: value.closingDay } : {}),
         ...(value.dueDay !== undefined ? { dueDay: value.dueDay } : {}),
         ...(value.monthlyLimitInCents !== undefined
-          ? { creditLimitInCents: value.monthlyLimitInCents }
+          ? { creditLimitInCents: limitOrNull(value.monthlyLimitInCents) }
           : {}),
         ...(value.annualFeeInCents !== undefined
           ? { annualFeeInCents: value.annualFeeInCents }
