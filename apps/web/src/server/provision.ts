@@ -79,14 +79,48 @@ export async function provisionUser(userId: string): Promise<void> {
     }
 
     if (categoryCount > 0) {
+      // Não basta "já tem categorias": pode ter um catálogo **parcial** (uma
+      // interrupção a meio do aprovisionamento, uma categoria de sistema
+      // apagada à mão). Compara-se por identificador e criam-se só as que faltam,
+      // para que a reparação seja possível e idempotente.
+      const existingRows = await prisma.category.findMany({
+        where: { userId },
+        select: { slug: true, kind: true },
+      });
+
+      const existingKeys = new Set(existingRows.map((row) => categoryKey(row.kind, row.slug)));
+
+      const catalogue = prepareCatalogue();
+      const missing = catalogue.filter(
+        (category) => !existingKeys.has(categoryKey(category.kind, category.slug)),
+      );
+
+      if (missing.length === 0) {
+        return;
+      }
+
+      await createMissingCategories(userId, missing);
+
       return;
     }
 
-    const catalogue = prepareCatalogue();
-    const roots = catalogue.filter((category) => category.parentSlug === null);
-    const children = catalogue.filter((category) => category.parentSlug !== null);
+    await createMissingCategories(userId, prepareCatalogue());
+  } catch (error) {
+    // Nunca propagar: falhar aqui não pode impedir alguém de entrar na conta.
+    console.error(`[aprovisionamento] falhou para o utilizador ${userId}:`, error);
+  }
+}
 
-    // 1. Todas as categorias de topo de uma só vez.
+/** Cria as categorias indicadas, ligando as subcategorias às mães já existentes. */
+async function createMissingCategories(
+  userId: string,
+  missing: readonly PreparedCategory[],
+): Promise<void> {
+  const roots = missing.filter((category) => category.parentSlug === null);
+  const children = missing.filter((category) => category.parentSlug !== null);
+
+  // 1. As categorias de topo de uma só vez.
+  if (roots.length > 0) {
     await prisma.category.createMany({
       data: roots.map((category) => ({
         userId,
@@ -99,35 +133,34 @@ export async function provisionUser(userId: string): Promise<void> {
         sortOrder: category.sortOrder,
       })),
     });
-
-    // 2. Ler os identificadores criados, para ligar as subcategorias.
-    const created = await prisma.category.findMany({
-      where: { userId },
-      select: { id: true, slug: true, kind: true },
-    });
-    const idByKey = new Map(created.map((row) => [categoryKey(row.kind, row.slug), row.id]));
-
-    // 3. As subcategorias, também de uma só vez.
-    if (children.length > 0) {
-      await prisma.category.createMany({
-        data: children.map((category) => ({
-          userId,
-          name: category.name,
-          slug: category.slug,
-          kind: category.kind,
-          parentId:
-            category.parentSlug === null
-              ? null
-              : (idByKey.get(categoryKey(category.kind, category.parentSlug)) ?? null),
-          isInternal: category.internal,
-          isSystem: true,
-          color: category.color,
-          sortOrder: category.sortOrder,
-        })),
-      });
-    }
-  } catch (error) {
-    // Nunca propagar: falhar aqui não pode impedir alguém de entrar na conta.
-    console.error(`[aprovisionamento] falhou para o utilizador ${userId}:`, error);
   }
+
+  if (children.length === 0) {
+    return;
+  }
+
+  // 2. Ler todos os identificadores (novos e antigos) para ligar as filhas.
+  const created = await prisma.category.findMany({
+    where: { userId },
+    select: { id: true, slug: true, kind: true },
+  });
+  const idByKey = new Map(created.map((row) => [categoryKey(row.kind, row.slug), row.id]));
+
+  // 3. As subcategorias, também de uma só vez.
+  await prisma.category.createMany({
+    data: children.map((category) => ({
+      userId,
+      name: category.name,
+      slug: category.slug,
+      kind: category.kind,
+      parentId:
+        category.parentSlug === null
+          ? null
+          : (idByKey.get(categoryKey(category.kind, category.parentSlug)) ?? null),
+      isInternal: category.internal,
+      isSystem: true,
+      color: category.color,
+      sortOrder: category.sortOrder,
+    })),
+  });
 }

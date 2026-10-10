@@ -4,6 +4,7 @@ import { CategoryKind, prisma } from '@repo/db/client';
 import { createCategorySchema, slugify, updateCategorySchema } from '@repo/shared';
 import { revalidatePath } from 'next/cache';
 
+import { failFromWriteError } from './errors';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
 
@@ -73,21 +74,36 @@ export async function createCategory(input: unknown): Promise<ActionResult<{ id:
     });
   }
 
-  const created = await prisma.category.create({
-    data: {
-      userId: user.id,
-      name: value.name,
-      slug: await uniqueSlug(user.id, kind, value.name),
-      kind,
-      parentId: value.parentId ?? null,
-      color: value.color ?? null,
-      icon: value.icon ?? null,
-      sortOrder: value.sortOrder ?? 0,
-      isInternal: false,
-      isSystem: false,
-    },
-    select: { id: true },
-  });
+  let created: { id: string } | undefined;
+
+  try {
+    created = await prisma.category.create({
+      data: {
+        userId: user.id,
+        name: value.name,
+        slug: await uniqueSlug(user.id, kind, value.name),
+        kind,
+        parentId: value.parentId ?? null,
+        color: value.color ?? null,
+        icon: value.icon ?? null,
+        sortOrder: value.sortOrder ?? 0,
+        isInternal: false,
+        isSystem: false,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    // Duas criações simultâneas com o mesmo nome passam a verificação acima e
+    // colidem na restrição única — tem de virar mensagem, não erro 500.
+    return failFromWriteError(error, {
+      fallback: 'Não consegui criar a categoria. Tenta outra vez.',
+      unique: 'Já tens uma categoria com esse nome.',
+    });
+  }
+
+  if (!created) {
+    return fail('Não consegui criar a categoria. Tenta outra vez.');
+  }
 
   revalidatePath('/categorias');
   revalidatePath('/transacoes');
@@ -107,7 +123,7 @@ export async function updateCategory(input: unknown): Promise<ActionResult<{ id:
   const value = parsed.data;
   const existing = await prisma.category.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true, isSystem: true },
+    select: { id: true, isSystem: true, kind: true },
   });
 
   if (!existing) {
@@ -127,11 +143,19 @@ export async function updateCategory(input: unknown): Promise<ActionResult<{ id:
 
     const parent = await prisma.category.findFirst({
       where: { id: value.parentId, userId: user.id },
-      select: { id: true },
+      select: { id: true, kind: true },
     });
 
     if (!parent) {
       return fail('A categoria-mãe não existe.', { parentId: ['Escolhe outra categoria-mãe.'] });
+    }
+
+    // A mãe tem de ser do mesmo tipo: uma categoria de ganho dentro de uma de
+    // gasto desapareceria dos dois relatórios.
+    if (parent.kind !== existing.kind) {
+      return fail('A categoria-mãe é de outro tipo (gasto ou ganho).', {
+        parentId: ['Escolhe uma categoria-mãe do mesmo tipo.'],
+      });
     }
 
     // Subir a árvore a partir da nova mãe: se encontrarmos a própria categoria,

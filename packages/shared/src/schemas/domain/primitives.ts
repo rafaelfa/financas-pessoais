@@ -25,11 +25,19 @@ export const percentageSchema = z
   .min(0, 'A percentagem não pode ser negativa.')
   .max(100, 'A percentagem não pode ser superior a 100.');
 
+/**
+ * Maior montante representável: o limite de um inteiro de 32 bits, em cêntimos
+ * (21 474 836,47 €). A coluna da base de dados é `Int`, portanto aceitar mais do
+ * que isto aqui só adiaria o erro para um `INSERT` falhado — e um erro de base
+ * de dados não é uma mensagem que se possa mostrar a alguém.
+ */
+export const MAX_AMOUNT_IN_CENTS = 2_147_483_647;
+
 /** Montante em cêntimos inteiros, com sinal. */
 export const centsSchema = z
   .int('O valor tem de ser um número inteiro de cêntimos.')
-  .min(-999_999_999_99, 'Valor acima do limite suportado.')
-  .max(999_999_999_99, 'Valor acima do limite suportado.');
+  .min(-MAX_AMOUNT_IN_CENTS, 'Valor acima do limite suportado.')
+  .max(MAX_AMOUNT_IN_CENTS, 'Valor acima do limite suportado.');
 
 /** Montante em cêntimos estritamente positivo (magnitude de um movimento). */
 export const positiveCentsSchema = centsSchema.positive('O valor tem de ser maior que zero.');

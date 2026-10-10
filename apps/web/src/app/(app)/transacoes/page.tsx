@@ -7,13 +7,10 @@ import {
   TRANSACTION_KIND_LABELS,
   TRANSACTION_STATUS_LABELS,
 } from '@/components/transaction-kind-badge';
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-  TransactionFilters,
-} from '@/components/transaction-filters';
+import { TransactionFilters } from '@/components/transaction-filters';
 import { TransactionQuickAdd } from '@/components/transaction-quick-add';
 import { TransactionTable } from '@/components/transaction-table';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/transaction-pagination';
 import { todayInLisbon } from '@/lib/today';
 import { listAccounts } from '@/server/accounts';
 import { listCategories } from '@/server/categories';

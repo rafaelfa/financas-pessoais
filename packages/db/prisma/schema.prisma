@@ -282,6 +282,10 @@ model LockedBalance {
 
   @@index([userId, referenceDate])
   @@index([financialAccountId, referenceDate])
+  /// Uma conferência por conta e por data. Sem esta restrição, dois pedidos
+  /// simultâneos de "travar saldo" criavam dois ajustes iguais — a verificação
+  /// prévia faz-se fora da transação e não protege contra concorrência.
+  @@unique([financialAccountId, referenceDate])
   @@map("locked_balance")
 }
 

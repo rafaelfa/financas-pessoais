@@ -5,6 +5,8 @@ import { createTransactionSchema, createTransferSchema } from '@repo/shared';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { failFromWriteError } from './errors';
+
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
 
@@ -57,6 +59,42 @@ async function ownsCategory(userId: string, categoryId: string): Promise<boolean
   return category !== null;
 }
 
+/**
+ * Confirma a propriedade de uma referência opcional (fatura, cartão, objetivo).
+ *
+ * Uma chave estrangeira prova que o registo existe; não prova que é teu. É por
+ * isso que cada referência vinda do cliente passa por aqui antes de ser gravada —
+ * foi a verificação adversarial da Fase 3 que mostrou o que acontece sem isto.
+ */
+async function ownsReference(
+  model: 'invoice' | 'creditCard' | 'goal',
+  userId: string,
+  id: string,
+): Promise<boolean> {
+  const where = { id, userId };
+
+  const found =
+    model === 'invoice'
+      ? await prisma.invoice.findFirst({ where, select: { id: true } })
+      : model === 'creditCard'
+        ? await prisma.creditCard.findFirst({ where, select: { id: true } })
+        : await prisma.goal.findFirst({ where, select: { id: true } });
+
+  return found !== null;
+}
+
+function ownsInvoice(userId: string, id: string): Promise<boolean> {
+  return ownsReference('invoice', userId, id);
+}
+
+function ownsCard(userId: string, id: string): Promise<boolean> {
+  return ownsReference('creditCard', userId, id);
+}
+
+function ownsGoal(userId: string, id: string): Promise<boolean> {
+  return ownsReference('goal', userId, id);
+}
+
 /** Cria um lançamento simples (gasto, ganho, pagamento de fatura ou movimento de objetivo). */
 export async function createTransaction(input: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
@@ -80,6 +118,20 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
     return fail('Usa a transferência entre contas para mover dinheiro.');
   }
 
+  // Um ajuste de saldo só nasce de "travar saldo", que grava o registo de
+  // auditoria (`LockedBalance`). Aceitá-lo aqui permitiria criar o lançamento
+  // sem o registo — e o ajuste deixaria de ser auditável.
+  if (value.kind === 'balance_adjust') {
+    return fail('Os ajustes de saldo fazem-se em Contas, com "travar saldo".');
+  }
+
+  // O par de uma transferência é criado por `createTransfer`, que escreve as
+  // duas pernas. Um `transferGroupId` vindo do cliente permitiria agrupar
+  // lançamentos arbitrários e depois apagá-los ou ignorá-los em bloco.
+  if (value.transferGroupId != null) {
+    return fail('Uma transferência cria-se no formulário de transferência.');
+  }
+
   if (!(await ownsAccount(user.id, value.accountId))) {
     return fail('Conta não encontrada.', { accountId: ['Escolhe uma conta tua.'] });
   }
@@ -88,28 +140,59 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
     return fail('Categoria não encontrada.', { categoryId: ['Escolhe uma categoria tua.'] });
   }
 
-  const created = await prisma.transaction.create({
-    data: {
-      userId: user.id,
-      kind: KIND_BY_INPUT[value.kind] ?? TransactionKind.EXPENSE,
-      status: STATUS_BY_INPUT[value.status] ?? TransactionStatus.CONFIRMED,
-      amountInCents: value.amountInCents,
-      date: new Date(value.date),
-      description: value.description ?? null,
-      financialAccountId: value.accountId,
-      categoryId: value.categoryId ?? null,
-      invoiceId: value.invoiceId ?? null,
-      cardId: value.cardId ?? null,
-      goalId: value.goalId ?? null,
-      transferGroupId: value.transferGroupId ?? null,
-      paymentMethod: value.paymentMethod === 'credit' ? 'CREDIT' : 'DEBIT',
-      paymentCondition: 'SINGLE',
-      settled: value.settled,
-      settledOn: value.settled ? new Date(value.date) : null,
-      fitId: value.fitId ?? null,
-    },
-    select: { id: true },
-  });
+  /*
+   * As restantes referências (fatura, cartão, objetivo) também vêm do cliente.
+   * As chaves estrangeiras garantem que existem — não que são **tuas**. Sem esta
+   * verificação, usar o identificador da fatura de outra pessoa fazia essa
+   * fatura aparecer paga, com um lançamento pertencente a outra conta.
+   */
+  if (value.invoiceId != null && !(await ownsInvoice(user.id, value.invoiceId))) {
+    return fail('Fatura não encontrada.', { invoiceId: ['Escolhe uma fatura tua.'] });
+  }
+
+  if (value.cardId != null && !(await ownsCard(user.id, value.cardId))) {
+    return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
+  }
+
+  if (value.goalId != null && !(await ownsGoal(user.id, value.goalId))) {
+    return fail('Objetivo não encontrado.', { goalId: ['Escolhe um objetivo teu.'] });
+  }
+
+  let created: { id: string } | undefined;
+
+  try {
+    created = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        kind: KIND_BY_INPUT[value.kind] ?? TransactionKind.EXPENSE,
+        status: STATUS_BY_INPUT[value.status] ?? TransactionStatus.CONFIRMED,
+        amountInCents: value.amountInCents,
+        date: new Date(value.date),
+        description: value.description ?? null,
+        financialAccountId: value.accountId,
+        categoryId: value.categoryId ?? null,
+        invoiceId: value.invoiceId ?? null,
+        cardId: value.cardId ?? null,
+        goalId: value.goalId ?? null,
+        transferGroupId: null,
+        paymentMethod: value.paymentMethod === 'credit' ? 'CREDIT' : 'DEBIT',
+        paymentCondition: 'SINGLE',
+        settled: value.settled,
+        settledOn: value.settled ? new Date(value.date) : null,
+        fitId: value.fitId ?? null,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui guardar o lançamento. Tenta outra vez.',
+      unique: 'Este movimento já foi importado antes.',
+    });
+  }
+
+  if (!created) {
+    return fail('Não consegui guardar o lançamento. Tenta outra vez.');
+  }
 
   revalidateTransactionViews();
 
@@ -209,7 +292,7 @@ export async function updateTransaction(input: unknown): Promise<ActionResult<{ 
   const value = parsed.data;
   const existing = await prisma.transaction.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true, kind: true, counterpartTransactionId: true },
+    select: { id: true, kind: true, counterpartTransactionId: true, date: true },
   });
 
   if (!existing) {
@@ -224,6 +307,38 @@ export async function updateTransaction(input: unknown): Promise<ActionResult<{ 
     return fail('Categoria não encontrada.', { categoryId: ['Escolhe uma categoria tua.'] });
   }
 
+  /*
+   * Numa transferência, as duas pernas descrevem a **mesma** operação: os campos
+   * comuns têm de ser aplicados aos dois lados. A primeira versão espelhava
+   * apenas o valor, e editar só o estado de uma perna (por exemplo marcar como
+   * não liquidada) fazia o saldo total subir pelo valor da transferência — a
+   * perna de saída desaparecia do saldo e a de entrada continuava lá.
+   */
+  const isTransfer = existing.kind === TransactionKind.TRANSFER;
+  const counterpartId = existing.counterpartTransactionId;
+
+  if (isTransfer && (value.accountId !== undefined || value.categoryId !== undefined)) {
+    return fail(
+      'Numa transferência não podes mudar a conta nem a categoria. Elimina-a e cria outra.',
+    );
+  }
+
+  const settledData =
+    value.settled === undefined
+      ? {}
+      : {
+          settled: value.settled,
+          // A data de liquidação acompanha a data do lançamento: usar "hoje"
+          // quando o lançamento é de outro dia faria a visão de caixa mostrar o
+          // movimento no dia errado.
+          settledOn: value.settled ? new Date(value.date ?? existing.date) : null,
+        };
+
+  const statusData =
+    value.status === undefined
+      ? {}
+      : { status: STATUS_BY_INPUT[value.status] ?? TransactionStatus.CONFIRMED };
+
   await prisma.$transaction(async (tx) => {
     await tx.transaction.update({
       where: { id: value.id },
@@ -233,27 +348,23 @@ export async function updateTransaction(input: unknown): Promise<ActionResult<{ 
         ...(value.description !== undefined ? { description: value.description } : {}),
         ...(value.accountId !== undefined ? { financialAccountId: value.accountId } : {}),
         ...(value.categoryId !== undefined ? { categoryId: value.categoryId } : {}),
-        ...(value.status !== undefined
-          ? { status: STATUS_BY_INPUT[value.status] ?? TransactionStatus.CONFIRMED }
-          : {}),
-        ...(value.settled !== undefined
-          ? {
-              settled: value.settled,
-              settledOn: value.settled ? new Date(value.date ?? new Date()) : null,
-            }
-          : {}),
+        ...statusData,
+        ...settledData,
       },
     });
 
-    // O par de uma transferência tem de continuar a espelhar o valor.
-    if (
-      value.amountInCents !== undefined &&
-      existing.kind === TransactionKind.TRANSFER &&
-      existing.counterpartTransactionId !== null
-    ) {
-      await tx.transaction.update({
-        where: { id: existing.counterpartTransactionId },
-        data: { amountInCents: -value.amountInCents },
+    // O par recebe os mesmos campos, com o valor negado e o `userId` no filtro
+    // por defesa em profundidade.
+    if (isTransfer && counterpartId !== null) {
+      await tx.transaction.updateMany({
+        where: { id: counterpartId, userId: user.id },
+        data: {
+          ...(value.amountInCents !== undefined ? { amountInCents: -value.amountInCents } : {}),
+          ...(value.date !== undefined ? { date: new Date(value.date) } : {}),
+          ...(value.description !== undefined ? { description: value.description } : {}),
+          ...statusData,
+          ...settledData,
+        },
       });
     }
   });

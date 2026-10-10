@@ -13,6 +13,7 @@ import {
 import { revalidatePath } from 'next/cache';
 
 import { TRANSACTION_SELECT } from './accounts';
+import { failFromWriteError } from './errors';
 import { toFinanceAccount, toFinanceTransaction } from './mapping';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
@@ -70,29 +71,45 @@ export async function createAccount(input: unknown): Promise<ActionResult<{ id: 
     return fail('Já tens uma conta com esse nome.', { name: ['Já tens uma conta com esse nome.'] });
   }
 
-  const created = await prisma.$transaction(async (tx) => {
-    const account = await tx.financialAccount.create({
-      data: {
-        userId: user.id,
-        name: value.name,
-        type: toAccountType(value.type),
-        institution: value.institution ?? null,
-        description: value.notes ?? null,
-        openingBalanceInCents: value.openingBalanceInCents,
-        currency: value.currency,
-      },
-      select: { id: true },
-    });
+  // A verificação acima cobre o caso normal; entre ela e a escrita há uma janela
+  // (duplo clique, pedido repetido) em que quem decide é a restrição única da
+  // base de dados. Aqui essa violação vira uma mensagem, não um erro 500.
+  let created: { id: string } | undefined;
 
-    if (value.isPrimary) {
-      await tx.user.update({
-        where: { id: user.id },
-        data: { primaryAccountId: account.id },
+  try {
+    created = await prisma.$transaction(async (tx) => {
+      const account = await tx.financialAccount.create({
+        data: {
+          userId: user.id,
+          name: value.name,
+          type: toAccountType(value.type),
+          institution: value.institution ?? null,
+          description: value.notes ?? null,
+          openingBalanceInCents: value.openingBalanceInCents,
+          currency: value.currency,
+        },
+        select: { id: true },
       });
-    }
 
-    return account;
-  });
+      if (value.isPrimary) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { primaryAccountId: account.id },
+        });
+      }
+
+      return account;
+    });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui criar a conta. Tenta outra vez.',
+      unique: 'Já tens uma conta com esse nome.',
+    });
+  }
+
+  if (!created) {
+    return fail('Não consegui criar a conta. Tenta outra vez.');
+  }
 
   revalidateAccountViews();
 
@@ -248,33 +265,46 @@ export async function lockAccountBalance(
     select: { id: true },
   });
 
-  await prisma.$transaction(async (tx) => {
-    await tx.lockedBalance.create({
-      data: {
-        userId: user.id,
-        financialAccountId: value.accountId,
-        referenceDate: new Date(value.referenceDate),
-        reportedBalanceInCents: value.reportedBalanceInCents,
-        computedBalanceInCents,
-        adjustmentInCents,
-        note: value.reason ?? null,
-      },
-    });
+  /*
+   * O registo da conferência e o lançamento de ajuste nascem juntos, e a
+   * restrição única `(financialAccountId, referenceDate)` é a última linha de
+   * defesa: a verificação acima corre fora da transação, por isso dois pedidos
+   * simultâneos passariam ambos por ela e criariam dois ajustes iguais.
+   */
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.lockedBalance.create({
+        data: {
+          userId: user.id,
+          financialAccountId: value.accountId,
+          referenceDate: new Date(value.referenceDate),
+          reportedBalanceInCents: value.reportedBalanceInCents,
+          computedBalanceInCents,
+          adjustmentInCents,
+          note: value.reason ?? null,
+        },
+      });
 
-    await tx.transaction.create({
-      data: {
-        userId: user.id,
-        kind: 'BALANCE_ADJUST',
-        status: 'CONFIRMED',
-        amountInCents: adjustmentInCents,
-        date: new Date(value.referenceDate),
-        description: 'Ajuste de saldo',
-        financialAccountId: value.accountId,
-        categoryId: adjustmentCategory?.id ?? null,
-        settled: true,
-      },
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          kind: 'BALANCE_ADJUST',
+          status: 'CONFIRMED',
+          amountInCents: adjustmentInCents,
+          date: new Date(value.referenceDate),
+          description: 'Ajuste de saldo',
+          financialAccountId: value.accountId,
+          categoryId: adjustmentCategory?.id ?? null,
+          settled: true,
+        },
+      });
     });
-  });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui travar o saldo. Tenta outra vez.',
+      unique: 'Já travaste o saldo desta conta nesta data. Nada foi alterado.',
+    });
+  }
 
   revalidateAccountViews();
 

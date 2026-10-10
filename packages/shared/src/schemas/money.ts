@@ -9,11 +9,17 @@ import { currencySchema } from './primitives';
  * avoid the floating point rounding errors that come with `number` decimals.
  */
 
-/** Integer amount in minor units (cents). */
+/**
+ * Integer amount in minor units (cents).
+ *
+ * O teto é o de um inteiro de 32 bits (21 474 836,47 €), que é o que a coluna da
+ * base de dados suporta. Aceitar mais aqui só transformaria um erro de validação
+ * num erro de escrita.
+ */
 export const amountInCentsSchema = z
   .int('O valor deve ser um número inteiro de centavos.')
-  .min(-999_999_999_99, 'Valor acima do limite suportado.')
-  .max(999_999_999_99, 'Valor acima do limite suportado.');
+  .min(-2_147_483_647, 'Valor acima do limite suportado.')
+  .max(2_147_483_647, 'Valor acima do limite suportado.');
 
 /** A monetary amount together with its currency. */
 export const moneySchema = z.object({

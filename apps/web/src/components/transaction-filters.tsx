@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/transaction-pagination';
+
 import {
   FilterChips,
   FilterSelect,
@@ -37,13 +39,11 @@ import type { CategoryView } from '@/server/categories';
  * Qualquer alteração de filtro volta à primeira página — mudar de filtro e ficar
  * na página 7 é uma das formas clássicas de mostrar "sem resultados" a quem tem
  * dados.
+ *
+ * As constantes de paginação vêm de `@/lib/transaction-pagination`: se
+ * estivessem definidas aqui, um Server Component que as importasse receberia
+ * uma *client reference* em vez do valor e rebentaria em produção.
  */
-
-/** Tamanhos de página oferecidos. */
-export const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
-
-/** Tamanho de página por omissão. */
-export const DEFAULT_PAGE_SIZE = 25;
 
 /** Alvo de toque: 44 px em telemóvel, denso a partir de `sm`. */
 const TOUCH = 'min-h-11 sm:min-h-8';

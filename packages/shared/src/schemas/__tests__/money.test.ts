@@ -11,7 +11,15 @@ describe('amountInCentsSchema', () => {
   it('aceita inteiros dentro do intervalo suportado', () => {
     expect(amountInCentsSchema.parse(0)).toBe(0);
     expect(amountInCentsSchema.parse(-8_990)).toBe(-8_990);
-    expect(amountInCentsSchema.parse(999_999_999_99)).toBe(999_999_999_99);
+    // Teto real: o limite de um inteiro de 32 bits, que é o que a coluna suporta.
+    expect(amountInCentsSchema.parse(2_147_483_647)).toBe(2_147_483_647);
+    expect(amountInCentsSchema.parse(-2_147_483_647)).toBe(-2_147_483_647);
+  });
+
+  it('recusa um cêntimo acima do teto da coluna, e não um valor absurdo', () => {
+    // Este é o teste que interessa: o limite tem de estar no limite da coluna.
+    // Com um teto maior, o Zod aceitava e o INSERT rebentava sem mensagem.
+    expect(amountInCentsSchema.safeParse(2_147_483_648).success).toBe(false);
   });
 
   it('rejeita valores com casas decimais', () => {
