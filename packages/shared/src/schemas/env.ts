@@ -14,14 +14,24 @@ export const nodeEnvSchema = z.enum(['development', 'test', 'production']);
 export const serverEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
 
-  /** PostgreSQL connection string consumed by Prisma. */
+  /**
+   * PostgreSQL connection string consumed by Prisma. On Neon this is the
+   * **pooled** connection, which is what the application and Vercel should use.
+   */
   DATABASE_URL: z.string().min(1, 'DATABASE_URL é obrigatória.'),
 
-  /** Secret used by NextAuth to sign and encrypt tokens. */
-  NEXTAUTH_SECRET: z.string().min(32, 'NEXTAUTH_SECRET deve ter pelo menos 32 caracteres.'),
+  /**
+   * Direct (non-pooled) connection string, used **only** by migrations — a
+   * connection pooler cannot run `prisma migrate`. Optional because the local
+   * Docker database has no pooler and `DATABASE_URL` serves both purposes.
+   */
+  DIRECT_URL: z.string().min(1).optional(),
 
-  /** Public base URL of the web app. */
-  NEXTAUTH_URL: z.url('NEXTAUTH_URL deve ser uma URL válida.'),
+  /** Secret used by better-auth to sign and encrypt session cookies. */
+  BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET deve ter pelo menos 32 caracteres.'),
+
+  /** Public base URL of the web app; better-auth uses it to build callbacks. */
+  BETTER_AUTH_URL: z.url('BETTER_AUTH_URL deve ser uma URL válida.'),
 });
 
 /** Validated server environment. */

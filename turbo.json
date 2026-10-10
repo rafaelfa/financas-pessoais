@@ -2,7 +2,14 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
   "globalDependencies": ["tsconfig.json", ".env", ".env.example"],
-  "globalEnv": ["NODE_ENV", "DATABASE_URL", "NEXTAUTH_SECRET", "NEXTAUTH_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "CRON_SECRET"
+  ],
   "tasks": {
     "db:generate": {
       "cache": false

@@ -339,3 +339,25 @@ O `.env` fica fora do Git (já está no `.gitignore`); o `.env.example` é atual
 - Plano gratuito: um projeto com ramos. Decidir cedo entre **um ramo único** para pré-visualizações ou aceitar várias bases por deploy (risco R14).
 - O Neon mantém histórico de *backups*; adicionalmente exportamos backup JSON próprio na Fase 7, para não depender de um fornecedor.
 - A versão do PostgreSQL é gerida pela plataforma, o que remove a incógnita de compatibilidade local que existia com o Docker.
+
+---
+
+## 22. Registo de execução
+
+### Fase 0 — em curso (2026-10-10)
+
+| Tarefa | Estado | Evidência |
+|---|---|---|
+| T0.1 Higiene | ✅ | `format:check` **0** (os 21 ficheiros em falta corrigidos) e `lint` **0** |
+| T0.2 Linha de base | ✅ | commits `e23169d` → `a914de7` → `2c077b0` → `T0.7/T0.10`, publicados |
+| T0.3 Tokens verdigris | ✅ | `globals.css` com os tokens medidos do documento 03; auto-referência de fontes corrigida; Inter Variable e `lang="pt-PT"` |
+| T0.4 Build | ✅ | Turbopack, 3 rotas, `BUILD_EXIT=0` (nunca tinha corrido) |
+| T0.6 Versões fixadas | ✅ | `prisma@7.10.0` — **atenção: a tag `latest` do npm é `8.0.0-rc.22`**; lucide, radix, zod, date-fns e react-day-picker fixados |
+| T0.7 better-auth + ambiente | ✅ | `better-auth@1.7.7`; `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` substituem `NEXTAUTH_*`; `DIRECT_URL` e `CRON_SECRET` no contrato |
+| T0.8 Smoke tests OFX/CSV | ✅ | 16 testes novos (43 no total); veredicto em [T0.8 §7](../spec/T0.8-smoke-tests.md) |
+| T0.9 Vitest | ✅ | Vitest 5.0.3 com `turbo run test` |
+| T0.10 Componentes estruturantes | ✅ | `chart` (recharts 3.8.0), `table`, `calendar` (react-day-picker 10.0.2) |
+| T0.5 Neon + 1ª migração | ⏸ **bloqueado no cliente** | precisa das duas *connection strings* |
+| T0.11 Deploy no Vercel | ⏸ **bloqueado no cliente** | precisa de ligar o repositório |
+
+**Nota de ambiente (para reproduzir):** o agente corre dentro de uma sandbox de ficheiros que bloqueia (a) processos filhos com *pipes* — o que faz falhar `next build` e `vitest` dentro dela, embora ambos funcionem no terminal normal; e (b) escritas no *store* do pnpm fora do workspace, pelo que cada instalação pede autorização pontual. O `node_modules` continua ligado ao *store* global `%LOCALAPPDATA%\pnpm\store\v10` e **não** existe `.npmrc` com caminhos absolutos — isso quebraria o build no Vercel.
