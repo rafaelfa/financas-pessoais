@@ -2,6 +2,8 @@ import { prisma } from '@repo/db/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 
+import { provisionUser } from '@/server/provision';
+
 /**
  * Autenticação.
  *
@@ -33,6 +35,20 @@ export const auth = betterAuth({
   advanced: {
     // Sem cookies de terceiros: a sessão é do próprio domínio da aplicação.
     useSecureCookies: process.env.NODE_ENV === 'production',
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        /**
+         * Quem se regista tem de encontrar uma aplicação utilizável: cria-se a
+         * carteira principal e o catálogo de categorias de Portugal. Sem isto, o
+         * primeiro lançamento pediria uma categoria que não existe.
+         */
+        after: async (user) => {
+          await provisionUser(user.id);
+        },
+      },
+    },
   },
 });
 

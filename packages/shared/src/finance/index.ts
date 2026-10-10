@@ -11,6 +11,7 @@
  * mostrar números errados com boa aparência.
  */
 export * from './types';
+export * from './catalog';
 export * from './rows';
 export * from './period';
 export * from './balance';

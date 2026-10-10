@@ -80,3 +80,39 @@ export async function getActiveTotalBalanceInCents(): Promise<number> {
     .filter((account) => !account.archived)
     .reduce((total, account) => total + account.balanceInCents, 0);
 }
+
+/**
+ * Saldo calculado de uma conta **numa data concreta**.
+ *
+ * Serve para pré-visualizar o ajuste antes de o criar: quando o utilizador
+ * trava o saldo com data de ontem, tem de ver o saldo *de ontem*, e não o de
+ * hoje. Sem isto, a pré-visualização mentiria sempre que a data não fosse hoje.
+ */
+export async function getAccountBalanceAtDate(
+  accountId: string,
+  date: string,
+): Promise<{ accountId: string; date: string; balanceInCents: number } | null> {
+  const user = await requireUser();
+  const account = await prisma.financialAccount.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+
+  if (!account) {
+    return null;
+  }
+
+  const rows = await prisma.transaction.findMany({
+    where: { userId: user.id },
+    select: TRANSACTION_SELECT,
+  });
+
+  return {
+    accountId: account.id,
+    date,
+    balanceInCents: accountBalanceInCents(
+      toFinanceAccount(account),
+      rows.map(toFinanceTransaction),
+      { upTo: date },
+    ),
+  };
+}

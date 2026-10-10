@@ -27,6 +27,10 @@ export interface MoneyInputProps {
   readonly disabled?: boolean;
   readonly autoFocus?: boolean;
   readonly className?: string;
+  /** Marca o campo como inválido por causa de um erro vindo do formulário. */
+  readonly invalid?: boolean;
+  /** Identificador do texto que descreve o campo, para leitores de ecrã. */
+  readonly describedBy?: string;
   readonly 'aria-label'?: string;
 }
 
@@ -52,6 +56,8 @@ export function MoneyInput({
   disabled,
   autoFocus,
   className,
+  invalid = false,
+  describedBy,
   'aria-label': ariaLabel,
 }: MoneyInputProps) {
   const generatedId = useId();
@@ -116,8 +122,11 @@ export function MoneyInput({
         autoComplete="off"
         placeholder={placeholder}
         aria-label={ariaLabel}
-        aria-invalid={error !== null}
-        aria-describedby={error !== null ? errorId : undefined}
+        aria-invalid={error !== null || invalid}
+        aria-describedby={
+          [error !== null ? errorId : null, describedBy ?? null].filter(Boolean).join(' ') ||
+          undefined
+        }
         className="font-numeric text-right tabular-nums"
         onChange={(event) => handleChange(event.target.value)}
         onBlur={commit}

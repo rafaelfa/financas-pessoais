@@ -138,8 +138,10 @@ export const updateTransactionSchema = z.object({
   id: entityIdSchema,
   amountInCents: createTransactionShape.shape.amountInCents.optional(),
   date: calendarDateSchema.optional(),
-  description: descriptionSchema.optional(),
-  counterparty: z.string().trim().max(120).optional(),
+  // `nullish` e não `optional`: limpar a descrição é uma operação legítima e
+  // tem de ser distinguível de "não mexer neste campo".
+  description: descriptionSchema.nullish(),
+  counterparty: z.string().trim().max(120).nullish(),
   accountId: entityIdSchema.optional(),
   categoryId: entityIdSchema.nullish(),
   status: transactionStatusSchema.optional(),

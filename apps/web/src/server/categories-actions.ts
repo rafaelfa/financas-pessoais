@@ -133,6 +133,26 @@ export async function updateCategory(input: unknown): Promise<ActionResult<{ id:
     if (!parent) {
       return fail('A categoria-mãe não existe.', { parentId: ['Escolhe outra categoria-mãe.'] });
     }
+
+    // Subir a árvore a partir da nova mãe: se encontrarmos a própria categoria,
+    // a mudança criaria um ciclo e a árvore deixaria de ser navegável. O limite
+    // de passos protege contra dados já corrompidos.
+    let ancestorId: string | null = value.parentId;
+
+    for (let depth = 0; depth < 32 && ancestorId !== null; depth += 1) {
+      if (ancestorId === value.id) {
+        return fail('Essa escolha criaria um ciclo na árvore de categorias.', {
+          parentId: ['Escolhe uma categoria-mãe que não esteja dentro desta.'],
+        });
+      }
+
+      const ancestor: { parentId: string | null } | null = await prisma.category.findFirst({
+        where: { id: ancestorId, userId: user.id },
+        select: { parentId: true },
+      });
+
+      ancestorId = ancestor?.parentId ?? null;
+    }
   }
 
   await prisma.category.update({
