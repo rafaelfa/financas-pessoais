@@ -1,0 +1,22 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm v10 blocks dependency lifecycle scripts by default. Every package below
+# declares a preinstall/install/postinstall script and needs to run it:
+#   - prisma / @prisma/engines  -> download the query + schema engine binaries
+#   - esbuild                   -> install the platform binary
+#   - unrs-resolver             -> arrives transitively via eslint-config-next
+# Anything not listed here keeps its scripts blocked, so `pnpm install` stays
+# silent and non-interactive.
+onlyBuiltDependencies:
+  - prisma
+  - '@prisma/engines'
+  - esbuild
+  - unrs-resolver
+
+# Fail loudly instead of silently accepting a peer range mismatch.
+strictPeerDependencies: false
+
+# Keep the virtual store path short; Windows has a 260 character path limit.
+virtualStoreDirMaxLength: 60

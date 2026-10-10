@@ -1,0 +1,19 @@
+// Prisma schema — intentionally empty.
+//
+// Only the datasource (provider) and the client generator are declared; no
+// models yet. The connection URL lives in `prisma.config.ts` (Prisma 7 moved
+// `url` out of the schema), so this file stays datasource-only as required.
+//
+// Run `pnpm db:generate` after editing, or `pnpm db:push` to apply it.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // Emit extension-less relative imports so the generated sources resolve
+  // under `moduleResolution: "Bundler"` without extra tsconfig flags.
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}

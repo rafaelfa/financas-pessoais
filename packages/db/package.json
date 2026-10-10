@@ -1,0 +1,35 @@
+{
+  "name": "@repo/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:migrate": "prisma migrate dev",
+    "db:format": "prisma format",
+    "db:validate": "prisma validate",
+    "lint": "eslint .",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "clean": "rimraf .turbo node_modules src/generated"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^18.0.6",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "eslint": "^9.39.5",
+    "prisma": "7.10.0",
+    "rimraf": "^6.0.1",
+    "typescript": "5.9.3"
+  }
+}

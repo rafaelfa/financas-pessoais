@@ -1,0 +1,12 @@
+# AMOSTRA SINTETICA DE TESTE - criada apenas para o smoke test T0.8 deste projeto.
+# Nao e um extrato real de nenhuma pessoa nem de nenhum banco. Descricoes e valores sao ficticios.
+# Dialeto CSV portugues - delimitador ponto e virgula, datas dd/mm/aaaa, decimais com virgula, milhares com ponto.
+# As linhas que comecam por cardinal sao comentarios e devem ser ignoradas pelo parser.
+# Saldo inicial de 2.500,00 EUR em 30/09/2026, para conferir a coluna Saldo.
+Data;Descrição;Valor;Saldo
+01/10/2026;Vencimento outubro;2.150,00;4.650,00
+02/10/2026;Renda casa outubro;-850,00;3.800,00
+05/10/2026;"Compra Continente; Matosinhos";-64,37;3.735,63
+06/10/2026;Transferência recebida João Silva;1.200,00;4.935,63
+08/10/2026;Seguro automóvel;-312,45;4.623,18
+09/10/2026;Levantamento multibanco;-50,00;4.573,18
