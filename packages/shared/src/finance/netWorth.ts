@@ -1,5 +1,5 @@
 import { balanceByAccount } from './balance';
-import { invoiceTotals } from './invoice';
+import { totalOutstandingByCard } from './invoice';
 import { movementEffectInCents } from './goal';
 import type {
   FinanceAccount,
@@ -84,15 +84,29 @@ export function netWorth(args: {
   });
 
   const referenceDate = args.upTo ?? '9999-12-31';
-  const invoicesInCents = (args.invoices ?? []).reduce(
-    (total, invoice) =>
-      total +
-      invoiceTotals({
-        invoice,
-        transactions: args.transactions,
-        payments: args.invoicePayments ?? [],
-        today: referenceDate,
-      }).outstandingInCents,
+
+  /*
+   * O passivo das faturas sai da **cadeia** de cada cartão (a última fatura
+   * carrega o que ficou por pagar das anteriores), e não de uma coluna guardada.
+   * Um valor transitado guardado à mão fica desatualizado no dia em que alguém
+   * paga parcialmente uma fatura antiga — e o património passa a mentir.
+   *
+   * Entram **todas** as faturas, incluindo a que ainda está aberta: a fórmula do
+   * sistema de referência é `passivos = faturas abertas + dívidas formais`, e as
+   * compras do período em curso já são uma dívida. Excluí-las por ainda não
+   * estarem fechadas mostraria um património maior do que a realidade.
+   *
+   * Nota para a Fase 6: o património **histórico** exige filtrar também os
+   * movimentos pela data de referência, e não só as faturas.
+   */
+  const outstandingByCard = totalOutstandingByCard({
+    invoices: args.invoices ?? [],
+    transactions: args.transactions,
+    payments: args.invoicePayments ?? [],
+    today: referenceDate,
+  });
+  const invoicesInCents = [...outstandingByCard.values()].reduce(
+    (total, outstanding) => total + outstanding,
     0,
   );
 

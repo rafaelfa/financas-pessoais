@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   calendarDateSchema,
+  descriptionSchema,
   entityIdSchema,
   nonNegativeCentsSchema,
   positiveCentsSchema,
@@ -114,3 +115,43 @@ export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 export type LockBalanceInput = z.infer<typeof lockBalanceSchema>;
 export type CreateCreditCardInput = z.infer<typeof createCreditCardSchema>;
 export type PayInvoiceInput = z.infer<typeof payInvoiceSchema>;
+
+/**
+ * Alteração de um plano de parcelamento.
+ *
+ * Altera-se o plano como um todo — valor, número de parcelas, data da primeira e
+ * descrição — e não parcela a parcela: um parcelamento é uma decisão única, e
+ * mexer numa parcela isolada deixaria de corresponder ao que foi contratado.
+ *
+ * A ação recusa planos cujas faturas já tenham pagamentos: reescrever parcelas
+ * que já foram pagas mudaria história que o utilizador já confirmou.
+ */
+export const updateInstallmentPlanSchema = z
+  .object({
+    planId: z.string().trim().min(1, 'Falta o identificador do plano.').max(100),
+    totalAmountInCents: positiveCentsSchema.optional(),
+    installmentCount: z
+      .number()
+      .int('O número de parcelas tem de ser inteiro.')
+      .min(2, 'Um parcelamento tem pelo menos duas parcelas.')
+      .max(72, 'Um parcelamento não pode passar de 72 parcelas.')
+      .optional(),
+    firstDate: calendarDateSchema.optional(),
+    description: descriptionSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      value.totalAmountInCents !== undefined ||
+      value.installmentCount !== undefined ||
+      value.firstDate !== undefined ||
+      value.description !== undefined,
+    { message: 'Não há nada para alterar neste parcelamento.' },
+  );
+
+/** Arquivo ou reativação de um cartão. */
+export const setCardArchivedSchema = z.object({
+  id: entityIdSchema,
+  archived: z.boolean(),
+});
+
+export type UpdateInstallmentPlanInput = z.infer<typeof updateInstallmentPlanSchema>;

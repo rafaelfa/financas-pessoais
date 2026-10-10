@@ -31,7 +31,7 @@ export type InvoiceStatus = 'open' | 'closed' | 'paid';
  * aponte para uma transação (`transactionId`) faz com que essa transação seja
  * ignorada nesta soma.
  */
-function paidForInvoice(args: {
+export function paidAmountForInvoice(args: {
   readonly invoiceId: string;
   readonly transactions: readonly FinanceTransaction[];
   readonly payments: readonly FinanceInvoicePayment[];
@@ -127,7 +127,7 @@ export function invoiceTotals(args: {
 
   const carriedOverInCents = args.invoice.carriedOverInCents ?? 0;
   const totalInCents = carriedOverInCents + purchasesInCents;
-  const paidInCents = paidForInvoice({
+  const paidInCents = paidAmountForInvoice({
     invoiceId: args.invoice.id,
     transactions: args.transactions,
     payments: args.payments,
@@ -158,6 +158,118 @@ export function invoiceTotals(args: {
 /** Valor a transitar para a fatura seguinte depois de um pagamento parcial. */
 export function carriedOverToNextInvoice(totals: InvoiceTotals): number {
   return totals.outstandingInCents;
+}
+
+/** Uma fatura dentro da cadeia do cartão, com o que transita para a seguinte. */
+export interface InvoiceChainEntry {
+  readonly invoiceId: string;
+  readonly closingDate: string;
+  readonly dueDate: string;
+  readonly purchasesInCents: number;
+  readonly carriedOverInCents: number;
+  readonly totalInCents: number;
+  readonly paidInCents: number;
+  readonly outstandingInCents: number;
+  /** O mesmo que `outstandingInCents`: é o que passa para a fatura seguinte. */
+  readonly carriedToNextInCents: number;
+  readonly status: InvoiceStatus;
+  readonly purchaseCount: number;
+}
+
+/**
+ * Cadeia de faturas de um cartão, por ordem de fecho.
+ *
+ * A transição de saldo **não se guarda à mão: calcula-se**. Cada fatura recebe o
+ * que ficou por pagar da anterior, e o que sobra no fim passa para a seguinte.
+ * Assim, pagar parcialmente uma fatura antiga corrige automaticamente todas as
+ * que vêm depois, em vez de deixar valores desatualizados espalhados pela base
+ * de dados — que é o que acontece quando uma coluna dessas é escrita a partir de
+ * vários sítios.
+ */
+export function invoiceChain(args: {
+  readonly invoices: readonly FinanceInvoice[];
+  readonly transactions: readonly FinanceTransaction[];
+  readonly payments: readonly FinanceInvoicePayment[];
+  readonly today: string;
+}): InvoiceChainEntry[] {
+  const ordered = [...args.invoices].sort((a, b) => (a.closingDate < b.closingDate ? -1 : 1));
+  const entries: InvoiceChainEntry[] = [];
+  let carriedOverInCents = 0;
+
+  for (const invoice of ordered) {
+    const purchases = args.transactions
+      .filter((transaction) => transaction.invoiceId === invoice.id)
+      .filter((transaction) => transaction.kind === 'expense')
+      .filter((transaction) => transaction.status !== 'ignored');
+
+    const purchasesInCents = purchases.reduce(
+      (total, transaction) => total + Math.abs(transaction.amountInCents),
+      0,
+    );
+    const paidInCents = paidAmountForInvoice({
+      invoiceId: invoice.id,
+      transactions: args.transactions,
+      payments: args.payments,
+    });
+    const totalInCents = carriedOverInCents + purchasesInCents;
+    const outstandingInCents = Math.max(0, totalInCents - paidInCents);
+
+    let status: InvoiceStatus = 'open';
+
+    if (totalInCents > 0 && outstandingInCents === 0) {
+      status = 'paid';
+    } else if (args.today >= invoice.closingDate) {
+      status = 'closed';
+    }
+
+    entries.push({
+      invoiceId: invoice.id,
+      closingDate: invoice.closingDate,
+      dueDate: invoice.dueDate,
+      purchasesInCents,
+      carriedOverInCents,
+      totalInCents,
+      paidInCents,
+      outstandingInCents,
+      carriedToNextInCents: outstandingInCents,
+      status,
+      purchaseCount: purchases.length,
+    });
+
+    carriedOverInCents = outstandingInCents;
+  }
+
+  return entries;
+}
+
+/** Total por pagar de todas as faturas, como soma das cadeias de cada cartão. */
+export function totalOutstandingByCard(args: {
+  readonly invoices: readonly FinanceInvoice[];
+  readonly transactions: readonly FinanceTransaction[];
+  readonly payments: readonly FinanceInvoicePayment[];
+  readonly today: string;
+}): Map<string, number> {
+  const byCard = new Map<string, FinanceInvoice[]>();
+
+  for (const invoice of args.invoices) {
+    byCard.set(invoice.cardId, [...(byCard.get(invoice.cardId) ?? []), invoice]);
+  }
+
+  const totals = new Map<string, number>();
+
+  for (const [cardId, invoices] of byCard) {
+    const chain = invoiceChain({
+      invoices,
+      transactions: args.transactions,
+      payments: args.payments,
+      today: args.today,
+    });
+
+    // Só a última fatura da cadeia pode ter valor por pagar: o resto transita.
+    totals.set(cardId, chain[chain.length - 1]?.outstandingInCents ?? 0);
+  }
+
+  return totals;
 }
 
 /**

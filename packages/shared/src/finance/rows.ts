@@ -3,6 +3,8 @@ import type {
   CategoryKind,
   FinanceAccount,
   FinanceCategory,
+  FinanceInvoice,
+  FinanceInvoicePayment,
   FinanceTransaction,
   TransactionKind,
   TransactionStatus,
@@ -87,6 +89,10 @@ export interface TransactionRow {
   readonly goalId: string | null;
   readonly transferGroupId: string | null;
   readonly settled: boolean;
+  readonly installmentPlanId?: string | null;
+  readonly installmentNumber?: number | null;
+  readonly installmentCount?: number | null;
+  readonly installmentAmountInCents?: number | null;
 }
 
 /**
@@ -110,6 +116,10 @@ export function toFinanceTransaction(row: TransactionRow): FinanceTransaction {
     settled: row.settled,
     goalId: row.goalId ?? undefined,
     transferGroupId: row.transferGroupId ?? undefined,
+    installmentPlanId: row.installmentPlanId ?? undefined,
+    installmentNumber: row.installmentNumber ?? undefined,
+    installmentCount: row.installmentCount ?? undefined,
+    installmentAmountInCents: row.installmentAmountInCents ?? undefined,
   };
 }
 
@@ -144,5 +154,49 @@ export function toFinanceAccount(row: AccountRow): FinanceAccount {
     id: row.id,
     openingBalanceInCents: row.openingBalanceInCents,
     archived: row.archivedAt !== null,
+  };
+}
+
+/** Campos de uma fatura que o motor precisa. */
+export interface InvoiceRow {
+  readonly id: string;
+  readonly cardId: string;
+  readonly closingDate: Date;
+  readonly dueDate: Date;
+}
+
+/**
+ * Converte uma fatura.
+ *
+ * O valor transitado **não** vem da base de dados: a cadeia de faturas
+ * calcula-o. Ler a coluna guardada aqui seria confiar numa cache que pode estar
+ * desatualizada — e é isso que a Fase 4 veio corrigir.
+ */
+export function toFinanceInvoice(row: InvoiceRow): FinanceInvoice {
+  return {
+    id: row.id,
+    cardId: row.cardId,
+    closingDate: toIsoDate(row.closingDate),
+    dueDate: toIsoDate(row.dueDate),
+  };
+}
+
+/** Campos de um pagamento de fatura que o motor precisa. */
+export interface InvoicePaymentRow {
+  readonly invoiceId: string;
+  readonly amountInCents: number;
+  readonly date: Date;
+  readonly transactionId: string | null;
+}
+
+/** Converte um pagamento de fatura. */
+export function toFinancePayment(row: InvoicePaymentRow): FinanceInvoicePayment {
+  return {
+    invoiceId: row.invoiceId,
+    amountInCents: row.amountInCents,
+    date: toIsoDate(row.date),
+    // `undefined` e não `null`: o tipo do domínio usa opcional, e o motor
+    // compara com `undefined` para decidir se o pagamento já está contado.
+    ...(row.transactionId !== null ? { transactionId: row.transactionId } : {}),
   };
 }

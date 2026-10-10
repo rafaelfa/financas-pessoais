@@ -84,6 +84,14 @@ export interface FinanceTransaction {
    * conta na data da compra.
    */
   readonly invoiceId?: string;
+  /**
+   * Parcelamento de uma compra de cartão: o plano e a posição desta parcela.
+   * Uma compra em 12 parcelas gera 12 lançamentos, um por fatura.
+   */
+  readonly installmentPlanId?: string;
+  readonly installmentNumber?: number;
+  readonly installmentCount?: number;
+  readonly installmentAmountInCents?: number;
   /** "Já paguei" / "já recebi". Só o que está liquidado move o saldo. */
   readonly settled: boolean;
   readonly goalId?: string;

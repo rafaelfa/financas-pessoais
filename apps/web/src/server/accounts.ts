@@ -38,6 +38,10 @@ export const TRANSACTION_SELECT = {
   goalId: true,
   transferGroupId: true,
   settled: true,
+  installmentPlanId: true,
+  installmentNumber: true,
+  installmentCount: true,
+  installmentAmountInCents: true,
 } as const satisfies Record<keyof TransactionRow, true>;
 
 /** Contas do utilizador, com saldo calculado. Arquivadas vêm no fim. */

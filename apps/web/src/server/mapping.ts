@@ -10,10 +10,18 @@ export {
   toCategoryKind,
   toFinanceAccount,
   toFinanceCategory,
+  toFinanceInvoice,
+  toFinancePayment,
   toFinanceTransaction,
   toIsoDate,
   toTransactionKind,
   toTransactionStatus,
 } from '@repo/shared';
 
-export type { AccountRow, CategoryRow, TransactionRow } from '@repo/shared';
+export type {
+  AccountRow,
+  CategoryRow,
+  InvoicePaymentRow,
+  InvoiceRow,
+  TransactionRow,
+} from '@repo/shared';

@@ -1,12 +1,19 @@
 'use server';
 
 import { prisma, TransactionKind, TransactionStatus } from '@repo/db/client';
-import { createTransactionSchema, createTransferSchema } from '@repo/shared';
-import { revalidatePath } from 'next/cache';
+import {
+  addMonths,
+  createTransactionSchema,
+  createTransferSchema,
+  splitInstallments,
+} from '@repo/shared';
 import { z } from 'zod';
 
-import { failFromWriteError } from './errors';
+import { todayInLisbon } from '@/lib/today';
 
+import { failFromWriteError } from './errors';
+import { ensureInvoiceForDate, refreshInvoiceCache } from './invoice-writes';
+import { revalidateCardViews, revalidateTransactionViews } from './revalidate';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
 
@@ -32,12 +39,6 @@ const STATUS_BY_INPUT: Record<string, TransactionStatus> = {
   confirmed: TransactionStatus.CONFIRMED,
   ignored: TransactionStatus.IGNORED,
 };
-
-function revalidateTransactionViews() {
-  revalidatePath('/transacoes');
-  revalidatePath('/contas');
-  revalidatePath('/');
-}
 
 /** Confirma que a conta existe e é do utilizador. */
 async function ownsAccount(userId: string, accountId: string): Promise<boolean> {
@@ -106,12 +107,10 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
 
   const value = parsed.data;
 
-  // Parcelamento e recorrência pertencem às fases 4 e 5: criar aqui um
-  // parcelamento sem as faturas que o suportam deixaria dados meio-feitos.
-  if (value.paymentCondition !== 'single') {
-    return fail(
-      'Parcelamento e recorrência chegam na fase seguinte. Por agora cria o lançamento simples.',
-    );
+  // As recorrências continuam na fase seguinte: precisam do gerador de
+  // ocorrências, e não de um lançamento isolado.
+  if (value.paymentCondition === 'recurring') {
+    return fail('As recorrências chegam na fase seguinte. Por agora cria o lançamento simples.');
   }
 
   if (value.kind === 'transfer') {
@@ -158,6 +157,55 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
     return fail('Objetivo não encontrado.', { goalId: ['Escolhe um objetivo teu.'] });
   }
 
+  /*
+   * Compras a crédito e parceladas: o cartão manda.
+   *
+   * É a regra de fecho e vencimento do cartão que decide **em que fatura** a
+   * compra cai, e a fatura é criada na hora se ainda não existir. O cliente não
+   * escolhe a fatura — se escolhesse, uma compra de outubro podia acabar na
+   * fatura de dezembro e os totais deixariam de corresponder ao extrato do banco.
+   */
+  const usesCard = value.paymentMethod === 'credit' || value.paymentCondition === 'installment';
+  const card = value.cardId == null ? null : await loadOwnedCard(user.id, value.cardId);
+
+  if (value.cardId != null && card === null) {
+    return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
+  }
+
+  if (usesCard && card === null) {
+    return fail('Escolhe o cartão desta compra.', {
+      cardId: ['Escolhe o cartão desta compra.'],
+    });
+  }
+
+  if (value.paymentCondition === 'installment' && card !== null) {
+    return createInstallmentPurchase({
+      userId: user.id,
+      value,
+      card,
+      categoryId: value.categoryId ?? null,
+    });
+  }
+
+  // Compra a crédito simples: resolve (ou cria) a fatura do ciclo da data.
+  const resolvedInvoiceId =
+    value.invoiceId ??
+    (card === null
+      ? null
+      : (
+          await ensureInvoiceForDate({
+            userId: user.id,
+            cardId: card.id,
+            purchaseDate: value.date,
+            closingDay: card.closingDay,
+            dueDay: card.dueDay,
+          })
+        ).id);
+
+  // Uma compra a crédito só fica liquidada quando a fatura é paga: deixar o
+  // cliente dizer que está liquidada punha dinheiro em caixa que nunca entrou.
+  const settled = card === null ? value.settled : false;
+
   let created: { id: string } | undefined;
 
   try {
@@ -171,14 +219,14 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
         description: value.description ?? null,
         financialAccountId: value.accountId,
         categoryId: value.categoryId ?? null,
-        invoiceId: value.invoiceId ?? null,
+        invoiceId: resolvedInvoiceId,
         cardId: value.cardId ?? null,
         goalId: value.goalId ?? null,
         transferGroupId: null,
         paymentMethod: value.paymentMethod === 'credit' ? 'CREDIT' : 'DEBIT',
         paymentCondition: 'SINGLE',
-        settled: value.settled,
-        settledOn: value.settled ? new Date(value.date) : null,
+        settled,
+        settledOn: settled ? new Date(value.date) : null,
         fitId: value.fitId ?? null,
       },
       select: { id: true },
@@ -194,9 +242,124 @@ export async function createTransaction(input: unknown): Promise<ActionResult<{ 
     return fail('Não consegui guardar o lançamento. Tenta outra vez.');
   }
 
+  if (card !== null) {
+    await refreshInvoiceCache({ userId: user.id, cardId: card.id, today: todayInLisbon() });
+    revalidateCardViews();
+  }
+
   revalidateTransactionViews();
 
   return ok({ id: created.id });
+}
+
+interface OwnedCard {
+  readonly id: string;
+  readonly closingDay: number;
+  readonly dueDay: number;
+  readonly paymentAccountId: string | null;
+}
+
+/** Cartão do utilizador, com os dias que decidem em que fatura cai a compra. */
+async function loadOwnedCard(userId: string, cardId: string): Promise<OwnedCard | null> {
+  const card = await prisma.creditCard.findFirst({
+    where: { id: cardId, userId },
+    select: { id: true, closingDay: true, dueDay: true, paymentAccountId: true },
+  });
+
+  return card;
+}
+
+/**
+ * Cria uma compra em parcelas: N lançamentos, um por fatura.
+ *
+ * As parcelas distribuem o valor **exatamente** (`splitInstallments` põe o resto
+ * nos primeiros cêntimos), cada uma cai na fatura do mês respetivo pela regra de
+ * fecho do cartão, e todas partilham um `installmentPlanId` — que é o que
+ * permite depois editar ou eliminar o plano como um todo.
+ */
+async function createInstallmentPurchase(args: {
+  readonly userId: string;
+  readonly value: z.infer<typeof createTransactionSchema>;
+  readonly card: OwnedCard;
+  readonly categoryId: string | null;
+}): Promise<ActionResult<{ id: string }>> {
+  const { userId, value, card } = args;
+  const count = value.installmentCount ?? 0;
+
+  if (count < 2) {
+    return fail('Um parcelamento precisa de pelo menos duas parcelas.', {
+      installmentCount: ['Diz em quantas parcelas fica a compra.'],
+    });
+  }
+
+  const magnitudes = splitInstallments(value.amountInCents, count);
+  // O sinal do movimento é o do valor original: um estorno parcelado continua a
+  // ser uma entrada.
+  const sign = value.amountInCents < 0 ? -1 : 1;
+  const installmentPlanId = crypto.randomUUID();
+
+  let firstId: string | undefined;
+
+  try {
+    firstId = await prisma.$transaction(async (tx) => {
+      let createdId: string | undefined;
+
+      for (const [index, magnitude] of magnitudes.entries()) {
+        const installmentDate = addMonths(value.date, index);
+        const invoice = await ensureInvoiceForDate({
+          userId,
+          cardId: card.id,
+          purchaseDate: installmentDate,
+          closingDay: card.closingDay,
+          dueDay: card.dueDay,
+          db: tx,
+        });
+
+        const created = await tx.transaction.create({
+          data: {
+            userId,
+            kind: KIND_BY_INPUT[value.kind] ?? TransactionKind.EXPENSE,
+            status: STATUS_BY_INPUT[value.status] ?? TransactionStatus.CONFIRMED,
+            amountInCents: sign * magnitude,
+            date: new Date(`${installmentDate}T00:00:00.000Z`),
+            description: value.description ?? null,
+            financialAccountId: value.accountId,
+            categoryId: args.categoryId,
+            cardId: card.id,
+            invoiceId: invoice.id,
+            paymentMethod: 'CREDIT',
+            paymentCondition: 'INSTALLMENT',
+            // Uma compra a crédito só fica liquidada quando a fatura é paga.
+            settled: false,
+            settledOn: null,
+            installmentPlanId,
+            installmentNumber: index + 1,
+            installmentCount: count,
+            installmentAmountInCents: magnitude,
+          },
+          select: { id: true },
+        });
+
+        createdId ??= created.id;
+      }
+
+      return createdId;
+    });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui criar o parcelamento. Tenta outra vez.',
+    });
+  }
+
+  if (firstId === undefined) {
+    return fail('Não consegui criar o parcelamento. Tenta outra vez.');
+  }
+
+  await refreshInvoiceCache({ userId, cardId: card.id, today: todayInLisbon() });
+  revalidateCardViews();
+  revalidateTransactionViews();
+
+  return ok({ id: firstId });
 }
 
 /**
