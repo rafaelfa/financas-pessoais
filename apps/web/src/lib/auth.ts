@@ -24,7 +24,9 @@ export const auth = betterAuth({
     enabled: true,
     // Oito caracteres é o mínimo que não atrapalha quem usa gestor de palavras-passe.
     minPasswordLength: 8,
-    autoSignIn: true,
+    // Sem entrada automática: quem se registou vai para o ecrã de entrada com a
+    // confirmação. Entrar é um passo explícito, e assim vê que a conta ficou criada.
+    autoSignIn: false,
   },
   session: {
     // Trinta dias: uma aplicação de finanças pessoais abre-se de forma

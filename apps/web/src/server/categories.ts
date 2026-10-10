@@ -1,5 +1,6 @@
 import { prisma } from '@repo/db/client';
 import { toCategoryKind } from './mapping';
+import { provisionUser } from './provision';
 import { requireUser } from './session';
 
 /**
@@ -38,6 +39,15 @@ export async function listCategories(): Promise<CategoryView[]> {
       _count: { _all: true },
     }),
   ]);
+
+  // Recuperação automática: se o aprovisionamento do registo falhou (por exemplo
+  // por um erro momentâneo de rede), a aplicação fica sem categorias e o
+  // utilizador não consegue lançar nada. Aqui corrige-se sozinha, uma vez.
+  if (categories.length === 0) {
+    await provisionUser(user.id);
+
+    return listCategories();
+  }
 
   const countByCategory = new Map<string, number>();
 

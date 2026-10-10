@@ -41,8 +41,8 @@ export default function RegistarPage() {
       return;
     }
 
-    toast.success('Conta criada.');
-    router.push('/');
+    toast.success('Conta criada. Entra com os teus dados.');
+    router.push('/entrar');
     router.refresh();
   }
 
