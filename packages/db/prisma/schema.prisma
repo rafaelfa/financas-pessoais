@@ -1,14 +1,50 @@
-// Prisma schema — intentionally empty.
+// =============================================================================
+// Finanças Pessoais — esquema Prisma
+// =============================================================================
 //
-// Only the datasource (provider) and the client generator are declared; no
-// models yet. The connection URL lives in `prisma.config.ts` (Prisma 7 moved
-// `url` out of the schema), so this file stays datasource-only as required.
+// Decisões fixadas (docs/plano/PLANO-EXECUCAO.md §1 e §6):
+//   * PostgreSQL (Neon), EUR/pt-PT, utilizador único, sem Open Finance.
+//   * DINHEIRO: sempre `Int` em **cêntimos inteiros** e com **sinal** — nunca
+//     `Float`, nunca `Decimal`, nunca `BigInt` (BigInt faz `JSON.stringify`
+//     lançar `TypeError`). Máximo representável: 21 474 836,47 €.
+//   * DATAS DE CALENDÁRIO (compra, vencimento, fecho, referência, prazo):
+//     `DateTime @db.Date` — sem hora, para não deslizar um dia entre UTC e
+//     Europe/Lisbon.
+//   * TIMESTAMPS (criação, atualização, arquivo): `DateTime` com hora (UTC).
+//   * Convenção de sinal do motor financeiro (`packages/shared/src/finance`):
+//     `amountInCents` é o **efeito assinado na conta** — negativo quando o
+//     dinheiro sai, positivo quando entra. O sinal não se deduz do `kind`.
+//   * Todas as chaves estrangeiras têm `onDelete` explícito (Cascade quando o
+//     filho não existe sem o pai; Restrict quando apagar o pai destruiria
+//     história contabilística; SetNull quando a ligação é opcional/enriquece).
+//   * `@@index` em todas as chaves estrangeiras e nos campos usados para
+//     consultar por período (data, conta, categoria, fatura).
 //
-// Run `pnpm db:generate` after editing, or `pnpm db:push` to apply it.
+// -----------------------------------------------------------------------------
+// CONFLITO DE NOMES `Account` — RESOLUÇÃO
+// -----------------------------------------------------------------------------
+// O adaptador Prisma do better-auth 1.7.7 resolve os modelos de autenticação
+// **pelo nome do modelo Prisma**, não pelo nome da tabela: chama literalmente
+// `prisma.user`, `prisma.session`, `prisma.account` e `prisma.verification`
+// (ver `clientProperty()` em `@better-auth/prisma-adapter`). Logo, o modelo de
+// autenticação TEM de se chamar exatamente `Account`.
+//
+// O domínio financeiro também precisa de uma "conta" (conta à ordem, poupança,
+// carteira…). Como não podem coexistir dois modelos `Account`, a resolução é:
+//
+//   * `Account`     -> modelo do better-auth       -> `@@map("account")`
+//   * `FinancialAccount` -> conta financeira nossa -> `@@map("financial_account")`
+//
+// Ou seja, o nome `Account` fica reservado à autenticação e a conta financeira
+// passa a chamar-se `FinancialAccount` (plural nas relações: `financialAccounts`).
+// Não se usa o truque inverso (chamar `Account` à conta financeira e
+// `@@map("account")` à de autenticação) porque o adaptador procura o **modelo**
+// `Account` e colidiríamos de novo. O nome da tabela física é snake_case
+// (`financial_account`) por convenção do resto do esquema.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
   // Emit extension-less relative imports so the generated sources resolve
   // under `moduleResolution: "Bundler"` without extra tsconfig flags.
   importFileExtension = ""
@@ -16,4 +52,931 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// =============================================================================
+// 1. AUTENTICAÇÃO (better-auth 1.7.7) — nomes obrigatórios, não renomear
+// =============================================================================
+// Campos e cardinalidades copiados do schema oficial que o better-auth gera
+// (`npx auth@latest generate`) e confirmados em `@better-auth/core/dist/db`:
+//   user: id, name, email (único), emailVerified, image?, createdAt, updatedAt
+//   session: id, expiresAt, token (único), createdAt, updatedAt, ipAddress?,
+//            userAgent?, userId (FK -> user, onDelete Cascade)
+//   account: id, accountId, providerId, userId (FK -> user, Cascade),
+//            accessToken?, refreshToken?, idToken?, accessTokenExpiresAt?,
+//            refreshTokenExpiresAt?, scope?, password?, createdAt, updatedAt
+//   verification: id, identifier, value, expiresAt, createdAt, updatedAt
+//
+// `createdAt`/`updatedAt` têm de ser obrigatórios COM default: a verificação de
+// esquema do adaptador (`findPrismaSchemaProblems`) só aceita uma coluna
+// obrigatória que a inserção possa omitir quando tem default.
+//
+// `rateLimit` é omitido de propósito: só é criado quando o better-auth é
+// configurado com armazenamento de rate limit em base de dados, e usa `BigInt`
+// (`lastRequest`), que este projeto proíbe.
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  // --- Domínio financeiro ligado ao utilizador ---
+  // Moeda fixa do produto (D1: EUR/pt-PT). Constante por decisão, não por
+  // limitação: o cliente dispensou multi-moeda.
+  currency         String          @default("EUR")
+  // Início do mês financeiro configurável (melhoria M2): dia 1-28. `1` é o
+  // comportamento do sistema original; o motor financeiro aceita qualquer dia.
+  monthStartDay    Int             @default(1)
+  // Regime de contabilização preferido (o motor aceita-o como parâmetro).
+  accountingBasis  AccountingBasis @default(CASH)
+  // Conta principal do utilizador ("Essa é minha conta principal"). Guardado
+  // como **referência simples** (sem `@relation`) de propósito: modelá-lo como
+  // chave estrangeira criaria um ciclo de FK obrigatório entre `user` e
+  // `financial_account` e obrigaria a criar as duas linhas na mesma transação.
+  // Sendo único, continua a garantir no máximo uma conta principal por
+  // utilizador; quem mantém a coerência é a Server Action que a marca.
+  primaryAccountId String?         @unique
+
+  // Coleção de contas financeiras do utilizador. Nome explícito na relação para
+  // não colidir com `accounts` (as contas do better-auth).
+  financialAccounts FinancialAccount[] @relation("UserFinancialAccounts")
+  lockedBalances    LockedBalance[]
+  creditCards       CreditCard[]
+  invoices          Invoice[]
+  invoicePayments   InvoicePayment[]
+  categories        Category[]
+  tags              Tag[]
+  transactions      Transaction[]
+  transactionRules  TransactionRule[]
+  recurrences       Recurrence[]
+  budgets           Budget[]
+  budgetLimits      BudgetLimit[]
+  goals             Goal[]
+  goalMovements     GoalMovement[]
+  assets            Asset[]
+  liabilities       Liability[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  // Sessão é descartável: apagar o utilizador limpa-a.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Um par (providerId, accountId) identifica a identidade no provedor; a
+  // unicidade impede contas duplicadas do mesmo provedor para o mesmo
+  // utilizador. O adapter procura por estes dois campos com `findFirst`.
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // O better-auth procura sempre por `identifier` (tokens de reposição de
+  // palavra-passe, verificação de e-mail) e apaga-os por aí. `verification` não
+  // tem chave estrangeira: não pertence a um utilizador, pertence a um
+  // identificador.
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// Base de contabilização: `CASH` (caixa — conta quando o dinheiro se move) ou
+/// `ACCRUAL` (competência — conta quando a obrigação nasce). É a opção que o
+/// motor financeiro aceita em cada pedido (melhoria M2, ver `AccountingBasis` em
+/// `packages/shared/src/finance/types.ts`); o valor guardado no utilizador é
+/// apenas a **preferência por omissão** com que o seletor arranca.
+enum AccountingBasis {
+  CASH
+  ACCRUAL
+}
+
+// =============================================================================
+// 2. CONTAS E SALDOS
+// =============================================================================
+
+/// Tipo de conta financeira. `CREDIT_CARD` agrega o cartão (que é um passivo);
+/// `INVESTMENT` é a via manual que substitui o módulo de investimentos do
+/// original, que dependia de Open Finance.
+enum AccountType {
+  CHECKING
+  SAVINGS
+  WALLET
+  CASH
+  INVESTMENT
+  CREDIT_CARD
+}
+
+/// Origem da conta. No nosso produto só existe `MANUAL` (sem Open Finance),
+/// mas o valor fica no esquema para que a ausência de integração seja explícita
+/// e para não ser preciso migrar se um dia entrar `IMPORTED`.
+enum AccountOrigin {
+  MANUAL
+  IMPORTED
+}
+
+model FinancialAccount {
+  id                    String        @id @default(uuid())
+  userId                String
+  type                  AccountType
+  /// Instituição financeira (ex.: "Millennium bcp", "CGD", "Revolut", "Outros").
+  institution           String?
+  /// Apelido mostrado ao utilizador (ex.: "Conta ordenado", "Poupança férias").
+  name                  String
+  description           String?
+  /// Saldo no momento da criação, em cêntimos **com sinal**.
+  openingBalanceInCents Int           @default(0)
+  /// Saldo de referência editável ("saldo disponível" do original). Nullable:
+  /// quando é nulo, o saldo é sempre derivado pelo motor financeiro a partir de
+  /// `openingBalanceInCents` + movimentos.
+  balanceInCents        Int?
+  currency              String        @default("EUR")
+  origin                AccountOrigin @default(MANUAL)
+  /// Contas arquivadas saem dos saldos, do extrato e dos orçamentos.
+  archivedAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("UserFinancialAccounts", fields: [userId], references: [id], onDelete: Cascade)
+
+  lockedBalances  LockedBalance[]
+  creditCards     CreditCard[]
+  transactions    Transaction[]
+  invoicePayments InvoicePayment[]
+  recurrences     Recurrence[]
+
+  @@unique([userId, name])
+  @@index([userId, archivedAt])
+  @@index([userId, type])
+  @@map("financial_account")
+}
+
+/// "Travar saldo" / ajuste de saldo (secção 2.1 do documento 01).
+///
+/// Registo **imutável** de uma conferência: na `referenceDate` o utilizador diz
+/// que o saldo real era `reportedBalanceInCents`; o sistema tinha calculado
+/// `computedBalanceInCents`; o motor cria um lançamento `BALANCE_ADJUST` com
+/// `adjustmentInCents`.
+model LockedBalance {
+  id                     String   @id @default(uuid())
+  userId                 String
+  financialAccountId     String
+  /// Data de referência da conferência (data de calendário).
+  referenceDate          DateTime @db.Date
+  /// "Qual era o saldo real naquela data" (cêntimos, com sinal).
+  reportedBalanceInCents Int
+  /// Saldo calculado pelo sistema na mesma data (cêntimos, com sinal).
+  computedBalanceInCents Int
+  /// `reported - computed`. Guardado para auditoria e para não depender de
+  /// recalcular história quando o passado muda.
+  adjustmentInCents      Int
+  note                   String?
+  createdAt              DateTime @default(now())
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, referenceDate])
+  @@index([financialAccountId, referenceDate])
+  @@map("locked_balance")
+}
+
+// =============================================================================
+// 3. CARTÕES DE CRÉDITO E FATURAS
+// =============================================================================
+
+/// Marcas aceites em Portugal. `MULTIBANCO` é a rede doméstica portuguesa;
+/// `OTHER` cobre o resto (o original tinha "Outra").
+enum CardBrand {
+  VISA
+  MASTERCARD
+  MAESTRO
+  AMERICAN_EXPRESS
+  MULTIBANCO
+  OTHER
+}
+
+model CreditCard {
+  id                    String    @id @default(uuid())
+  userId                String
+  name                  String
+  /// Conta de onde a fatura é paga. Nulo = o utilizador ainda não a escolheu.
+  paymentAccountId      String?
+  brand                 CardBrand @default(OTHER)
+  /// Dia de fecho da fatura (1-31).
+  closingDay            Int
+  /// Dia de vencimento da fatura (1-31).
+  dueDay                Int
+  /// Limite de crédito, em cêntimos. Nullable = sem limite definido.
+  creditLimitInCents    Int?
+  /// Limite disponível reportado, em cêntimos (calculado a partir de
+  /// `creditLimitInCents` quando nulo).
+  availableLimitInCents Int?
+  /// Anuidade, em cêntimos.
+  annualFeeInCents      Int?
+  archivedAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict: apagar a conta de pagamento não pode apagar silenciosamente o
+  // cartão nem deixar a fatura sem origem; o utilizador muda a conta primeiro.
+  paymentAccount FinancialAccount? @relation(fields: [paymentAccountId], references: [id], onDelete: Restrict)
+
+  invoices     Invoice[]
+  transactions Transaction[]
+
+  @@unique([userId, name])
+  @@index([userId, archivedAt])
+  @@index([paymentAccountId])
+  @@map("credit_card")
+}
+
+/// Estado de uma fatura. `CLOSED` é o estado depois do fecho e antes do
+/// pagamento total (é o "Fechado" que o original só atingia ~10 dias antes do
+/// vencimento).
+enum InvoiceStatus {
+  OPEN
+  CLOSED
+  PAID
+}
+
+model Invoice {
+  id                 String        @id @default(uuid())
+  userId             String
+  cardId             String
+  /// Data de fecho (data de calendário).
+  closingDate        DateTime      @db.Date
+  /// Data de vencimento (data de calendário).
+  dueDate            DateTime      @db.Date
+  /// Soma dos gastos do período (cêntimos).
+  totalAmountInCents Int           @default(0)
+  /// Soma dos pagamentos aplicados (cêntimos).
+  paidAmountInCents  Int           @default(0)
+  /// Valor transitado para esta fatura a partir da anterior — pagamento
+  /// parcial (cêntimos).
+  carriedOverInCents Int           @default(0)
+  status             InvoiceStatus @default(OPEN)
+  closedAt           DateTime?
+  paidAt             DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict: uma fatura é história contabilística; apagar o cartão não deve
+  // levar as faturas atrás sem decisão explícita.
+  card CreditCard @relation(fields: [cardId], references: [id], onDelete: Restrict)
+
+  transactions  Transaction[]
+  payments      InvoicePayment[]
+  goalMovements GoalMovement[]
+
+  /// Uma fatura por cartão e por data de fecho. Havendo uma data de fecho
+  /// distinta por mês não é preciso guardar o mês de competência em separado.
+  @@unique([cardId, closingDate])
+  @@index([userId, status, dueDate])
+  @@index([cardId, dueDate])
+  @@map("invoice")
+}
+
+/// Pagamento aplicado a uma fatura (secção 2.2; melhoria M4: operação nativa,
+/// nunca um "ganho" falso).
+model InvoicePayment {
+  id                 String   @id @default(uuid())
+  userId             String
+  invoiceId          String
+  /// Conta de onde saiu o dinheiro.
+  financialAccountId String?
+  amountInCents      Int
+  /// Data do pagamento (data de calendário).
+  date               DateTime @db.Date
+  /// Lançamento gerado (`TransactionKind.INVOICE_PAYMENT`). Único: um
+  /// pagamento corresponde a exatamente um lançamento.
+  transactionId      String?  @unique
+  note               String?
+
+  createdAt DateTime @default(now())
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Cascade: o pagamento não tem sentido sem a fatura.
+  invoice          Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+  // SetNull: apagar o lançamento não pode apagar o registo do pagamento.
+  transaction      Transaction?      @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([invoiceId, date])
+  @@index([financialAccountId])
+  @@map("invoice_payment")
+}
+
+// =============================================================================
+// 4. CATEGORIAS E TAGS
+// =============================================================================
+
+/// Natureza da categoria. As listas de gasto e de ganho são distintas (no
+/// original, 17 de gasto + 8 de ganho).
+enum CategoryKind {
+  EXPENSE
+  INCOME
+}
+
+model Category {
+  id         String       @id @default(uuid())
+  userId     String
+  name       String
+  /// Identificador estável, único por utilizador e tipo. É a chave do seed
+  /// idempotente (`upsert`) e sobrevive a renomeações de apresentação.
+  slug       String
+  kind       CategoryKind
+  /// Subcategoria: `parentId` aponta para a categoria-mãe (do mesmo `kind`).
+  parentId   String?
+  /// Categoria interna (transferência, fatura de cartão, ajuste de saldo,
+  /// investimento): aparece no extrato mas **nunca** conta como ganho ou gasto.
+  isInternal Boolean      @default(false)
+  /// Categoria de sistema: não pode ser editada nem apagada.
+  isSystem   Boolean      @default(false)
+  /// Ordem de apresentação dentro do mesmo nível.
+  sortOrder  Int          @default(0)
+  icon       String?
+  /// Cor em formato de token/CSS (ex.: `oklch(0.7 0.12 160)` ou `#22c55e`).
+  color      String?
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SetNull: apagar uma categoria-mãe promove as filhas a categorias de topo em
+  // vez de as apagar (apagar cegamente perderia classificação de história).
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  transactions Transaction[]
+  budgetLimits BudgetLimit[]
+  targetRules  TransactionRule[]
+  recurrences  Recurrence[]
+
+  /// Sem `parentId` no índice único: é nullable, e no SQL isso torna a
+  /// unicidade inútil para as categorias de topo (NULLs são distintos).
+  @@unique([userId, kind, slug])
+  @@index([userId, kind, archivedAt])
+  @@index([parentId])
+  @@map("category")
+}
+
+model Tag {
+  id     String  @id @default(uuid())
+  userId String
+  /// Guardado já normalizado (minúsculas, sem `#`) — é o `@@unique` que
+  /// impede duplicados que o SQL não consegue detetar com `lower()`.
+  name   String
+  color  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[] @relation("TransactionTags")
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tag")
+}
+
+// =============================================================================
+// 5. TRANSAÇÕES
+// =============================================================================
+
+/// Tipo de operação. Cada valor tem efeito contabilístico próprio; nenhum dos
+/// tipos internos contamina entradas/saídas (princípio 5 do plano).
+enum TransactionKind {
+  EXPENSE
+  INCOME
+  TRANSFER
+  INVOICE_PAYMENT
+  GOAL_DEPOSIT
+  GOAL_WITHDRAWAL
+  BALANCE_ADJUST
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  IGNORED
+}
+
+/// Como o dinheiro saiu/entrou.
+enum PaymentMethod {
+  DEBIT
+  CREDIT
+}
+
+enum PaymentCondition {
+  SINGLE
+  INSTALLMENT
+  RECURRING
+}
+
+/// De onde veio o lançamento. `IMPORTED` é a via de importação OFX/CSV
+/// (melhoria M1) e `RECURRENCE` a geração automática de séries.
+enum TransactionOrigin {
+  MANUAL
+  IMPORTED
+  RECURRENCE
+}
+
+model Transaction {
+  id     String @id @default(uuid())
+  userId String
+
+  kind          TransactionKind
+  status        TransactionStatus @default(CONFIRMED)
+  /// **Efeito assinado na conta, em cêntimos.** Negativo = saída, positivo =
+  /// entrada. Nunca zero. Uma transferência tem sempre duas linhas, uma com
+  /// cada sinal, ligadas por `transferGroupId`.
+  amountInCents Int
+  /// Data efetiva do lançamento (data de calendário).
+  date          DateTime          @db.Date
+  description   String?
+
+  financialAccountId String?
+  /// Cartão usado (obrigatório na prática quando `paymentMethod = CREDIT`;
+  /// a validação é do schema Zod, não da base de dados).
+  cardId             String?
+  invoiceId          String?
+  categoryId         String?
+
+  paymentMethod    PaymentMethod    @default(DEBIT)
+  paymentCondition PaymentCondition @default(SINGLE)
+
+  // --- Parcelamento (melhoria M3) ---
+  /// Nº total de parcelas do plano.
+  installmentCount         Int?
+  /// Índice desta parcela (1..`installmentCount`).
+  installmentNumber        Int?
+  /// Identificador comum a todas as parcelas do mesmo plano.
+  installmentPlanId        String?
+  /// Valor de cada parcela individual, em cêntimos (a soma pode diferir do
+  /// total por arredondamento; o total oficial vive no plano).
+  installmentAmountInCents Int?
+
+  // --- Transferências (par) ---
+  /// Mesmo valor nos dois lados da transferência.
+  transferGroupId          String?
+  /// O outro lado da transferência.
+  counterpartTransactionId String? @unique
+
+  // --- Estados de liquidação ---
+  /// "Já paguei" / "Já recebi". Só o que está liquidado move o saldo na visão
+  /// de caixa.
+  settled   Boolean   @default(false)
+  /// Data em que a liquidação aconteceu (data de calendário).
+  settledOn DateTime? @db.Date
+
+  // --- Objetivos ---
+  goalId String?
+
+  // --- Recorrências ---
+  /// Série que gerou este lançamento. Cascade: apagar a série leva os
+  /// lançamentos que ela gerou (o histórico manual nunca é gerado por série).
+  recurrenceId String?
+
+  // --- Importação (melhoria M1) ---
+  /// `FITID` do OFX. Com `financialAccountId` forma a chave de deduplicação:
+  /// reimportar o mesmo ficheiro não duplica lançamentos.
+  fitId  String?
+  origin TransactionOrigin @default(MANUAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SetNull: apagar uma conta não tem de apagar a história do que por lá passou;
+  // o lançamento fica sem conta e o utilizador reclassifica-o.
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+  card             CreditCard?       @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  invoice          Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  // SetNull: apagar a categoria desclassifica o lançamento, não o apaga.
+  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  goal             Goal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  // Cascade: os lançamentos de uma série são artefactos da série.
+  recurrence       Recurrence?       @relation(fields: [recurrenceId], references: [id], onDelete: Cascade)
+  counterpart      Transaction?      @relation("TransferPair", fields: [counterpartTransactionId], references: [id], onDelete: SetNull)
+  counterpartOf    Transaction?      @relation("TransferPair")
+
+  tags           Tag[]           @relation("TransactionTags")
+  invoicePayment InvoicePayment?
+  goalMovements  GoalMovement[]
+
+  /// Deduplicação de importação. `fitId` nullable e `financialAccountId`
+  /// nullable: no PostgreSQL NULLs são distintos, logo os lançamentos manuais
+  /// (sem `fitId`) nunca colidem entre si.
+  @@unique([financialAccountId, fitId])
+  @@index([userId, date])
+  @@index([financialAccountId, date])
+  @@index([userId, kind, status])
+  @@index([userId, date, kind, status])
+  @@index([categoryId, date])
+  @@index([cardId, date])
+  @@index([invoiceId])
+  @@index([goalId, date])
+  @@index([recurrenceId])
+  @@index([transferGroupId])
+  @@index([installmentPlanId])
+  @@map("transaction")
+}
+
+// =============================================================================
+// 6. REGRAS DE CATEGORIZAÇÃO AUTOMÁTICA
+// =============================================================================
+
+/// Ação da regra. `SET_CATEGORY` é o caso do original; as restantes são
+/// complementos baratos que a mesma passagem de pré-visualização permite.
+enum TransactionRuleAction {
+  SET_CATEGORY
+  SET_TAGS
+  SET_DESCRIPTION
+  MARK_IGNORED
+}
+
+/// Regras de transação (secção 2.14). É preciso pelo menos uma condição
+/// preenchida — validado no schema Zod, não na base de dados.
+model TransactionRule {
+  id       String       @id @default(uuid())
+  userId   String
+  name     String
+  kind     CategoryKind
+  /// Ordem de avaliação: a primeira regra que corresponder ganha.
+  priority Int          @default(0)
+  enabled  Boolean      @default(true)
+
+  /// Condição: texto contido na descrição, sem distinção de maiúsculas
+  /// (equivalente ao "Similar" do original).
+  descriptionContains String?
+  /// Condição: contraparte identificada por NIF/NIPC (no original: CNPJ/CPF).
+  counterparty        String?
+  /// Condição: faixa de valor, em cêntimos.
+  amountMinInCents    Int?
+  amountMaxInCents    Int?
+  /// Condição: intervalo de dias do mês, inclusive (ex.: 1 a 5).
+  dayMin              Int?
+  dayMax              Int?
+  /// Condição: conta ou cartão específico.
+  financialAccountId  String?
+  cardId              String?
+
+  action           TransactionRuleAction @default(SET_CATEGORY)
+  /// Categoria de destino.
+  targetCategoryId String?
+  /// Tags a aplicar (nomes normalizados), quando `action = SET_TAGS`.
+  targetTagNames   String[]
+
+  appliedCount  Int       @default(0)
+  lastAppliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetCategory Category? @relation(fields: [targetCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId, enabled, priority])
+  @@index([targetCategoryId])
+  @@map("transaction_rule")
+}
+
+// =============================================================================
+// 7. RECORRÊNCIAS
+// =============================================================================
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model Recurrence {
+  id     String @id @default(uuid())
+  userId String
+  name   String
+
+  kind          TransactionKind
+  /// Valor de cada ocorrência, em cêntimos, com o mesmo sinal do lançamento.
+  amountInCents Int
+  description   String?
+
+  frequency   RecurrenceFrequency
+  /// Repetição a cada N períodos (ex.: `2` + `MONTHLY` = bimestral).
+  interval    Int                 @default(1)
+  /// Dia alvo dentro do mês (1-31) para frequências mensais.
+  dayOfMonth  Int?
+  startDate   DateTime            @db.Date
+  /// Última data que a série pode gerar (inclusive). Nulo = sem fim.
+  endDate     DateTime?           @db.Date
+  /// Próxima data a gerar. O gerador é idempotente: avança esta data na mesma
+  /// transação em que cria o lançamento.
+  nextRunDate DateTime            @db.Date
+  isActive    Boolean             @default(true)
+
+  financialAccountId    String?
+  categoryId            String?
+  /// Lançamento que serviu de modelo à série (rastreabilidade e edição).
+  templateTransactionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+  category         Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  transactions Transaction[]
+
+  @@unique([userId, name])
+  @@index([userId, isActive, nextRunDate])
+  @@index([financialAccountId])
+  @@index([categoryId])
+  @@map("recurrence")
+}
+
+// =============================================================================
+// 8. ORÇAMENTOS
+// =============================================================================
+
+/// Âmbito do orçamento: "Apenas para este mês" ou "Fixar como orçamento mensal
+/// padrão para os próximos meses".
+enum BudgetScope {
+  SINGLE_MONTH
+  MONTHLY_DEFAULT
+}
+
+// Sentinela de período para orçamentos `MONTHLY_DEFAULT`:
+// `1970-01-01`. É preciso um valor **não nulo** em `periodStart` para a chave
+// única `(userId, name, periodStart)` funcionar: no SQL dois NULL são distintos
+// e deixariam criar vários orçamentos padrão com o mesmo nome. O motor
+// financeiro ignora `periodStart` sempre que `scope = MONTHLY_DEFAULT`.
+
+model Budget {
+  id     String      @id @default(uuid())
+  userId String
+  name   String
+  scope  BudgetScope
+
+  /// Primeiro dia do período (data de calendário). Para
+  /// `scope = MONTHLY_DEFAULT` fica em `1970-01-01` (sentinela — ver acima).
+  periodStart        DateTime  @db.Date
+  /// Último dia do período (inclusive), data de calendário.
+  periodEnd          DateTime? @db.Date
+  /// "Defina o valor total do orçamento", em cêntimos.
+  totalAmountInCents Int
+
+  /// Alertas globais do orçamento (cada limite tem o seu próprio limiar).
+  alertsEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  limits BudgetLimit[]
+
+  @@unique([userId, name, periodStart])
+  @@index([userId, periodStart])
+  @@index([userId, scope])
+  @@map("budget")
+}
+
+model BudgetLimit {
+  id                String  @id @default(uuid())
+  budgetId          String
+  userId            String
+  categoryId        String
+  /// Limite da categoria no período, em cêntimos.
+  amountInCents     Int
+  /// Percentagem a partir da qual se avisa (ex.: 80).
+  alertThresholdPct Int?
+  alertsEnabled     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Cascade: os limites são parte do orçamento.
+  budget   Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetId, categoryId])
+  @@index([budgetId])
+  @@index([categoryId])
+  @@index([userId])
+  @@map("budget_limit")
+}
+
+// =============================================================================
+// 9. OBJETIVOS (METAS)
+// =============================================================================
+
+enum GoalState {
+  ACTIVE
+  COMPLETED
+}
+
+enum GoalMovementType {
+  DEPOSIT
+  WITHDRAWAL
+  YIELD
+}
+
+model Goal {
+  id                          String               @id @default(uuid())
+  userId                      String
+  name                        String
+  description                 String?
+  /// "Meta pré-definida" vs objetivo personalizado.
+  isPreset                    Boolean              @default(false)
+  /// Valor total do objetivo, em cêntimos.
+  targetAmountInCents         Int
+  /// Valor já reservado à data de criação, em cêntimos.
+  initialReservedInCents      Int                  @default(0)
+  /// Valor acumulado (cache do resultado dos movimentos, em cêntimos). O motor
+  /// financeiro é a fonte de verdade; este campo evita uma agregação por
+  /// objetivo em cada listagem.
+  accumulatedInCents          Int                  @default(0)
+  /// Data de conclusão pretendida (data de calendário).
+  targetDate                  DateTime             @db.Date
+  contributionFrequency       RecurrenceFrequency  @default(MONTHLY)
+  /// Aporte necessário por período, em cêntimos (calculado).
+  requiredContributionInCents Int?
+  /// Frequência dos lembretes de aporte.
+  reminderFrequency           RecurrenceFrequency?
+  /// Alerta quando o prazo se aproxima.
+  deadlineAlert               Boolean              @default(false)
+  state                       GoalState            @default(ACTIVE)
+  completedAt                 DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  movements    GoalMovement[]
+  transactions Transaction[]
+
+  @@index([userId, state])
+  @@index([userId, targetDate])
+  @@map("goal")
+}
+
+model GoalMovement {
+  id            String           @id @default(uuid())
+  userId        String
+  goalId        String
+  type          GoalMovementType
+  /// Cêntimos, sempre positivo; o `type` dá a direção.
+  amountInCents Int
+  date          DateTime         @db.Date
+  /// Lançamento associado, quando o movimento veio de uma transação existente.
+  transactionId String?
+  invoiceId     String?
+  note          String?
+
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Cascade: um movimento não existe sem o objetivo.
+  goal        Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  // SetNull: apagar o lançamento mantém o movimento registado no objetivo.
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([goalId, date])
+  @@index([transactionId])
+  @@index([invoiceId])
+  @@map("goal_movement")
+}
+
+// =============================================================================
+// 10. PATRIMÓNIO: BENS E PASSIVOS MANUAIS
+// =============================================================================
+
+enum AssetType {
+  VEHICLE
+  PROPERTY
+  OTHER
+}
+
+/// Bens patrimoniais ("Meus bens": veículos e imóveis no original).
+model Asset {
+  id           String    @id @default(uuid())
+  userId       String
+  type         AssetType
+  name         String
+  description  String?
+  /// Valor atual, em cêntimos.
+  valueInCents Int
+  /// Data de aquisição (data de calendário).
+  acquiredOn   DateTime? @db.Date
+  /// Data da última reavaliação (data de calendário).
+  valuedOn     DateTime? @db.Date
+  archivedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, archivedAt])
+  @@map("asset")
+}
+
+/// Passivo manual: substitui o módulo "Dívidas" do original, que só existia via
+/// Open Finance (secção 2.9 e decisão de âmbito).
+enum LiabilityType {
+  LOAN
+  MORTGAGE
+  CREDIT_LINE
+  OTHER
+}
+
+model Liability {
+  id                       String        @id @default(uuid())
+  userId                   String
+  type                     LiabilityType
+  name                     String
+  /// Credor (banco, financeira).
+  creditor                 String?
+  /// Capital inicial, em cêntimos.
+  principalInCents         Int
+  /// Saldo em dívida, em cêntimos.
+  outstandingInCents       Int
+  /// Taxa anual nominal, em **pontos base** (1 bp = 0,01 %). Inteiro por
+  /// princípio: nada de `Float` em assuntos de dinheiro. Ex.: 350 = 3,50 %.
+  interestRateBasisPoints  Int?
+  /// Plano de prestações simples.
+  totalInstallments        Int?
+  remainingInstallments    Int?
+  installmentAmountInCents Int?
+  startDate                DateTime?     @db.Date
+  endDate                  DateTime?     @db.Date
+  archivedAt               DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, archivedAt])
+  @@index([userId, endDate])
+  @@map("liability")
 }
