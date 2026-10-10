@@ -136,7 +136,12 @@ export function budgetStatus(args: {
   readonly referenceDate?: string;
   readonly resultOptions?: ResultOptions;
 }): BudgetStatus {
-  const options: ResultOptions = args.resultOptions ?? {};
+  // O orçamento mede-se por **competência** por omissão: o dinheiro considera-se
+  // gasto quando se gasta, não quando a fatura do cartão é paga. Com o regime de
+  // caixa herdado, quem paga tudo com cartão veria 0 % de consumo — e isso
+  // contradizia o princípio de que o orçamento e o painel nunca discordam.
+  // Quem quiser caixa passa `basis: 'cash'` explicitamente.
+  const options: ResultOptions = { basis: 'accrual', ...args.resultOptions };
   const spentInCents = spentForLimit({
     categoryId: args.limit.categoryId,
     transactions: args.transactions,

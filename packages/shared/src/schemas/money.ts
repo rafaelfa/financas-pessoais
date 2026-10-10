@@ -18,7 +18,7 @@ export const amountInCentsSchema = z
 /** A monetary amount together with its currency. */
 export const moneySchema = z.object({
   amountInCents: amountInCentsSchema,
-  currency: currencySchema.default('BRL'),
+  currency: currencySchema.default('EUR'),
 });
 
 /** A monetary amount that must be strictly positive (income, invoice, ...). */

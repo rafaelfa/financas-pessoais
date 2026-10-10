@@ -1,15 +1,15 @@
 import type { Currency } from '../types';
 
 /** Default currency used by the application. */
-export const DEFAULT_CURRENCY: Currency = 'BRL';
+export const DEFAULT_CURRENCY: Currency = 'EUR';
 
 /** Locale used for number and date formatting. */
-export const DEFAULT_LOCALE = 'pt-BR';
+export const DEFAULT_LOCALE = 'pt-PT';
 
 const CURRENCY_LOCALE: Record<Currency, string> = {
   BRL: 'pt-BR',
   USD: 'en-US',
-  EUR: 'de-DE',
+  EUR: 'pt-PT',
 };
 
 const currencyFormatters = new Map<string, Intl.NumberFormat>();

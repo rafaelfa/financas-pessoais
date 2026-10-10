@@ -18,6 +18,44 @@ import type { FinanceInvoice, FinanceInvoicePayment, FinanceTransaction } from '
 
 export type InvoiceStatus = 'open' | 'closed' | 'paid';
 
+/**
+ * Total já pago de uma fatura.
+ *
+ * Um pagamento pode chegar por dois caminhos: um registo `FinanceInvoicePayment`
+ * ou uma transação de `kind: 'invoice_payment'` com `invoiceId`. Se contássemos
+ * apenas os registos, uma fatura paga por transação continuaria a aparecer em
+ * dívida e o património ficaria subestimado ao dobro — foi o que a verificação
+ * adversarial da Fase 1 encontrou.
+ *
+ * Para nunca contar o mesmo pagamento duas vezes, um `FinanceInvoicePayment` que
+ * aponte para uma transação (`transactionId`) faz com que essa transação seja
+ * ignorada nesta soma.
+ */
+function paidForInvoice(args: {
+  readonly invoiceId: string;
+  readonly transactions: readonly FinanceTransaction[];
+  readonly payments: readonly FinanceInvoicePayment[];
+}): number {
+  const linkedTransactionIds = new Set(
+    args.payments
+      .map((payment) => payment.transactionId)
+      .filter((id): id is string => id !== undefined),
+  );
+
+  const fromTransactions = args.transactions
+    .filter((transaction) => transaction.kind === 'invoice_payment')
+    .filter((transaction) => transaction.invoiceId === args.invoiceId)
+    .filter((transaction) => transaction.status !== 'ignored')
+    .filter((transaction) => !linkedTransactionIds.has(transaction.id))
+    .reduce((total, transaction) => total + Math.abs(transaction.amountInCents), 0);
+
+  const fromPayments = args.payments
+    .filter((payment) => payment.invoiceId === args.invoiceId)
+    .reduce((total, payment) => total + payment.amountInCents, 0);
+
+  return fromTransactions + fromPayments;
+}
+
 export interface InvoiceTotals {
   readonly invoiceId: string;
   /** Compras do cartão afetas a esta fatura. */
@@ -89,9 +127,11 @@ export function invoiceTotals(args: {
 
   const carriedOverInCents = args.invoice.carriedOverInCents ?? 0;
   const totalInCents = carriedOverInCents + purchasesInCents;
-  const paidInCents = args.payments
-    .filter((payment) => payment.invoiceId === args.invoice.id)
-    .reduce((total, payment) => total + payment.amountInCents, 0);
+  const paidInCents = paidForInvoice({
+    invoiceId: args.invoice.id,
+    transactions: args.transactions,
+    payments: args.payments,
+  });
   const outstandingInCents = Math.max(0, totalInCents - paidInCents);
 
   let status: InvoiceStatus = 'open';

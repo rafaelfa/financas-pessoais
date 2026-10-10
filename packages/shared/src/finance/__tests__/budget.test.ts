@@ -127,6 +127,44 @@ describe('consumo de um limite', () => {
   });
 });
 
+describe('regime de contabilização do orçamento', () => {
+  const cardExpense: FinanceTransaction = {
+    id: 'card',
+    kind: 'expense',
+    status: 'confirmed',
+    amountInCents: -20_000,
+    date: '2026-10-05',
+    accountId: 'acc',
+    categoryId: FOOD.id,
+    invoiceId: 'inv-1',
+    settled: false,
+  };
+
+  it('conta por competência mesmo sem opções: um gasto no cartão conta para o limite', () => {
+    const status = budgetStatus({
+      limit: { categoryId: FOOD.id, amountInCents: 30_000 },
+      transactions: [cardExpense],
+      period: OCTOBER,
+    });
+
+    // Sem regime explícito o consumo não pode ser 0 — era este o defeito que a
+    // verificação da Fase 1 apanhou.
+    expect(status.spentInCents).toBe(20_000);
+    expect(status.usedPct).toBe(66.7);
+  });
+
+  it('respeita o regime de caixa quando pedido explicitamente', () => {
+    const status = budgetStatus({
+      limit: { categoryId: FOOD.id, amountInCents: 30_000 },
+      transactions: [cardExpense],
+      period: OCTOBER,
+      resultOptions: { basis: 'cash' },
+    });
+
+    expect(status.spentInCents).toBe(0);
+  });
+});
+
 describe('projeção de fim de período', () => {
   it('extrapola o ritmo observado até ao fim do período', () => {
     const projected = projectedSpentInCents({

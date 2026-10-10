@@ -107,6 +107,15 @@ export interface FinanceInvoicePayment {
   readonly invoiceId: string;
   readonly amountInCents: number;
   readonly date: string;
+  /**
+   * Transação que materializou este pagamento, quando existe.
+   *
+   * Serve para o motor não contar o mesmo pagamento duas vezes: se um pagamento
+   * tiver este campo, a transação correspondente é ignorada na soma. Sem esta
+   * ligação, pagar a fatura por transação deixaria a fatura em dívida para
+   * sempre.
+   */
+  readonly transactionId?: string;
 }
 
 /** Limite de orçamento de uma categoria num período. */

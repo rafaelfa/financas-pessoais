@@ -32,14 +32,26 @@ export function normalizeText(value: string): string {
 /** Uma regra sem nenhuma condição não é válida — o original exige pelo menos uma. */
 export function ruleHasCondition(rule: FinanceTransactionRule): boolean {
   return (
-    rule.descriptionContains !== undefined ||
-    rule.counterparty !== undefined ||
+    hasTextCondition(rule.descriptionContains) ||
+    hasTextCondition(rule.counterparty) ||
     rule.amountMinInCents !== undefined ||
     rule.amountMaxInCents !== undefined ||
     rule.dayMin !== undefined ||
     rule.dayMax !== undefined ||
-    rule.accountId !== undefined
+    hasTextCondition(rule.accountId)
   );
+}
+
+/**
+ * Uma condição de texto só conta se tiver conteúdo depois de normalizada.
+ *
+ * Sem isto, uma regra com `descriptionContains: ''` passava a validação, mas
+ * `matchesRule` ignora o texto vazio por o considerar "sem restrição" — e a
+ * regra tornava-se um apanha-tudo que categorizava todos os lançamentos do
+ * mesmo tipo. Foi um defeito encontrado pela verificação adversarial da Fase 1.
+ */
+function hasTextCondition(value: string | undefined): boolean {
+  return value !== undefined && normalizeText(value).length > 0;
 }
 
 /** Regras inválidas, para a interface as assinalar em vez de as guardar. */

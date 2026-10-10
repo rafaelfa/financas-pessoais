@@ -8,20 +8,36 @@ import {
   sumCents,
 } from '../currency';
 
-/** `Intl` separa o símbolo da moeda com espaço não separável (U+00A0). */
+/**
+ * Normaliza espaços especiais do `Intl` (não separável antes do símbolo,
+ * estreito entre grupos de milhares) para um espaço comum.
+ */
 function normalize(value: string): string {
-  return value.replace(/\u00a0/g, ' ');
+  return value.replace(/[\u00a0\u202f\u2009]/g, ' ');
 }
 
 describe('formatCurrency', () => {
-  it('formata cêntimos inteiros como euros com separadores portugueses', () => {
-    expect(normalize(formatCurrency(123_456, 'EUR'))).toBe('1.234,56 €');
+  /**
+   * Particularidade do português de Portugal: a partir de quatro dígitos, o
+   * separador de milhares só aparece quando o número tem cinco ou mais
+   * (`minimumGroupingDigits = 2` no CLDR). `1234,56 €` é o correto em pt-PT;
+   * `1.234,56 €` é pt-BR. Isto está fixado de propósito.
+   */
+  it('formata cêntimos inteiros como euros, com a convenção portuguesa', () => {
+    expect(normalize(formatCurrency(123_456, 'EUR'))).toBe('1234,56 €');
     expect(normalize(formatCurrency(0, 'EUR'))).toBe('0,00 €');
     expect(normalize(formatCurrency(-50_000, 'EUR'))).toBe('-500,00 €');
   });
 
+  it('só agrupa os milhares a partir de cinco dígitos, e usa espaço', () => {
+    expect(normalize(formatCurrency(1_234_567, 'EUR'))).toBe('12 345,67 €');
+    expect(normalize(formatCurrency(999_999_999_99, 'EUR'))).toBe('999 999 999,99 €');
+  });
+
   it('não perde cêntimos em valores grandes', () => {
-    expect(normalize(formatCurrency(999_999_999_99, 'EUR'))).toBe('999.999.999,99 €');
+    expect(parseCurrencyToCents(normalize(formatCurrency(999_999_999_99, 'EUR')))).toBe(
+      999_999_999_99,
+    );
   });
 });
 
