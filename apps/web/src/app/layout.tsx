@@ -1,7 +1,6 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 
-import { ModeToggle } from '@/components/mode-toggle';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -17,8 +16,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Finanças Pessoais',
-  description: 'Monorepo de finanças pessoais — Next.js, Prisma e PostgreSQL.',
+  title: {
+    default: 'Finanças Pessoais',
+    template: '%s · Finanças Pessoais',
+  },
+  description: 'Contas, orçamento e objetivos num só sítio, sem ligar ao banco.',
+  applicationName: 'Finanças Pessoais',
+};
+
+/**
+ * `themeColor` acompanha o tema claro e escuro para que a barra do navegador no
+ * telemóvel não fique branca sobre uma aplicação escura (Fase 7: PWA).
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcfcf9' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f141a' },
+  ],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -31,17 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-            <div className="flex min-h-svh flex-col">
-              <header className="border-b">
-                <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-3">
-                  <span className="text-sm font-medium">Finanças Pessoais</span>
-                  <ModeToggle />
-                </div>
-              </header>
-              <div className="flex-1">{children}</div>
-            </div>
-          </TooltipProvider>
+          <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
