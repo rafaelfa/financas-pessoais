@@ -8,6 +8,7 @@ import {
   PiggyBank,
   Repeat,
   Settings,
+  Tags,
   Target,
   Wallet,
 } from 'lucide-react';
@@ -81,6 +82,12 @@ const REGRAS: NavItem = {
   description: 'Categorização automática',
   icon: ListFilter,
 };
+const CATEGORIAS: NavItem = {
+  href: '/categorias',
+  label: 'Categorias',
+  description: 'Organizar gastos e ganhos por tipo',
+  icon: Tags,
+};
 const RELATORIOS: NavItem = {
   href: '/relatorios',
   label: 'Relatórios',
@@ -104,7 +111,7 @@ const DEFINICOES: NavItem = {
 export const NAV_SECTIONS: readonly NavSection[] = [
   { title: 'Dia a dia', items: [PAINEL, TRANSACOES, CONTAS, CARTOES] },
   { title: 'Planeamento', items: [ORCAMENTO, OBJETIVOS, RECORRENCIAS, REGRAS] },
-  { title: 'Análise', items: [RELATORIOS, IMPORTAR, DEFINICOES] },
+  { title: 'Análise', items: [CATEGORIAS, RELATORIOS, IMPORTAR, DEFINICOES] },
 ];
 
 /**

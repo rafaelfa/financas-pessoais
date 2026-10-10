@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./schemas": "./src/schemas/index.ts",
+    "./schemas/domain": "./src/schemas/domain/index.ts",
     "./types": "./src/types/index.ts",
     "./utils": "./src/utils/index.ts",
     "./finance": "./src/finance/index.ts"
