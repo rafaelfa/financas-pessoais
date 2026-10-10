@@ -28,36 +28,54 @@ export interface CategoryView {
 export async function listCategories(): Promise<CategoryView[]> {
   const user = await requireUser();
 
+  const first = await queryCategories(user.id);
+
+  if (first.categories.length > 0) {
+    return buildViews(first);
+  }
+
+  /*
+   * Recuperação automática: se o aprovisionamento do registo falhou (um erro
+   * momentâneo de rede, por exemplo), a aplicação fica sem categorias e o
+   * utilizador não consegue lançar nada. Aqui corrige-se sozinha — **uma vez**.
+   *
+   * Relê em vez de se chamar a si própria: se o aprovisionamento falhar sempre,
+   * uma chamada recursiva não teria fim e derrubaria o pedido com um estouro de
+   * pilha em vez de mostrar um ecrã vazio.
+   */
+  await provisionUser(user.id);
+
+  return buildViews(await queryCategories(user.id));
+}
+
+/** Consulta de categorias e contagens, para uma leitura. */
+async function queryCategories(userId: string) {
   const [categories, grouped] = await Promise.all([
     prisma.category.findMany({
-      where: { userId: user.id, archivedAt: null },
+      where: { userId, archivedAt: null },
       orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     }),
     prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: { userId: user.id },
+      where: { userId },
       _count: { _all: true },
     }),
   ]);
 
-  // Recuperação automática: se o aprovisionamento do registo falhou (por exemplo
-  // por um erro momentâneo de rede), a aplicação fica sem categorias e o
-  // utilizador não consegue lançar nada. Aqui corrige-se sozinha, uma vez.
-  if (categories.length === 0) {
-    await provisionUser(user.id);
+  return { categories, grouped };
+}
 
-    return listCategories();
-  }
-
+/** Converte as linhas em vistas, com a contagem de movimentos por categoria. */
+function buildViews(rows: Awaited<ReturnType<typeof queryCategories>>): CategoryView[] {
   const countByCategory = new Map<string, number>();
 
-  for (const entry of grouped) {
+  for (const entry of rows.grouped) {
     if (entry.categoryId !== null) {
       countByCategory.set(entry.categoryId, entry._count._all);
     }
   }
 
-  return categories.map((category) => ({
+  return rows.categories.map((category) => ({
     id: category.id,
     name: category.name,
     kind: toCategoryKind(category.kind),
