@@ -63,7 +63,7 @@ export async function createBudget(input: unknown): Promise<ActionResult<{ id: s
         name: value.name,
         scope: value.scope === 'monthly_default' ? 'MONTHLY_DEFAULT' : 'SINGLE_MONTH',
         periodStart: period.storedStart,
-        periodEnd: value.scope === 'monthly_default' ? null : new Date(period.end),
+        periodEnd: value.scope === 'monthly_default' ? null : new Date(period.displayEnd),
         totalAmountInCents: value.totalAmountInCents,
         alertsEnabled: value.alertsEnabled,
       },

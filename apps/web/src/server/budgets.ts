@@ -171,7 +171,7 @@ export async function listBudgets(): Promise<BudgetView[]> {
       .filter(
         (transaction) =>
           transaction.date >= period.start &&
-          transaction.date <= period.end &&
+          transaction.date <= period.displayEnd &&
           transaction.status !== 'ignored' &&
           transaction.kind === 'expense',
       )
@@ -203,7 +203,7 @@ export async function listBudgets(): Promise<BudgetView[]> {
       name: budget.name,
       scope,
       periodStart: period.start,
-      periodEnd: period.end,
+      periodEnd: period.displayEnd,
       totalAmountInCents: budget.totalAmountInCents,
       limits,
       withoutLimit: noLimit.map((category) => ({
