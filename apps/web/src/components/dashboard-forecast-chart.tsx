@@ -35,7 +35,7 @@ const euroCompact = new Intl.NumberFormat('pt-PT', {
 
 export function DashboardForecastChart({ data }: { readonly data: readonly ForecastPoint[] }) {
   return (
-    <ChartContainer config={CONFIG} className="h-64 w-full">
+    <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">
       <AreaChart data={[...data]} accessibilityLayer margin={{ top: 8, right: 8 }}>
         <defs>
           <linearGradient id="previsao-saldo" x1="0" y1="0" x2="0" y2="1">
@@ -45,11 +45,18 @@ export function DashboardForecastChart({ data }: { readonly data: readonly Forec
         </defs>
 
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="data" tickLine={false} axisLine={false} tickMargin={8} minTickGap={28} />
+        <XAxis
+          dataKey="data"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          minTickGap={28}
+          interval={10}
+        />
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={72}
+          width={52}
           tickFormatter={(value: number) => euroCompact.format(value)}
         />
 

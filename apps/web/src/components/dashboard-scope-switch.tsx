@@ -118,8 +118,12 @@ export function DashboardScopeSwitch({
         A vista fica no endereço: podes guardá-la nos favoritos ou partilhá-la com quem quiseres.
       </p>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <div role="radiogroup" aria-labelledby={GROUP_LABEL_ID} className="flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2">
+        <div
+          role="radiogroup"
+          aria-labelledby={GROUP_LABEL_ID}
+          className="flex flex-wrap items-end gap-2"
+        >
           {VIEWS.map((view) => {
             const selected = viewKind === view.kind;
             const Icon = view.icon;
@@ -150,7 +154,7 @@ export function DashboardScopeSwitch({
         </div>
 
         {viewKind === 'tudo' ? null : (
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
+          <div className="flex w-full flex-col gap-1 sm:max-w-xs sm:flex-1">
             <Label htmlFor="painel-ambito-entidade" className="text-xs text-muted-foreground">
               {pickerLabel}
             </Label>

@@ -50,7 +50,7 @@ export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }
   );
 
   return (
-    <ChartContainer config={config} className="mx-auto h-64 w-full">
+    <ChartContainer config={config} className="mx-auto h-48 w-full sm:h-64">
       <PieChart accessibilityLayer>
         <ChartTooltip content={<ChartTooltipContent nameKey="categoria" />} />
         <Pie

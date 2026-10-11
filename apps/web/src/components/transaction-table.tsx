@@ -99,6 +99,19 @@ export function TransactionTable({
   const [deleting, setDeleting] = useState<TransactionView | null>(null);
 
   /**
+   * Estado local optimista para o estado de confirmação de cada lançamento.
+   * Quando o utilizador clica em "Confirmar", o badge muda **imediatamente** —
+   * não espera pelo `router.refresh()` — para haver feedback visual sem latência.
+   * O valor do servidor sobrescreve este estado no próximo refresh.
+   */
+  const [optimisticStatuses, setOptimisticStatuses] = useState<Record<string, string>>({});
+
+  /** Estado effectivamente exibido: optimismo local ou valor do servidor. */
+  function visibleStatus(transaction: TransactionView): string {
+    return optimisticStatuses[transaction.id] ?? transaction.status;
+  }
+
+  /**
    * Marca como liquidado ou por liquidar.
    *
    * É o interruptor que decide se o movimento **move o saldo**: só o que está
@@ -130,11 +143,20 @@ export function TransactionTable({
   function changeStatus(transaction: TransactionView, status: 'confirmed' | 'ignored' | 'pending') {
     setBusyId(transaction.id);
 
+    // Optimismo: o badge muda antes de o servidor responder.
+    setOptimisticStatuses((prev) => ({ ...prev, [transaction.id]: status }));
+
     startTransition(async () => {
       const result = await setTransactionStatus({ id: transaction.id, status });
       setBusyId(null);
 
       if (!result.ok) {
+        // Reverte o optimismo se o servidor recusar.
+        setOptimisticStatuses((prev) => {
+          const next = { ...prev };
+          delete next[transaction.id];
+          return next;
+        });
         toast.error(result.error);
         return;
       }
@@ -234,7 +256,7 @@ export function TransactionTable({
                 const isInternal = isInternalCategory(categories, transaction.categoryId);
 
                 return (
-                  <TableRow key={transaction.id} data-status={transaction.status}>
+                  <TableRow key={transaction.id} data-status={visibleStatus(transaction)}>
                     <TableCell className="font-numeric text-muted-foreground tabular-nums">
                       {formatDay(transaction.date)}
                     </TableCell>
@@ -245,7 +267,7 @@ export function TransactionTable({
                       </span>
                       <span className="mt-0.5 flex flex-wrap items-center gap-1.5 sm:hidden">
                         <TransactionKindBadge kind={transaction.kind} />
-                        <TransactionStatusBadge status={transaction.status} />
+                        <TransactionStatusBadge status={visibleStatus(transaction)} />
                         {transaction.cardName === null ? null : (
                           <Badge variant="secondary" className="font-normal">
                             <CreditCard className="size-3" aria-hidden />
@@ -295,7 +317,7 @@ export function TransactionTable({
 
                     <TableCell className="hidden sm:table-cell">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <TransactionStatusBadge status={transaction.status} />
+                        <TransactionStatusBadge status={visibleStatus(transaction)} />
                         {transaction.settled ? null : (
                           <Badge variant="outline" className="font-normal text-muted-foreground">
                             Por liquidar
@@ -329,21 +351,21 @@ export function TransactionTable({
 
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            disabled={transaction.status === 'confirmed'}
+                            disabled={visibleStatus(transaction) === 'confirmed'}
                             onSelect={() => changeStatus(transaction, 'confirmed')}
                           >
                             <CircleCheck className="size-4" aria-hidden />
                             Confirmar
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            disabled={transaction.status === 'ignored'}
+                            disabled={visibleStatus(transaction) === 'ignored'}
                             onSelect={() => changeStatus(transaction, 'ignored')}
                           >
                             <Ban className="size-4" aria-hidden />
                             Ignorar
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            disabled={transaction.status === 'pending'}
+                            disabled={visibleStatus(transaction) === 'pending'}
                             onSelect={() => changeStatus(transaction, 'pending')}
                           >
                             <RefreshCw className="size-4" aria-hidden />

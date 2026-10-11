@@ -36,14 +36,14 @@ const euroCompact = new Intl.NumberFormat('pt-PT', {
  */
 export function CashflowChart({ data }: { readonly data: readonly CashflowPoint[] }) {
   return (
-    <ChartContainer config={CONFIG} className="h-64 w-full">
+    <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">
       <BarChart data={[...data]} accessibilityLayer>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tickLine={false} axisLine={false} tickMargin={8} />
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={72}
+          width={56}
           tickFormatter={(value: number) => euroCompact.format(value)}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
