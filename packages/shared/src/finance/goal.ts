@@ -62,8 +62,6 @@ export function periodsBetween(from: string, to: string, frequency: RecurrenceFr
       return monthsBetween(from, to);
     case 'quarterly':
       return Math.ceil(monthsBetween(from, to) / 3);
-    case 'yearly':
-      return Math.ceil(monthsBetween(from, to) / 12);
   }
 }
 

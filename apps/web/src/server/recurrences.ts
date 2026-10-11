@@ -1,5 +1,10 @@
 import { prisma } from '@repo/db/client';
-import { describeFrequency, toIsoDate, type RecurrenceFrequency } from '@repo/shared';
+import {
+  describeFrequency,
+  toIsoDate,
+  toRecurrenceFrequency,
+  type RecurrenceFrequency,
+} from '@repo/shared';
 
 import { todayInLisbon } from '@/lib/today';
 
@@ -37,10 +42,6 @@ export interface RecurrenceView {
   readonly frequencyLabel: string;
 }
 
-function toFrequency(value: string): RecurrenceFrequency {
-  return value === 'WEEKLY' ? 'weekly' : value === 'QUARTERLY' ? 'quarterly' : 'monthly';
-}
-
 /** Séries do utilizador, com a próxima data e quantas ocorrências já geraram. */
 export async function listRecurrences(): Promise<RecurrenceView[]> {
   const user = await requireUser();
@@ -69,7 +70,7 @@ export async function listRecurrences(): Promise<RecurrenceView[]> {
   );
 
   return recurrences.map((recurrence) => {
-    const frequency = toFrequency(recurrence.frequency);
+    const frequency = toRecurrenceFrequency(recurrence.frequency);
     const nextRunDate = toIsoDate(recurrence.nextRunDate);
 
     return {

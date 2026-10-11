@@ -8,6 +8,7 @@ import {
   netWorth,
   periodOf,
   resultSeries,
+  toRecurrenceFrequency,
 } from '@repo/shared';
 
 import { todayInLisbon } from '@/lib/today';
@@ -129,12 +130,9 @@ export async function getDashboard(): Promise<DashboardData> {
       name: recurrence.name,
       kind: recurrence.kind === 'INCOME' ? ('income' as const) : ('expense' as const),
       amountInCents: recurrence.amountInCents,
-      frequency:
-        recurrence.frequency === 'WEEKLY'
-          ? ('weekly' as const)
-          : recurrence.frequency === 'QUARTERLY'
-            ? ('quarterly' as const)
-            : ('monthly' as const),
+      // A conversão vive no motor: uma frequência que ele não sabe cumprir falha
+      // alto em vez de aparecer como mensal na previsão (12× as ocorrências).
+      frequency: toRecurrenceFrequency(recurrence.frequency),
       interval: recurrence.interval,
       dayOfMonth: recurrence.dayOfMonth ?? undefined,
       nextRunDate: recurrence.nextRunDate.toISOString().slice(0, 10),

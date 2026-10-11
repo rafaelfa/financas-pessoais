@@ -1,5 +1,10 @@
 import { prisma } from '@repo/db/client';
-import { goalProgress, toIsoDate, type RecurrenceFrequency } from '@repo/shared';
+import {
+  goalProgress,
+  toIsoDate,
+  toRecurrenceFrequency,
+  type RecurrenceFrequency,
+} from '@repo/shared';
 
 import { todayInLisbon } from '@/lib/today';
 
@@ -54,10 +59,6 @@ export interface GoalView {
   readonly createdAt: string;
 }
 
-function toFrequency(value: string): RecurrenceFrequency {
-  return value === 'WEEKLY' ? 'weekly' : value === 'QUARTERLY' ? 'quarterly' : 'monthly';
-}
-
 /** Objetivos do utilizador, com o progresso calculado pelo motor. */
 export async function listGoals(): Promise<GoalView[]> {
   const user = await requireUser();
@@ -92,7 +93,7 @@ export async function listGoals(): Promise<GoalView[]> {
         targetAmountInCents: goal.targetAmountInCents,
         initialReservedInCents: goal.initialReservedInCents,
         targetDate: toIsoDate(goal.targetDate),
-        contributionFrequency: toFrequency(goal.contributionFrequency),
+        contributionFrequency: toRecurrenceFrequency(goal.contributionFrequency),
       },
       movements: financeMovements,
       today,
@@ -116,7 +117,7 @@ export async function listGoals(): Promise<GoalView[]> {
       remainingInCents: progress.remainingInCents,
       progressPct: progress.progressPct,
       targetDate: toIsoDate(goal.targetDate),
-      contributionFrequency: toFrequency(goal.contributionFrequency),
+      contributionFrequency: toRecurrenceFrequency(goal.contributionFrequency),
       periodsLeft: progress.periodsRemaining,
       // Nada a aportar quando já está completo: `null` e não zero, para a
       // interface não escrever "0,00 € por mês".

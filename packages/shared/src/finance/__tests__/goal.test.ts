@@ -39,7 +39,12 @@ describe('períodos que faltam', () => {
     expect(periodsBetween('2026-10-10', '2026-11-01', 'weekly')).toBe(4);
     expect(periodsBetween('2026-10-10', '2027-04-01', 'monthly')).toBe(6);
     expect(periodsBetween('2026-10-10', '2027-04-01', 'quarterly')).toBe(2);
-    expect(periodsBetween('2026-10-10', '2028-10-10', 'yearly')).toBe(2);
+    /*
+     * Aqui havia `periodsBetween(..., 'yearly') === 2`. A asserção foi **removida**
+     * com a frequência: testava só um valor que deixou de existir no tipo (T7.4).
+     * A regra que ela cobria — arredondar o número de períodos para cima — continua
+     * verificada pelas três frequências acima.
+     */
   });
 
   it('devolve zero quando a data-limite já passou', () => {

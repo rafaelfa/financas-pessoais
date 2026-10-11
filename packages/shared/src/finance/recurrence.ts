@@ -41,10 +41,11 @@ function parseDate(isoDate: string): { year: number; month: number; day: number 
 /**
  * Quantos meses avança cada frequência (a semanal é tratada em dias).
  *
- * A frequência anual existe no tipo do motor (`RecurrenceFrequency`) mesmo sem
- * coluna correspondente na base de dados. Antes, caía na cauda `default` e
- * avançava **um mês** — uma série anual teria gerado doze ocorrências por ano em
- * silêncio. Um valor desconhecido tem de avançar o que promete, ou falhar alto.
+ * A frequência anual deixou de existir no tipo: a base de dados admitia `YEARLY`
+ * e o motor não o sabia cumprir, por isso quatro sítios convertiam-no em mensal em
+ * silêncio. O `default` fica como guarda de runtime (uma string que chegue por
+ * uma linha antiga): avança um mês, que é o que a frequência mensal promete, e o
+ * caminho normal é `toRecurrenceFrequency` falhar alto antes de cá chegar.
  */
 function monthsPerStep(frequency: RecurrenceFrequency): number {
   switch (frequency) {
@@ -54,8 +55,6 @@ function monthsPerStep(frequency: RecurrenceFrequency): number {
       return 1;
     case 'quarterly':
       return 3;
-    case 'yearly':
-      return 12;
     default:
       return 1;
   }
@@ -118,6 +117,55 @@ export function seriesTargetDay(args: {
   readonly dayOfMonth?: number;
 }): number {
   return args.dayOfMonth ?? Number(args.nextRunDate.slice(8, 10));
+}
+
+/**
+ * Dia do mês a **gravar** numa série.
+ *
+ * `dayOfMonth` é nullable e é a única memória do dia contratado. Sem ele, o motor
+ * reconstrói o dia alvo a partir da última data gerada — e se essa data já passou
+ * por um mês curto (31/01 → 28/02), o 31 perde-se para sempre: a série fica presa
+ * no 28 e nenhuma correção posterior o recupera, porque a informação nunca foi
+ * gravada. Gravar o dia na criação, a partir do dia do `startDate` quando o
+ * utilizador não o indica, é o que torna a regra durável.
+ *
+ * Uma série **semanal** devolve `null`: o dia do mês não faz parte da regra dela,
+ * e guardá-lo seria uma segunda verdade sobre a mesma série.
+ */
+export function seriesDayOfMonth(args: {
+  readonly frequency: RecurrenceFrequency;
+  readonly startDate: string;
+  readonly dayOfMonth?: number | null;
+}): number | null {
+  if (args.frequency === 'weekly') {
+    return null;
+  }
+
+  return args.dayOfMonth ?? Number(args.startDate.slice(8, 10));
+}
+
+/**
+ * Traduz a frequência gravada (enum do Prisma, em maiúsculas) no tipo do motor.
+ *
+ * Existe porque quatro sítios liam a base de dados e cada um tinha a sua cauda
+ * `else`: um `YEARLY` — valor que a base admitia e o motor não sabe cumprir —
+ * caía nela e virava **mensal em silêncio**, e o gerador criava doze ocorrências
+ * por ano. Um valor que o motor não conhece tem de falhar alto: adivinhar é o
+ * defeito, não a tolerância.
+ */
+export function toRecurrenceFrequency(value: string): RecurrenceFrequency {
+  switch (value) {
+    case 'WEEKLY':
+      return 'weekly';
+    case 'MONTHLY':
+      return 'monthly';
+    case 'QUARTERLY':
+      return 'quarterly';
+    default:
+      // Inclui o `YEARLY`, que a base admitia e o motor não sabe cumprir: assumir
+      // mensal criava doze ocorrências por ano sem ninguém dar por isso.
+      throw new RangeError(`Frequência desconhecida: "${value}".`);
+  }
 }
 
 /**
@@ -209,11 +257,6 @@ export function describeFrequency(args: {
     }
     case 'quarterly': {
       const base = interval === 1 ? 'todos os trimestres' : `${every}trimestres`;
-
-      return args.dayOfMonth === undefined ? base : `${base}, dia ${args.dayOfMonth}`;
-    }
-    case 'yearly': {
-      const base = interval === 1 ? 'todos os anos' : `${every}anos`;
 
       return args.dayOfMonth === undefined ? base : `${base}, dia ${args.dayOfMonth}`;
     }

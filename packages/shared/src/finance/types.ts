@@ -165,18 +165,16 @@ export interface FinanceAsset {
   readonly valueInCents: number;
 }
 
-/** Frequência de repetição, usada em recorrências e em objetivos. */
 /**
- * Frequência de repetição.
+ * Frequência de repetição, usada em recorrências e em objetivos.
  *
- * **`yearly` está aqui e não devia.** A base de dados não tem coluna para ela, e
- * quatro sítios convertem-na em mensal em silêncio (o gerador criava doze
- * ocorrências por ano). A decisão recomendada é **retirá-la**; fica registada como
- * pendência porque a remoção toca nove sítios — `periodsBetween` em `goal.ts`, os
- * quatro conversores, o formulário e três testes — e retirá-la sem os coordenar
- * deixa o `typecheck` vermelho. Um valor a menos é uma fonte a menos de erros.
+ * **Não há `yearly`.** A base de dados admitia o valor e o motor não o sabia
+ * cumprir: quatro sítios convertiam-no em mensal em silêncio, e o gerador criava
+ * doze ocorrências por ano. O valor foi retirado do tipo, e a tradução do enum da
+ * base vive agora numa função só — `toRecurrenceFrequency` — que **falha alto**
+ * em vez de adivinhar. Um valor a menos é uma fonte a menos de erros.
  */
-export type RecurrenceFrequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type RecurrenceFrequency = 'weekly' | 'monthly' | 'quarterly';
 
 /** Tipo de movimento de um objetivo. */
 export type GoalMovementType = 'deposit' | 'withdrawal' | 'yield';

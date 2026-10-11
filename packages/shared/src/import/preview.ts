@@ -94,11 +94,31 @@ function isoDate(date: Date): string {
 }
 
 /**
- * Impressão digital de um lançamento sem `fitId`.
+ * Comprimento máximo de um identificador de importação.
  *
- * A chave é `data + valor + descrição normalizada`, a mesma tripla que o resto
- * da aplicação usa para reconhecer duplicados. Sem isto, reimportar um extrato
- * CSV — que quase nunca traz `FITID` — duplicaria tudo.
+ * É o limite da coluna `fitId` e o contrato entre a pré-visualização, a
+ * confirmação e a exportação: as três derivam o mesmo identificador para a mesma
+ * linha, e um identificador cortado num sítio e não no outro faria a linha
+ * voltar a entrar na reimportação.
+ */
+const MAX_IDENTIFIER_LENGTH = 80;
+
+/**
+ * Impressão digital de um lançamento.
+ *
+ * A chave é `data + valor + descrição normalizada`, a mesma tripla que o resto da
+ * aplicação usa para reconhecer duplicados, com um prefixo de versão (`imp1|`).
+ * O prefixo não é decorativo: esta cadeia é **gravada** como identificador de
+ * importação (ver `importFitId`), e uma alteração à fórmula passaria a chocar com
+ * os identificadores já gravados. Com a versão à frente, uma mudança futura usa
+ * `imp2|` e convive com o que existe, em vez de reescrever o passado.
+ *
+ * O comprimento fica dentro do limite do identificador (80 caracteres), que é o
+ * mesmo limite que `importFitId` aplica. O orçamento da descrição é **calculado**,
+ * e não fixado: o prefixo já gasta `imp1|` mais a data (10) mais o valor, pelo
+ * que uma descrição truncada a 60 dava 81 caracteres — o defeito que o teste
+ * apanhou. A data e o valor ficam inteiros (são a parte que distingue dois
+ * movimentos no mesmo dia); quem cede é a descrição.
  */
 export function fingerprintOf(
   date: string | null,
@@ -109,29 +129,182 @@ export function fingerprintOf(
     return null;
   }
 
-  return `${date}|${String(amountInCents)}|${normalizeForMatch(description)}`;
+  const fixed = `imp1|${date}|${String(amountInCents)}|`;
+  const budget = Math.max(0, MAX_IDENTIFIER_LENGTH - fixed.length);
+
+  return `${fixed}${normalizeForMatch(description).slice(0, budget)}`;
 }
 
-function existingFingerprints(existing: readonly ExistingTransactionFingerprint[]): {
+/**
+ * Identificador de importação de uma linha, para a coluna `fitId`.
+ *
+ * Quando o ficheiro traz o identificador do banco (`FITID` de OFX, coluna `Id` de
+ * CSV), é esse que manda: é a identidade do movimento no banco, e é o que a
+ * restrição única `@@unique([financialAccountId, fitId])` protege.
+ *
+ * Quando não traz — o caso comum de um CSV — deriva-se da impressão digital. Isto
+ * não é cosmético: sem identificador, a única defesa contra duplicados era uma
+ * **leitura** feita antes da escrita, e dois pedidos em paralelo passavam os dois.
+ * Com identificador derivado, quem decide é a restrição única da base de dados, e
+ * o segundo pedido é recusado em vez de duplicar o extrato.
+ *
+ * A repetição dentro do mesmo ficheiro recebe um sufixo (`:2`, `:3`, …): dois
+ * cafés iguais no mesmo dia são dois movimentos e têm de poder coexistir, mas
+ * continuam a ser reconhecidos como já importados quando o mesmo ficheiro volta.
+ */
+export function importFitId(
+  fitId: string | null,
+  date: string | null,
+  amountInCents: number | null,
+  description: string,
+  occurrence = 1,
+): string | null {
+  const external = fitId?.trim() ?? '';
+
+  if (external !== '') {
+    return external.slice(0, MAX_IDENTIFIER_LENGTH);
+  }
+
+  const fingerprint = fingerprintOf(date, amountInCents, description);
+
+  if (fingerprint === null) {
+    return null;
+  }
+
+  return occurrence <= 1
+    ? fingerprint
+    : `${fingerprint}:${String(occurrence)}`.slice(0, MAX_IDENTIFIER_LENGTH);
+}
+
+/**
+ * Calcula os identificadores de importação de uma lista de linhas.
+ *
+ * A numeração de repetição é feita **sobre a lista completa, pela ordem do
+ * ficheiro**, e não linha a linha: é isso que faz com que a pré-visualização e a
+ * confirmação cheguem ao mesmo identificador para a mesma linha. Se cada uma
+ * numerasse por sua conta, a segunda passagem (após uma importação parcial) daria
+ * identificadores diferentes e a linha voltaria a entrar.
+ */
+export function withImportIdentifiers<T extends ImportRowCandidate>(
+  rows: readonly T[],
+): (T & { readonly derivedFitId: string | null })[] {
+  const counts = new Map<string, number>();
+
+  return rows.map((row) => {
+    const fingerprint = fingerprintOf(row.date, row.amountInCents, row.description);
+    let occurrence = 1;
+
+    if (fingerprint !== null) {
+      occurrence = (counts.get(fingerprint) ?? 0) + 1;
+      counts.set(fingerprint, occurrence);
+    }
+
+    return {
+      ...row,
+      derivedFitId: importFitId(
+        row.fitId,
+        row.date,
+        row.amountInCents,
+        row.description,
+        occurrence,
+      ),
+    };
+  });
+}
+
+/** O mínimo que uma linha precisa para receber um identificador. */
+export interface ImportRowCandidate {
+  readonly date: string | null;
+  readonly amountInCents: number | null;
+  readonly description: string;
+  readonly fitId: string | null;
+}
+
+/**
+ * Indexa o que já existe na conta, pelo identificador de importação.
+ *
+ * A chave é o `fitId` gravado. Para linhas gravadas **antes** desta versão (sem
+ * `fitId`, ou de importações antigas), acrescenta-se a impressão digital como
+ * chave alternativa: sem isso, os movimentos importados antes da correção
+ * deixariam de ser reconhecidos e voltariam a entrar na primeira reimportação.
+ */
+function indexExisting(existing: readonly ExistingTransactionFingerprint[]): {
   readonly fitIds: Set<string>;
-  readonly fingerprints: Set<string>;
+  readonly rows: Map<string, ExistingTransactionFingerprint>;
 } {
   const fitIds = new Set<string>();
-  const fingerprints = new Set<string>();
+  const rows = new Map<string, ExistingTransactionFingerprint>();
 
   for (const row of existing) {
     if (row.fitId !== null && row.fitId !== '') {
       fitIds.add(row.fitId);
+      rows.set(row.fitId, row);
     }
 
-    const fingerprint = fingerprintOf(isoDate(row.date), row.amountInCents, row.description ?? '');
+    const derived = importFitId(null, isoDate(row.date), row.amountInCents, row.description ?? '');
 
-    if (fingerprint !== null) {
-      fingerprints.add(fingerprint);
+    if (derived !== null) {
+      fitIds.add(derived);
+
+      if (!rows.has(derived)) {
+        rows.set(derived, row);
+      }
     }
   }
 
-  return { fitIds, fingerprints };
+  return { fitIds, rows };
+}
+
+/**
+ * Frase que explica que o identificador existe com outro valor, ou `null` quando
+ * os valores coincidem.
+ */
+function divergenceOf(
+  existing: ExistingTransactionFingerprint | undefined,
+  raw: { readonly date: string | null; readonly amountInCents: number | null },
+): string | null {
+  if (existing === undefined || raw.amountInCents === null || raw.date === null) {
+    return null;
+  }
+
+  const existingDate = isoDate(existing.date);
+  const sameAmount = existing.amountInCents === raw.amountInCents;
+  const sameDate = existingDate === raw.date;
+
+  if (sameAmount && sameDate) {
+    return null;
+  }
+
+  /*
+   * Formatação só para leitura humana. Não usa `formatCurrency` de propósito:
+   * aquele formata em `pt-PT` pelo `Intl` do runtime, e uma mensagem de aviso não
+   * pode mudar de texto conforme o ambiente onde a pré-visualização corre — o
+   * `Intl` do Node e o do browser dão separadores diferentes para o mesmo valor.
+   */
+  const format = (cents: number): string => {
+    const magnitude = Math.abs(cents);
+    const integer = String(Math.floor(magnitude / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const decimals = String(magnitude % 100).padStart(2, '0');
+
+    return `${cents < 0 ? '-' : ''}${integer},${decimals} €`;
+  };
+
+  const differences: string[] = [];
+
+  if (!sameAmount) {
+    differences.push(
+      `no ficheiro vem ${format(raw.amountInCents)} e na aplicação está ${format(existing.amountInCents)}`,
+    );
+  }
+
+  if (!sameDate) {
+    differences.push(`no ficheiro vem ${raw.date} e na aplicação está ${existingDate}`);
+  }
+
+  return (
+    `Já existe nesta conta um movimento com o mesmo identificador do banco, mas ${differences.join('; ')}. ` +
+    'Confirma qual é o certo antes de importar: este movimento não foi gravado.'
+  );
 }
 
 /**
@@ -193,6 +366,9 @@ interface RawRow {
   /** Motivo de a linha ser suspeita, vindo do parser. */
   readonly parserIssue: string | null;
 }
+
+/** Campo interno: o identificador derivado, preenchido por `withImportIdentifiers`. */
+type IdentifiedRawRow = RawRow & { readonly derivedFitId: string | null };
 
 function fromOfx(statement: OfxStatement): RawRow[] {
   const byLine = new Map<number, string>();
@@ -257,42 +433,59 @@ export interface BuildPreviewInput {
 /**
  * Constrói a lista de linhas com estado. Função pura: recebe o que os parsers
  * leram e o que já existe na conta, e devolve o que a pré-visualização mostra.
+ *
+ * A identidade de cada linha passa a ser o **identificador derivado**
+ * (`withImportIdentifiers`): é o mesmo valor que vai para a coluna `fitId` na
+ * confirmação, pelo que a decisão tomada aqui e a decisão tomada lá são a mesma,
+ * com a mesma chave. Sem isso, a pré-visualização usava `fitId` (do banco) e a
+ * confirmação voltava a inventar, e um CSV importado duas vezes em paralelo
+ * passava as duas vezes.
  */
 export function buildPreview(input: BuildPreviewInput): ImportPreviewBase {
-  const { fitIds, fingerprints } = existingFingerprints(input.existing);
-  const seenFitIds = new Set<string>();
-  const seenFingerprints = new Set<string>();
+  const { fitIds, rows: existingRows } = indexExisting(input.existing);
+  const identified: IdentifiedRawRow[] = withImportIdentifiers(input.raw);
+  const seen = new Set<string>();
   const rows: ImportRow[] = [];
 
-  for (const [index, raw] of input.raw.entries()) {
-    const fingerprint = fingerprintOf(raw.date, raw.amountInCents, raw.description);
-    const hasFitId = raw.fitId !== null && raw.fitId !== '';
+  for (const [index, raw] of identified.entries()) {
+    const derivedFitId = raw.derivedFitId;
     let status: ImportRowStatus = 'new';
     let reason: string | null = null;
 
     if (raw.date === null || raw.amountInCents === null) {
       status = 'suspicious';
       reason = raw.parserIssue ?? (raw.date === null ? 'Sem data legível.' : 'Sem valor legível.');
-    } else if (hasFitId && fitIds.has(raw.fitId)) {
+    } else if (derivedFitId !== null && fitIds.has(derivedFitId)) {
       status = 'duplicate';
-      reason = 'Já existe nesta conta (mesmo identificador do banco).';
-    } else if (hasFitId && seenFitIds.has(raw.fitId)) {
-      status = 'duplicate';
-      reason = 'Repetido dentro do próprio ficheiro.';
-    } else if (!hasFitId && fingerprint !== null && fingerprints.has(fingerprint)) {
-      status = 'duplicate';
-      reason = 'Já existe nesta conta um movimento igual (data, valor e descrição).';
-    } else if (!hasFitId && fingerprint !== null && seenFingerprints.has(fingerprint)) {
+
+      /*
+       * O identificador já existe — mas com o **mesmo valor**?
+       *
+       * Um `fitId` identifica o movimento no banco; se o valor divergir, uma das
+       * duas coisas está errada: o banco corrigiu o movimento, ou o ficheiro é de
+       * outro período e o identificador colidiu. Nos dois casos, descartar em
+       * silêncio é a pior resposta: é exatamente o caso em que o utilizador mais
+       * precisa de saber. Diz-se o valor do ficheiro e o que está na aplicação.
+       */
+      const existing = existingRows.get(derivedFitId);
+      const divergence = divergenceOf(existing, raw);
+
+      reason =
+        divergence === null
+          ? raw.fitId !== null && raw.fitId !== ''
+            ? 'Já existe nesta conta (mesmo identificador do banco).'
+            : 'Já existe nesta conta um movimento igual (data, valor e descrição).'
+          : divergence;
+    } else if (derivedFitId !== null && seen.has(derivedFitId)) {
+      // Só acontece quando o ficheiro traz identificadores do banco repetidos
+      // (FITID duplicado): sem identificador externo, a repetição recebe sufixo
+      // e cada linha tem a sua própria identidade.
       status = 'duplicate';
       reason = 'Repetido dentro do próprio ficheiro.';
     }
 
-    if (hasFitId && raw.fitId !== null) {
-      seenFitIds.add(raw.fitId);
-    }
-
-    if (fingerprint !== null) {
-      seenFingerprints.add(fingerprint);
+    if (derivedFitId !== null) {
+      seen.add(derivedFitId);
     }
 
     const suggestion = status === 'new' ? suggest(raw, input.account.id, index, input.rules) : null;
@@ -302,7 +495,8 @@ export function buildPreview(input: BuildPreviewInput): ImportPreviewBase {
       date: raw.date,
       description: raw.description,
       amountInCents: raw.amountInCents,
-      fitId: raw.fitId,
+      // O identificador que será gravado — derivado quando o ficheiro não traz um.
+      fitId: derivedFitId,
       status,
       reason,
       selected: status === 'new',
@@ -401,6 +595,36 @@ export function previewFromOfx(args: {
 }): ImportPreviewBase {
   const warnings: string[] = [];
 
+  /*
+   * Um ficheiro com mais do que um extrato (conta à ordem + poupança) é uma forma
+   * normal de um banco exportar, e é uma armadilha: só se importa **uma** conta.
+   * O parser já isola os movimentos por extrato; aqui diz-se, com os valores, que
+   * só o primeiro vai entrar — e que os outros precisam de uma segunda importação
+   * para a conta deles. Desmarcar linhas não resolve: as que ficam são de outra
+   * conta.
+   */
+  if (args.statement.statements.length > 1) {
+    const [firstStatement, ...others] = args.statement.statements;
+    const firstAccount =
+      firstStatement?.accountId === null || firstStatement?.accountId === undefined
+        ? ''
+        : ` (conta ${firstStatement.accountId})`;
+    const summary = others
+      .map(
+        (statement) =>
+          `${statement.accountId ?? '(conta sem identificador)'} ` +
+          `(${String(statement.transactions.length)} movimento(s))`,
+      )
+      .join(', ');
+
+    warnings.push(
+      `Este ficheiro traz ${String(args.statement.statements.length)} extratos. Só entra o ` +
+        `primeiro${firstAccount}, com ${String(firstStatement?.transactions.length ?? 0)} ` +
+        `movimento(s). Ficam de fora: ${summary}. Para importares esses, abre o ficheiro da ` +
+        'conta respetiva.',
+    );
+  }
+
   if (
     args.statement.header['ENCODING'] !== undefined &&
     /USASCII|1252/i.test(args.statement.header['ENCODING'])
@@ -417,8 +641,10 @@ export function previewFromOfx(args: {
 
   if (withoutFitId > 0) {
     warnings.push(
-      `${String(withoutFitId)} movimento(s) sem identificador do banco (FITID): a reimportação ` +
-        'do mesmo ficheiro vai reconhecê-los pela data, valor e descrição.',
+      `${String(withoutFitId)} movimento(s) sem identificador do banco (FITID). Vão ser ` +
+        'identificados pela data, valor e descrição — o que impede a reimportação de duplicar, ' +
+        'mas torna dois movimentos **iguais no mesmo dia** (dois cafés, duas portagens) ' +
+        'indistinguíveis. Se isso acontecer, confirma as linhas antes de importar.',
     );
   }
 

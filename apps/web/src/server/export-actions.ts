@@ -96,9 +96,19 @@ export async function exportTransactionsCsv(input: unknown): Promise<ActionResul
 /**
  * Backup JSON completo do utilizador.
  *
- * Inclui tudo o que é dele e nada que não seja: contas, categorias, etiquetas,
- * lançamentos, cartões, faturas e pagamentos, objetivos e movimentos, orçamentos
- * e limites, recorrências, regras, bens e passivos.
+ * -----------------------------------------------------------------------------
+ * O QUE UM RESTAURO PRECISA E NÃO ESTAVA AQUI (I7 da verificação T7.5)
+ * -----------------------------------------------------------------------------
+ * O ficheiro levava 14 dos 16 modelos com `userId` e, pior, o objeto `user` só
+ * tinha `id`, `email`, `name` e `currency`. Faltavam `monthStartDay` e
+ * `accountingBasis` — as duas preferências que decidem **o que cada mês
+ * significa** (o dia em que o mês começa e se os totais são por caixa ou por
+ * competência). Restaurar sem elas não dá erro nenhum: dá números diferentes, em
+ * silêncio. Um backup que restaura errado é pior do que não ter backup.
+ *
+ * Ficaram acrescentados: as duas preferências, a conta principal, o rasto de
+ * auditoria do "travar saldo" (`LockedBalance`) e os marcos de "mês conferido"
+ * (`MonthClose`). São 16 de 16.
  *
  * A versão do formato vai no topo, para que um restauro futuro saiba o que está a
  * ler.
@@ -107,6 +117,7 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
   const user = await requireUser();
 
   const [
+    account,
     accounts,
     categories,
     tags,
@@ -121,7 +132,17 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
     rules,
     assets,
     liabilities,
+    lockedBalances,
+    monthCloses,
   ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        monthStartDay: true,
+        accountingBasis: true,
+        primaryAccountId: true,
+      },
+    }),
     prisma.financialAccount.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' } }),
     prisma.category.findMany({ where: { userId: user.id }, orderBy: { sortOrder: 'asc' } }),
     prisma.tag.findMany({ where: { userId: user.id }, orderBy: { name: 'asc' } }),
@@ -147,6 +168,11 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
     }),
     prisma.asset.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' } }),
     prisma.liability.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' } }),
+    prisma.lockedBalance.findMany({
+      where: { userId: user.id },
+      orderBy: { referenceDate: 'asc' },
+    }),
+    prisma.monthClose.findMany({ where: { userId: user.id }, orderBy: { periodStart: 'asc' } }),
   ]);
 
   /*
@@ -170,12 +196,27 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
 
   const backup = {
     format: 'financas-pessoais/backup',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
-    user: { id: user.id, email: user.email, name: user.name, currency: 'EUR' },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      currency: 'EUR',
+      /*
+       * As preferências que mudam o significado de tudo. Sem elas, um restauro
+       * dava os mesmos movimentos com outro dia de início de mês e outro regime
+       * de contabilização — números diferentes, sem erro nenhum.
+       */
+      monthStartDay: account?.monthStartDay ?? 1,
+      accountingBasis: account?.accountingBasis ?? 'CASH',
+      primaryAccountId: account?.primaryAccountId ?? null,
+    },
     notes: [
       'Os montantes estão em cêntimos inteiros e as datas em YYYY-MM-DD.',
       'goal.accumulatedInCents é DERIVADO (inicial + depósitos + rendimentos − resgates) e calculado pelo motor à data da exportação; para o restaurar, usa-se goalMovements, que é a fonte de verdade.',
+      'user.monthStartDay e user.accountingBasis têm de ser restaurados: sem eles, os mesmos movimentos dão totais diferentes.',
+      'lockedBalances é o rasto de auditoria dos ajustes de saldo; monthCloses são os meses marcados como conferidos.',
     ],
     counts: {
       accounts: accounts.length,
@@ -192,6 +233,8 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
       rules: rules.length,
       assets: assets.length,
       liabilities: liabilities.length,
+      lockedBalances: lockedBalances.length,
+      monthCloses: monthCloses.length,
     },
     accounts: accounts.map((account) => ({
       id: account.id,
@@ -362,6 +405,28 @@ export async function exportBackupJson(): Promise<ActionResult<ExportFile>> {
       startDate: liability.startDate === null ? null : toIsoDate(liability.startDate),
       endDate: liability.endDate === null ? null : toIsoDate(liability.endDate),
       archived: liability.archivedAt !== null,
+    })),
+    /*
+     * Rasto de auditoria do "travar saldo". Não é um cálculo: é a prova de que
+     * alguém conferiu o saldo naquela data e de qual era a diferença. Perder isto
+     * num restauro tira a resposta a "porque é que o saldo mudou sem movimento?".
+     */
+    lockedBalances: lockedBalances.map((locked) => ({
+      id: locked.id,
+      accountId: locked.financialAccountId,
+      referenceDate: toIsoDate(locked.referenceDate),
+      reportedBalanceInCents: locked.reportedBalanceInCents,
+      computedBalanceInCents: locked.computedBalanceInCents,
+      adjustmentInCents: locked.adjustmentInCents,
+      note: locked.note,
+      createdAt: locked.createdAt.toISOString(),
+    })),
+    /** Meses marcados como conferidos — a decisão de fecho, com data e nota. */
+    monthCloses: monthCloses.map((closed) => ({
+      id: closed.id,
+      periodStart: toIsoDate(closed.periodStart),
+      closedAt: closed.closedAt.toISOString(),
+      note: closed.note,
     })),
   };
 

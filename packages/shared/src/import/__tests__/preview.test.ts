@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseCsvDocument } from '../csv';
 import { parseOfxDocument } from '../ofx';
-import { fingerprintOf, previewFromCsv, previewFromOfx } from '../preview';
+import { fingerprintOf, importFitId, previewFromCsv, previewFromOfx } from '../preview';
 import type { FinanceTransactionRule } from '../../finance/types';
 import { MAIN_OFX, readSample } from './helpers';
 
@@ -48,10 +48,71 @@ const CATEGORY_NAMES = new Map([
 ]);
 
 describe('fingerprintOf', () => {
-  it('junta data, valor e descrição normalizada', () => {
+  it('junta data, valor e descrição normalizada, com a versão do formato', () => {
+    // O prefixo `imp1|` não é decorativo: esta cadeia é **gravada** como
+    // identificador de importação (`fitId`), e uma alteração à fórmula tem de
+    // poder conviver com os identificadores que já estão na base de dados.
     expect(fingerprintOf('2026-10-01', -85_000, 'Renda  CASA outubro')).toBe(
-      '2026-10-01|-85000|renda casa outubro',
+      'imp1|2026-10-01|-85000|renda casa outubro',
     );
+  });
+
+  it('trunca a descrição para caber no limite da coluna', () => {
+    const long = 'x'.repeat(200);
+    const fingerprint = fingerprintOf('2026-10-01', -100, long);
+
+    expect(fingerprint).not.toBeNull();
+    expect(fingerprint?.length).toBeLessThanOrEqual(80);
+  });
+
+  /*
+   * O caso que a fórmula anterior falhava não era a descrição de 200 caracteres:
+   * era o **valor máximo** da coluna somado a uma descrição longa. O prefixo
+   * `imp1|` mais a data mais dez dígitos de cêntimos gasta 30 caracteres, e uma
+   * descrição truncada a 60 dava 90. O identificador é gravado na coluna
+   * `fitId`, pelo que o limite tem de valer para o pior caso, não para o caso
+   * confortável de um valor pequeno.
+   */
+  it('cabe no limite com o valor máximo de um inteiro de 32 bits', () => {
+    const fingerprint = fingerprintOf('2026-10-01', 2_147_483_647, 'x'.repeat(200));
+
+    expect(fingerprint?.length).toBeLessThanOrEqual(80);
+  });
+
+  it('mantém a data e o valor inteiros e cede só na descrição', () => {
+    const fingerprint = fingerprintOf('2026-10-01', -85_000, 'Renda '.repeat(40));
+
+    // Os dois campos que identificam o movimento não podem ser truncados, senão
+    // dois movimentos de dias ou valores diferentes passavam a ser o mesmo.
+    expect(fingerprint?.startsWith('imp1|2026-10-01|-85000|')).toBe(true);
+    expect(fingerprint?.length).toBe(80);
+  });
+
+  /*
+   * A correção não pode quebrar a reimportação, que é o que a impressão digital
+   * existe para impedir. Duas propriedades têm de valer com a truncagem:
+   * o cálculo é **idempotente** (a mesma linha dá sempre o mesmo identificador,
+   * seja qual for o número de passagens) e descrições que diferem antes do corte
+   * continuam a ser identificadores distintos. Sem a segunda, dois movimentos do
+   * mesmo dia e valor colidiriam e o segundo era recusado pela restrição única.
+   */
+  it('o identificador derivado é estável e não depende do número de passagens', () => {
+    const description = 'Compra ' + 'muito longa '.repeat(20);
+    const first = importFitId(null, '2026-10-01', -12_345, description);
+    const second = importFitId(null, '2026-10-01', -12_345, description);
+
+    expect(first).not.toBeNull();
+    expect(first?.length).toBeLessThanOrEqual(80);
+    expect(second).toBe(first);
+  });
+
+  it('duas descrições diferentes não colidem no identificador derivado', () => {
+    const first = importFitId(null, '2026-10-01', -12_345, 'Compra na loja A, referência 111');
+    const second = importFitId(null, '2026-10-01', -12_345, 'Compra na loja A, referência 222');
+
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(first).not.toBe(second);
   });
 
   it('devolve null quando falta a data ou o valor', () => {
@@ -217,7 +278,22 @@ describe('previewFromCsv — duplicados sem fitId', () => {
     expect(preview.rows[0]?.status).toBe('new');
   });
 
-  it('marca um movimento repetido dentro do próprio ficheiro', () => {
+  it('dois movimentos iguais no mesmo dia entram os dois (I4 da verificação)', () => {
+    /*
+     * Este teste mudou de expectativa de propósito, e a razão é o I4.
+     *
+     * A versão anterior marcava o segundo como "repetido dentro do próprio
+     * ficheiro" e desmarcava-o — e era isso que fazia o ciclo exportar →
+     * reimportar perder movimentos: 27 exportados voltavam como 21, porque dois
+     * cafés iguais no mesmo dia só deixavam entrar um. Sem identificador do banco,
+     * o importador não tem como saber que são movimentos diferentes, e descartar
+     * um perde dados do utilizador; importar os dois é recuperável (a reversão
+     * apaga), perder um não é.
+     *
+     * Cada linha recebe o seu identificador derivado (`imp1|…` e `imp1|…:2`), pelo
+     * que reimportar o mesmo ficheiro continua a não duplicar nada — o teste
+     * seguinte prova-o.
+     */
     const duplicated = parseCsvDocument(
       [
         'Data;Descrição;Valor',
@@ -234,12 +310,49 @@ describe('previewFromCsv — duplicados sem fitId', () => {
     });
 
     expect(preview.rows[0]?.status).toBe('new');
-    expect(preview.rows[1]?.status).toBe('duplicate');
-    expect(preview.rows[1]?.reason).toContain('próprio ficheiro');
-    // Só a primeira conta para os totais. Contar as duas punha o saldo implícito
-    // a somar duas vezes o mesmo movimento — foi um defeito apanhado em revisão.
-    expect(preview.totalDebitsInCents).toBe(85_000);
-    expect(preview.impliedEndBalanceInCents).toBe(100_000 - 85_000);
+    expect(preview.rows[1]?.status).toBe('new');
+    expect(preview.newCount).toBe(2);
+    expect(preview.rows.every((row) => row.selected)).toBe(true);
+    // Os identificadores são distintos, senão a restrição única recusaria o segundo.
+    expect(preview.rows[0]?.fitId).not.toBe(preview.rows[1]?.fitId);
+    expect(preview.rows[1]?.fitId).toMatch(/:2$/);
+    // Os dois contam: são dois movimentos, não um.
+    expect(preview.totalDebitsInCents).toBe(170_000);
+    expect(preview.impliedEndBalanceInCents).toBe(100_000 - 170_000);
+  });
+
+  it('reimportar o ficheiro com movimentos repetidos não duplica nenhum', () => {
+    const duplicated = parseCsvDocument(
+      [
+        'Data;Descrição;Valor',
+        '01/10/2026;Renda casa outubro;-850,00',
+        '01/10/2026;Renda casa outubro;-850,00',
+      ].join('\n'),
+    );
+
+    // O que a primeira importação gravou: os dois identificadores derivados.
+    const first = previewFromCsv({
+      account: ACCOUNT,
+      statement: duplicated,
+      existing: [],
+      rules: { rules: [], categoryNames: new Map() },
+    });
+
+    const second = previewFromCsv({
+      account: ACCOUNT,
+      statement: duplicated,
+      existing: (first.rows ?? []).map((row) => ({
+        fitId: row.fitId,
+        date: new Date(`${row.date ?? '2026-01-01'}T00:00:00.000Z`),
+        amountInCents: row.amountInCents ?? 0,
+        description: row.description,
+      })),
+      rules: { rules: [], categoryNames: new Map() },
+    });
+
+    expect(second.newCount).toBe(0);
+    expect(second.duplicateCount).toBe(2);
+    expect(second.totalDebitsInCents).toBe(0);
   });
 
   it('conta nos totais apenas o que seria criado', () => {

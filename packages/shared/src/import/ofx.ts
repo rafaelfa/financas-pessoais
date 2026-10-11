@@ -68,9 +68,8 @@ export interface OfxStatementTransaction {
   readonly line: number;
 }
 
-export interface OfxStatement {
-  /** Pares `CHAVE:VALOR` do cabeçalho, pela ordem do ficheiro. */
-  readonly header: Readonly<Record<string, string>>;
+/** Um extrato de **uma** conta dentro do ficheiro. */
+export interface OfxSingleStatement {
   readonly currency: string | null;
   readonly bankId: string | null;
   readonly branchId: string | null;
@@ -83,6 +82,25 @@ export interface OfxStatement {
   readonly ledgerBalanceRaw: string | null;
   /** Data do saldo (`DTASOF`), quando existe. */
   readonly ledgerBalanceDate: string | null;
+  readonly transactions: readonly OfxStatementTransaction[];
+  /** Linha onde o `<STMTRS>` foi aberto. */
+  readonly line: number;
+}
+
+export interface OfxStatement extends OfxSingleStatement {
+  /** Pares `CHAVE:VALOR` do cabeçalho, pela ordem do ficheiro. */
+  readonly header: Readonly<Record<string, string>>;
+  /**
+   * Todos os extratos do ficheiro, pela ordem em que aparecem.
+   *
+   * Um ficheiro pode trazer mais do que uma conta (conta à ordem + poupança, por
+   * exemplo). Os campos deste objeto descrevem **o primeiro** extrato, e
+   * `transactions` contém só os movimentos dele: misturar os movimentos de duas
+   * contas numa importação punha dinheiro de uma conta noutra sem aviso. Quem
+   * importa escolhe uma conta; se o ficheiro tiver várias, diz-se.
+   */
+  readonly statements: readonly OfxSingleStatement[];
+  /** Movimentos do **primeiro** extrato — o que a importação usa por omissão. */
   readonly transactions: readonly OfxStatementTransaction[];
   /** Tudo o que não foi possível interpretar, com linha e motivo. */
   readonly issues: readonly ImportIssue[];
@@ -640,20 +658,35 @@ function condenseTruncationIssues(issues: ImportIssue[]): void {
 }
 
 /**
- * Converte `DTPOSTED` (`YYYYMMDDHHMMSS`, `YYYYMMDD`, com ou sem `[fuso]`) numa
- * data de calendário.
+ * Converte `DTPOSTED` numa data de calendário.
  *
- * A hora e o fuso são **descartados de propósito**: a data de um lançamento é
- * uma data de calendário, e somar um deslocamento de fuso é precisamente a
- * maneira de a deslocar um dia. Se o ficheiro disser `20260930235959`, o
- * lançamento é de **30 de setembro**, mesmo que em UTC já seja dia 1.
+ * Aceita as variantes que aparecem em ficheiros reais:
+ *
+ * | Texto                        | Versão | Resultado    |
+ * | ---------------------------- | ------ | ------------ |
+ * | `20260930`                   | 1.x    | 2026-09-30   |
+ * | `20260930235959`              | 1.x    | 2026-09-30   |
+ * | `20260930[+000:GMT]`         | 1.x    | 2026-09-30   |
+ * | `20260930101500.000[-3:GMT]` | 2.x    | 2026-09-30   |
+ *
+ * A parte fracionária (milissegundos) é descartada tal como a hora: é a **OFX 2.x**
+ * que a escreve, e sem este passo o movimento ficava sem data e entrava na
+ * pré-visualização como suspeito — inimportável, apesar de o ficheiro ser válido.
+ *
+ * A hora e o fuso são descartados de propósito: a data de um lançamento é uma data
+ * de calendário, e somar um deslocamento de fuso é precisamente a maneira de a
+ * deslocar um dia. Se o ficheiro disser `20260930235959`, o lançamento é de **30 de
+ * setembro**, mesmo que em UTC já seja dia 1.
  */
 export function parseOfxDate(raw: string | undefined): string | null {
   if (raw === undefined) {
     return null;
   }
 
-  const digits = raw.trim().split(/[[\s+-]/)[0] ?? '';
+  // Corta o sufixo de fuso (`[-3:GMT]`, `[+000:GMT]`) e a hora.
+  const head = raw.trim().split(/[[\s+-]/)[0] ?? '';
+  // Descarta a parte fracionária dos segundos, quando existe (`...101500.000`).
+  const digits = head.split('.')[0] ?? '';
 
   if (!/^\d{8}(\d{6})?$/.test(digits)) {
     return null;
@@ -676,22 +709,28 @@ export function parseOfxDate(raw: string | undefined): string | null {
 export function parseOfxDocument(content: string): OfxStatement {
   const issues: ImportIssue[] = [];
 
+  const empty = (header: Readonly<Record<string, string>>): OfxStatement => ({
+    header,
+    currency: null,
+    bankId: null,
+    branchId: null,
+    accountId: null,
+    accountType: null,
+    startDate: null,
+    endDate: null,
+    ledgerBalanceInCents: null,
+    ledgerBalanceRaw: null,
+    ledgerBalanceDate: null,
+    transactions: [],
+    statements: [],
+    line: 1,
+    issues,
+  });
+
   if (typeof content !== 'string' || content.trim() === '') {
-    return {
-      header: {},
-      currency: null,
-      bankId: null,
-      branchId: null,
-      accountId: null,
-      accountType: null,
-      startDate: null,
-      endDate: null,
-      ledgerBalanceInCents: null,
-      ledgerBalanceRaw: null,
-      ledgerBalanceDate: null,
-      transactions: [],
-      issues: [{ line: 1, field: 'documento', message: 'O ficheiro está vazio.' }],
-    };
+    issues.push({ line: 1, field: 'documento', message: 'O ficheiro está vazio.' });
+
+    return empty({});
   }
 
   const text = content.replace(/^\uFEFF/, '');
@@ -728,21 +767,7 @@ export function parseOfxDocument(content: string): OfxStatement {
       message: 'Não encontrei a tag <OFX>; o ficheiro não parece um extrato OFX.',
     });
 
-    return {
-      header,
-      currency: null,
-      bankId: null,
-      branchId: null,
-      accountId: null,
-      accountType: null,
-      startDate: null,
-      endDate: null,
-      ledgerBalanceInCents: null,
-      ledgerBalanceRaw: null,
-      ledgerBalanceDate: null,
-      transactions: [],
-      issues,
-    };
+    return empty(header);
   }
 
   const { nodes, issues: treeIssues } = buildTree(tokenize(text, skipLines));
@@ -752,123 +777,164 @@ export function parseOfxDocument(content: string): OfxStatement {
   const transactionNodes = findAll(root, 'STMTTRN');
 
   /*
-   * Um extrato com centenas de movimentos e sem uma única tag de fecho gera um
-   * aviso por movimento ("nunca foi fechado"). Duzentas linhas de aviso são
-   * ruído: ninguém as lê e a pré-visualização deixa de servir. Juntam-se num só,
-   * com a contagem, mantendo o primeiro exemplo para ter uma linha concreta a
-   * que apontar.
+   * Um ficheiro pode trazer **mais do que um extrato** (conta à ordem + poupança),
+   * que é uma forma normal de um banco exportar. Cada `STMTRS` é uma conta, com o
+   * seu `BANKACCTFROM`, o seu `LEDGERBAL` e os seus movimentos.
+   *
+   * Os movimentos são agrupados **por extrato** e não varridos da árvore toda:
+   * misturá-los punha os movimentos da poupança na conta à ordem que o utilizador
+   * escolheu, e a soma deixava de bater com o saldo declarado. O que este objeto
+   * descreve (e o que `transactions` devolve) é o **primeiro** extrato; os outros
+   * ficam em `statements`, para a pré-visualização poder avisar.
+   *
+   * A procura é em profundidade e não pelo caminho exato porque num ficheiro sem
+   * tags de fecho a árvore fica mais plana: `BANKACCTFROM` e `LEDGERBAL` passam a
+   * ser irmãos dos movimentos, e um caminho fixo devolvia `undefined`.
    */
-  condenseTruncationIssues(issues);
+  const statementNodes = [...findAll(root, 'STMTRS'), ...findAll(root, 'CCSTMTRS')].sort(
+    (a, b) => a.line - b.line,
+  );
 
-  const transactions: OfxStatementTransaction[] = transactionNodes.map((node) => {
-    const amountRaw = childValue(node, 'TRNAMT') ?? '';
-    const postedAt = childValue(node, 'DTPOSTED') ?? '';
-    const fitId = childValue(node, 'FITID')?.trim() ?? '';
-    const amountInCents = amountRaw === '' ? null : parseAmountToCents(amountRaw);
-    const date = parseOfxDate(postedAt);
+  const statements: OfxSingleStatement[] = statementNodes.map((statement) => {
+    const accountFrom =
+      findAll(statement, 'BANKACCTFROM')[0] ?? findAll(statement, 'CCACCTFROM')[0];
+    const ledger = findAll(statement, 'LEDGERBAL')[0] ?? findAll(statement, 'AVAILBAL')[0];
+    const transactionList = findAll(statement, 'BANKTRANLIST')[0];
+    const ledgerBalanceRaw = childValue(ledger, 'BALAMT') ?? null;
+    const ledgerBalanceInCents =
+      ledgerBalanceRaw === null ? null : parseAmountToCents(ledgerBalanceRaw);
 
-    if (amountRaw !== '' && amountInCents === null) {
+    if (ledgerBalanceRaw !== null && ledgerBalanceInCents === null) {
       issues.push({
-        line: node.line,
-        field: 'TRNAMT',
-        message: `Valor ilegível num movimento: "${amountRaw}".`,
-      });
-    } else if (amountRaw === '') {
-      issues.push({
-        line: node.line,
-        field: 'TRNAMT',
-        message: 'Movimento sem valor (TRNAMT).',
-      });
-    }
-
-    if (postedAt !== '' && date === null) {
-      issues.push({
-        line: node.line,
-        field: 'DTPOSTED',
-        message: `Data ilegível num movimento: "${postedAt}".`,
-      });
-    } else if (postedAt === '') {
-      issues.push({
-        line: node.line,
-        field: 'DTPOSTED',
-        message: 'Movimento sem data (DTPOSTED).',
-      });
-    }
-
-    if (fitId === '') {
-      issues.push({
-        line: node.line,
-        field: 'FITID',
-        message: 'Movimento sem FITID: não há como o reconhecer numa reimportação.',
+        line: ledger?.line ?? statement.line,
+        field: 'BALAMT',
+        message: `Saldo do extrato ilegível: "${ledgerBalanceRaw}".`,
       });
     }
 
     return {
-      type: childValue(node, 'TRNTYPE') ?? '',
-      date,
-      postedAt,
-      amountInCents,
-      amountRaw,
-      fitId: fitId === '' ? null : fitId,
-      memo: childValue(node, 'MEMO') ?? null,
-      name: childValue(node, 'NAME') ?? null,
-      checkNumber: childValue(node, 'CHECKNUM') ?? null,
-      refNumber: childValue(node, 'REFNUM') ?? null,
-      line: node.line,
+      currency: childValue(statement, 'CURDEF') ?? null,
+      bankId: childValue(accountFrom, 'BANKID') ?? null,
+      branchId: childValue(accountFrom, 'BRANCHID') ?? null,
+      accountId: childValue(accountFrom, 'ACCTID') ?? null,
+      accountType: childValue(accountFrom, 'ACCTTYPE') ?? null,
+      startDate: parseOfxDate(childValue(transactionList, 'DTSTART')),
+      endDate: parseOfxDate(childValue(transactionList, 'DTEND')),
+      ledgerBalanceInCents,
+      ledgerBalanceRaw,
+      ledgerBalanceDate: parseOfxDate(childValue(ledger, 'DTASOF')),
+      transactions: findAll(transactionList, 'STMTTRN').map((node) =>
+        readTransaction(node, issues),
+      ),
+      line: statement.line,
     };
   });
 
-  /*
-   * O nó do extrato procura-se em profundidade, e não pelo caminho exato da
-   * hierarquia.
-   *
-   * Num ficheiro sem tags de fecho a árvore fica mais **plana** do que o normal:
-   * `BANKACCTFROM` e `LEDGERBAL` passam a ser irmãos dos movimentos em vez de
-   * filhos de `STMTRS`, porque o contentor que os continha nunca fechou. Procurar
-   * pelo caminho exato (`root > BANKMSGSRSV1 > STMTTRNRS > STMTRS`) funcionava no
-   * extrato bem formado e devolvia `undefined` no outro — e sem nó de extrato não
-   * havia moeda, conta nem saldo. Uma procura em profundidade encontra-o nas duas
-   * formas.
-   */
-  const statementNode = findAll(root, 'STMTRS')[0] ?? findAll(root, 'CCSTMTRS')[0];
-  const accountFrom = findAll(root, 'BANKACCTFROM')[0] ?? findAll(root, 'CCACCTFROM')[0];
-  const ledger = findAll(root, 'LEDGERBAL')[0] ?? findAll(root, 'AVAILBAL')[0];
-  const transactionList = findAll(root, 'BANKTRANLIST')[0];
+  const first: OfxSingleStatement = statements[0] ?? {
+    currency: null,
+    bankId: null,
+    branchId: null,
+    accountId: null,
+    accountType: null,
+    startDate: null,
+    endDate: null,
+    ledgerBalanceInCents: null,
+    ledgerBalanceRaw: null,
+    ledgerBalanceDate: null,
+    transactions: [],
+    line: root?.line ?? 1,
+  };
 
-  if (statementNode === undefined && transactionNodes.length === 0) {
+  /*
+   * Sem nenhum `STMTRS` a estrutura não foi reconhecida: os movimentos que
+   * existam na árvore (um ficheiro truncado antes do fecho, por exemplo) são
+   * lidos à parte para não se perderem, e diz-se que não há extrato.
+   */
+  let firstTransactions = first.transactions;
+
+  if (statements.length === 0) {
     issues.push({
       line: root?.line ?? 1,
       field: 'STMTRS',
       message: 'Não encontrei um extrato de conta (STMTRS) neste ficheiro.',
     });
+    firstTransactions = transactionNodes.map((node) => readTransaction(node, issues));
   }
 
-  const ledgerBalanceRaw = childValue(ledger, 'BALAMT') ?? null;
-  const ledgerBalanceInCents =
-    ledgerBalanceRaw === null ? null : parseAmountToCents(ledgerBalanceRaw);
+  /*
+   * Um extrato com centenas de movimentos e sem uma única tag de fecho gera um
+   * aviso por movimento ("nunca foi fechado"). Duzentas linhas de aviso são
+   * ruído: ninguém as lê e a pré-visualização deixa de servir. Juntam-se num só,
+   * com a contagem, mantendo o primeiro exemplo para ter uma linha concreta a
+   * que apontar. Fica no fim porque é aqui que já estão todos os avisos.
+   */
+  condenseTruncationIssues(issues);
 
-  if (ledgerBalanceRaw !== null && ledgerBalanceInCents === null) {
+  return {
+    header,
+    ...first,
+    statements,
+    transactions: firstTransactions,
+    issues,
+  };
+}
+
+/** Lê um `<STMTTRN>`, declarando em `issues` o que não conseguiu interpretar. */
+function readTransaction(node: OfxNode, issues: ImportIssue[]): OfxStatementTransaction {
+  const amountRaw = childValue(node, 'TRNAMT') ?? '';
+  const postedAt = childValue(node, 'DTPOSTED') ?? '';
+  const fitId = childValue(node, 'FITID')?.trim() ?? '';
+  const amountInCents = amountRaw === '' ? null : parseAmountToCents(amountRaw);
+  const date = parseOfxDate(postedAt);
+
+  if (amountRaw !== '' && amountInCents === null) {
     issues.push({
-      line: ledger?.line ?? root?.line ?? 1,
-      field: 'BALAMT',
-      message: `Saldo do extrato ilegível: "${ledgerBalanceRaw}".`,
+      line: node.line,
+      field: 'TRNAMT',
+      message: `Valor ilegível num movimento: "${amountRaw}".`,
+    });
+  } else if (amountRaw === '') {
+    issues.push({
+      line: node.line,
+      field: 'TRNAMT',
+      message: 'Movimento sem valor (TRNAMT).',
+    });
+  }
+
+  if (postedAt !== '' && date === null) {
+    issues.push({
+      line: node.line,
+      field: 'DTPOSTED',
+      message: `Data ilegível num movimento: "${postedAt}".`,
+    });
+  } else if (postedAt === '') {
+    issues.push({
+      line: node.line,
+      field: 'DTPOSTED',
+      message: 'Movimento sem data (DTPOSTED).',
+    });
+  }
+
+  if (fitId === '') {
+    issues.push({
+      line: node.line,
+      field: 'FITID',
+      message: 'Movimento sem FITID: não há como o reconhecer numa reimportação.',
     });
   }
 
   return {
-    header,
-    currency: childValue(statementNode, 'CURDEF') ?? null,
-    bankId: childValue(accountFrom, 'BANKID') ?? null,
-    branchId: childValue(accountFrom, 'BRANCHID') ?? null,
-    accountId: childValue(accountFrom, 'ACCTID') ?? null,
-    accountType: childValue(accountFrom, 'ACCTTYPE') ?? null,
-    startDate: parseOfxDate(childValue(transactionList, 'DTSTART')),
-    endDate: parseOfxDate(childValue(transactionList, 'DTEND')),
-    ledgerBalanceInCents,
-    ledgerBalanceRaw,
-    ledgerBalanceDate: parseOfxDate(childValue(ledger, 'DTASOF')),
-    transactions,
-    issues,
+    type: childValue(node, 'TRNTYPE') ?? '',
+    date,
+    postedAt,
+    amountInCents,
+    amountRaw,
+    fitId: fitId === '' ? null : fitId,
+    memo: childValue(node, 'MEMO') ?? null,
+    name: childValue(node, 'NAME') ?? null,
+    checkNumber: childValue(node, 'CHECKNUM') ?? null,
+    refNumber: childValue(node, 'REFNUM') ?? null,
+    line: node.line,
   };
 }
 

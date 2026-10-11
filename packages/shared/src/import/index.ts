@@ -13,6 +13,8 @@
  */
 export * from './issue';
 export * from './cents';
+export * from './digest';
 export * from './ofx';
 export * from './csv';
 export * from './preview';
+export * from './revert';

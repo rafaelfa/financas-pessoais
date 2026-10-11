@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeFrequency, dueOccurrences, nextOccurrence } from '../recurrence';
+import {
+  describeFrequency,
+  dueOccurrences,
+  nextOccurrence,
+  seriesDayOfMonth,
+  toRecurrenceFrequency,
+} from '../recurrence';
 
 /**
  * Recorrências.
@@ -31,14 +37,14 @@ describe('próxima ocorrência', () => {
     expect(nextOccurrence({ from: '2026-01-10', frequency: 'quarterly' })).toBe('2026-04-10');
   });
 
-  it('avança um ano na frequência anual', () => {
-    /*
-     * A frequência anual existe no tipo do motor mesmo sem coluna na base de
-     * dados, e é essa a pendência: quatro sítios convertem-na em mensal. Aqui
-     * garante-se que o motor, pelo menos, avança 12 meses.
-     */
-    expect(nextOccurrence({ from: '2026-03-15', frequency: 'yearly' })).toBe('2027-03-15');
-  });
+  /*
+   * Havia aqui o teste «avança um ano na frequência anual». Foi **removido** com a
+   * frequência: `nextOccurrence` já não aceita `yearly` (o tipo deixou de o
+   * admitir), por isso não havia regra nenhuma a proteger — o teste verificava
+   * apenas a aritmética de um valor que já não existe. O que protege a decisão é
+   * o teste de `toRecurrenceFrequency`, mais abaixo: um `YEARLY` gravado na base
+   * falha alto em vez de ser tratado como mensal.
+   */
 
   it('cai no último dia quando o mês é mais curto', () => {
     // 31 de janeiro + 1 mês: fevereiro de 2026 não tem 31 dias.
@@ -216,5 +222,64 @@ describe('frequência por extenso', () => {
       'todos os meses, dia 5',
     );
     expect(describeFrequency({ frequency: 'quarterly', interval: 2 })).toBe('a cada 2 trimestres');
+  });
+});
+
+/**
+ * Conversão da frequência gravada.
+ *
+ * Quatro sítios (o gerador, a lista, a previsão do painel e o esforço do objetivo)
+ * liam o enum da base e tinham cada um a sua cauda `else`. Um `YEARLY` caía lá e
+ * virava **mensal em silêncio** — o gerador criava doze ocorrências por ano. Com
+ * um conversor só, o valor desconhecido falha alto em vez de ser adivinhado.
+ */
+describe('conversão da frequência gravada', () => {
+  it('traduz o enum da base para o tipo do motor', () => {
+    expect(toRecurrenceFrequency('WEEKLY')).toBe('weekly');
+    expect(toRecurrenceFrequency('MONTHLY')).toBe('monthly');
+    expect(toRecurrenceFrequency('QUARTERLY')).toBe('quarterly');
+  });
+
+  it('recusa uma frequência que o motor não sabe cumprir, em vez de a assumir mensal', () => {
+    expect(() => toRecurrenceFrequency('YEARLY')).toThrow(RangeError);
+    expect(() => toRecurrenceFrequency('FORTNIGHTLY')).toThrow(RangeError);
+  });
+});
+
+/**
+ * Dia gravado na criação da série.
+ *
+ * É esta a memória que faltava: sem `dayOfMonth`, o motor reconstrói o dia alvo a
+ * partir da última data gerada e, depois de passar por fevereiro, o 31 perde-se
+ * para sempre (31/01 → 28/02 → 28/03). O dia tem de ficar registado na criação.
+ */
+describe('dia do mês a gravar numa série', () => {
+  it('guarda o dia indicado pelo utilizador', () => {
+    expect(
+      seriesDayOfMonth({ frequency: 'monthly', startDate: '2026-01-05', dayOfMonth: 20 }),
+    ).toBe(20);
+  });
+
+  it('sem dia indicado, grava o dia da data de início', () => {
+    expect(seriesDayOfMonth({ frequency: 'monthly', startDate: '2026-01-31' })).toBe(31);
+    expect(seriesDayOfMonth({ frequency: 'quarterly', startDate: '2026-11-04' })).toBe(4);
+  });
+
+  it('numa série semanal o dia do mês não faz parte da regra', () => {
+    expect(seriesDayOfMonth({ frequency: 'weekly', startDate: '2026-01-31' })).toBeNull();
+  });
+
+  it('o dia gravado recupera o 31 mesmo com a próxima data já em fevereiro', () => {
+    // O caso que o motor sozinho não resolve: a `nextRunDate` já está em 28/02.
+    // Com o dia gravado, a ocorrência seguinte volta ao 31 — era exatamente isto
+    // que se perdia quando a coluna ficava nula.
+    const result = dueOccurrences({
+      nextRunDate: '2026-02-28',
+      frequency: 'monthly',
+      dayOfMonth: seriesDayOfMonth({ frequency: 'monthly', startDate: '2026-01-31' }) ?? undefined,
+      today: '2026-05-31',
+    });
+
+    expect(result.dates).toEqual(['2026-02-28', '2026-03-31', '2026-04-30', '2026-05-31']);
   });
 });

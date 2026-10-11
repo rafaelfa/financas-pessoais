@@ -3,13 +3,28 @@
 import { prisma } from '@repo/db/client';
 import {
   type ImportFormat,
-  centsSchema,
-  confirmImportSchema,
+  descriptionDigest,
+  planRevert,
   previewImportSchema,
+  toIsoDate,
+  confirmImportSchema,
+  type RevertCandidateRow,
+  type RevertExpectedRow,
 } from '@repo/shared';
+import { runConfirm, type ImportedTransactionRef, type SkippedImportRow } from './import-confirm';
+import { revertImportSchema } from '@repo/shared/schemas/domain';
 import { revalidatePath } from 'next/cache';
 
-import { isUniqueViolation } from './errors';
+/**
+ * Reexporta os tipos do recibo da importação.
+ *
+ * Vivem em `import-confirm.ts` (o núcleo testável), mas quem os consome — o ecrã
+ * que guarda o recibo e oferece desfazer — importa-os daqui, pela mesma porta das
+ * ações. Reexportar evita que a interface tenha de conhecer a divisão interna
+ * entre o núcleo e a ação.
+ */
+export type { ImportedTransactionRef, SkippedImportRow } from './import-confirm';
+
 import {
   buildImportPreview,
   resolveFormat,
@@ -110,15 +125,59 @@ export async function previewImport(input: unknown): Promise<ActionResult<Import
 export interface ConfirmImportResult {
   readonly created: number;
   readonly skipped: number;
+  /**
+   * O que a importação escreveu, linha a linha.
+   *
+   * É o recibo que a reversão precisa: sem ele não há como distinguir um
+   * movimento intacto de um que foi editado depois da importação — e é essa
+   * distinção que decide o que pode ser apagado.
+   */
+  readonly imported: readonly ImportedTransactionRef[];
+  /**
+   * Linhas que já existiam na conta (o mesmo identificador). Contadas à parte de
+   * `skipped`, que também inclui as recusadas: `created + alreadyExists +
+   * skippedRows.length === rows.length`.
+   */
+  readonly alreadyExists: number;
+  /** Linhas recusadas por serem inválidas, cada uma com o motivo. */
+  readonly skippedRows: readonly SkippedImportRow[];
 }
 
 /**
+ * Impressão digital de uma descrição — a versão partilhada.
+ *
+ * O recibo da importação é guardado no `localStorage` do browser, e descrições de
+ * extratos são texto financeiro legível num sítio que não é nosso; a comparação
+ * da reversão continua exata porque o servidor calcula a impressão digital do que
+ * está na base e compara as duas. Vive em `@repo/shared` (`import/digest.ts`) para
+ * não haver duas implementações de `sha256` que possam divergir — e porque a
+ * interface também precisa de a calcular.
+ */
+/**
  * Grava as linhas escolhidas.
  *
- * Todas numa transação: uma importação a meio deixaria o saldo a refletir metade
- * de um extrato, sem forma de saber onde parou. O `fitId` é escrito em cada
- * lançamento, para que reimportar o mesmo ficheiro não duplique nada — a
- * restrição única da base de dados garante-o mesmo com dois pedidos simultâneos.
+ * -----------------------------------------------------------------------------
+ * PORQUE SE LÊ ANTES DE ESCREVER (I1 e I2 da verificação T7.5)
+ * -----------------------------------------------------------------------------
+ * Em PostgreSQL, um `INSERT` que viola a restrição única **aborta a transação**.
+ * A versão anterior apanhava esse erro por linha com um `continue`, e o resultado
+ * era silenciosamente errado das duas maneiras possíveis: com o duplicado na
+ * última linha, o COMMIT de uma transação abortada é um ROLLBACK e a ação dizia
+ * `created: 1` sem ter gravado nada; com o duplicado na primeira, tudo o resto
+ * falhava e perdiam-se as linhas novas válidas.
+ *
+ * A correção não é tratar o erro melhor: é não o provocar. Esta função lê o que
+ * já existe **dentro da mesma transação**, filtra as linhas que já lá estão e só
+ * depois insere. O `P2002` deixa de ser caminho normal.
+ *
+ * O segundo lado da mesma falha (I2) era a corrida entre dois pedidos: um CSV sem
+ * `Id` não tinha nada que a restrição única pudesse proteger, porque o
+ * identificador só era calculado na pré-visualização. Agora toda a linha leva um
+ * identificador derivado (`withImportIdentifiers`), gravado em `fitId` — quem
+ * decide um empate passa a ser a base de dados, e o segundo pedido insere zero.
+ *
+ * Devolve também os identificadores criados e o conteúdo escrito em cada um, que
+ * é o que permite desfazer a importação sem adivinhar (ver `revertImport`).
  */
 export async function confirmImport(input: unknown): Promise<ActionResult<ConfirmImportResult>> {
   const user = await requireUser();
@@ -142,6 +201,11 @@ export async function confirmImport(input: unknown): Promise<ActionResult<Confir
    * As categorias vêm do cliente: é preciso confirmar que são do utilizador, e
    * só as de gasto/ganho — uma categoria interna (transferência, fatura de
    * cartão) não se aplica a um movimento de extrato.
+   *
+   * Uma categoria que não seja do utilizador faz a linha ser **recusada**, e não
+   * gravada sem categoria: o I9 da verificação mostrou que o `categoryId: null`
+   * silencioso deixava o movimento entrar classificado de forma diferente da que
+   * o utilizador escolheu.
    */
   const requestedCategoryIds = [
     ...new Set(
@@ -162,76 +226,190 @@ export async function confirmImport(input: unknown): Promise<ActionResult<Confir
           ).map((category) => category.id),
         );
 
-  let created = 0;
-  let skipped = 0;
+  /*
+   * O núcleo está em `import-confirm.ts`: recebe o cliente da transação, valida
+   * linha a linha, lê o que já existe **dentro** da transação e só depois insere.
+   * Vive fora daqui para poder ser testado contra um duplo que imita o
+   * PostgreSQL — sem isso, o defeito I1 (um duplicado a abortar a transação e a
+   * ação a dizer que gravou) não era reproduzível em teste.
+   */
+  try {
+    const outcome = await prisma.$transaction((tx) =>
+      runConfirm({
+        tx,
+        userId: user.id,
+        accountId: account.id,
+        rows,
+        ownedCategories,
+      }),
+    );
+
+    revalidatePath('/transacoes');
+    revalidatePath('/contas');
+    revalidatePath('/importar');
+
+    return ok({
+      created: outcome.created,
+      skipped: outcome.alreadyExists + outcome.skippedRows.length,
+      imported: outcome.imported,
+      alreadyExists: outcome.alreadyExists,
+      skippedRows: outcome.skippedRows,
+    });
+  } catch (error) {
+    /*
+     * Chegar aqui significa que a leitura dentro da transação não viu um
+     * duplicado que a base de dados recusou — a janela existe, é pequena (outro
+     * pedido a escrever exatamente o mesmo, em simultâneo). Como a transação
+     * aborta, **nada** foi gravado: a ação diz isso, em vez de devolver contagens
+     * de um trabalho que não aconteceu.
+     */
+    console.error('[importação] falhou a gravar:', error);
+
+    return fail(
+      'Não consegui gravar a importação e nada foi criado. Tenta outra vez — se acontecer ' +
+        'outra vez, confirma se o extrato já tinha sido importado.',
+    );
+  }
+}
+
+export interface RevertImportResult {
+  readonly deleted: number;
+  /** Movimentos que ficaram de pé, cada um com o motivo. */
+  readonly skipped: readonly { readonly transactionId: string; readonly reason: string }[];
+  /** Movimentos que já não existem: a importação já tinha sido desfeita. */
+  readonly missing: readonly string[];
+}
+
+/**
+ * Desfaz uma importação confirmada.
+ *
+ * **Porque por identificadores e não pela conta.** Apagar tudo o que é
+ * `origin: 'IMPORTED'` de uma conta seria a versão de dano máximo: levaria
+ * importações antigas que ninguém pediu para desfazer. Esta ação recebe os
+ * identificadores que `confirmImport` devolveu e apaga **só** esses, e só os que
+ * continuarem exatamente iguais ao que a importação escreveu.
+ *
+ * A decisão de apagar é da função pura `planRevert` (`@repo/shared`), testada sem
+ * base de dados: movimentos de outra importação, de outra conta ou de outro
+ * utilizador nunca entram na lista, e um movimento alterado depois (valor, data,
+ * descrição, categoria, estado, liquidação) ou ligado a uma fatura, objetivo,
+ * transferência ou recorrência **sobrevive com o motivo escrito**. Recusar a mais
+ * é sempre preferível a apagar a mais.
+ */
+export async function revertImport(input: unknown): Promise<ActionResult<RevertImportResult>> {
+  const user = await requireUser();
+  const parsed = revertImportSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fromZodError(parsed.error);
+  }
+
+  const { accountId, expected } = parsed.data;
+
+  /*
+   * Normaliza os opcionais do schema (`null | undefined`) para `null`: a função
+   * pura compara valores exatos, e `undefined` e `null` descrevem o mesmo «não
+   * há nada aqui» — mas não são iguais entre si.
+   *
+   * A descrição já chega como **impressão digital** do recibo — o texto nunca
+   * esteve no `localStorage`, que não é nosso (ver `digest.ts`).
+   */
+  const expectedRows: RevertExpectedRow[] = expected.map((row) => ({
+    transactionId: row.transactionId,
+    fitId: row.fitId ?? null,
+    date: row.date,
+    amountInCents: row.amountInCents,
+    descriptionDigest: row.descriptionDigest,
+    categoryId: row.categoryId ?? null,
+  }));
+  const account = await prisma.financialAccount.findFirst({
+    where: { id: accountId, userId: user.id },
+    select: { id: true },
+  });
+
+  if (account === null) {
+    return fail('Conta não encontrada.', { accountId: ['Escolhe uma conta tua.'] });
+  }
+
+  const rows = await prisma.transaction.findMany({
+    where: { id: { in: expectedRows.map((row) => row.transactionId) }, userId: user.id },
+    select: {
+      id: true,
+      userId: true,
+      financialAccountId: true,
+      origin: true,
+      fitId: true,
+      date: true,
+      amountInCents: true,
+      description: true,
+      categoryId: true,
+      status: true,
+      settled: true,
+      invoiceId: true,
+      goalId: true,
+      transferGroupId: true,
+      recurrenceId: true,
+      invoicePayment: { select: { id: true } },
+    },
+  });
+
+  const candidates: RevertCandidateRow[] = await Promise.all(
+    rows.map(async (row) => ({
+      id: row.id,
+      userId: row.userId,
+      accountId: row.financialAccountId,
+      origin: row.origin,
+      fitId: row.fitId,
+      date: toIsoDate(row.date),
+      amountInCents: row.amountInCents,
+      descriptionDigest: descriptionDigest(row.description),
+      categoryId: row.categoryId,
+      status: row.status,
+      settled: row.settled,
+      invoiceId: row.invoiceId,
+      goalId: row.goalId,
+      transferGroupId: row.transferGroupId,
+      recurrenceId: row.recurrenceId,
+      referencedByInvoicePayment: row.invoicePayment !== null,
+    })),
+  );
+
+  const plan = planRevert({
+    expected: expectedRows,
+    candidates,
+    accountId: account.id,
+    userId: user.id,
+  });
+
+  if (plan.toDelete.length === 0) {
+    // Nada apagado: a interface diz o motivo de cada linha, ou que já não existem.
+    return ok({ deleted: 0, skipped: plan.skipped, missing: plan.missing });
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
-      for (const row of rows) {
-        const amountCheck = centsSchema.safeParse(row.amountInCents);
-
-        if (row.date === null || !amountCheck.success || amountCheck.data === 0) {
-          skipped += 1;
-          continue;
-        }
-
-        const amountInCents = amountCheck.data;
-        const date = new Date(`${row.date}T00:00:00.000Z`);
-
-        try {
-          await tx.transaction.create({
-            data: {
-              userId: user.id,
-              // O sinal decide o tipo: uma saída é um gasto, uma entrada é um
-              // ganho. O extrato não traz mais informação do que isto, e inventar
-              // um tipo a partir do texto seria adivinhar.
-              kind: amountInCents < 0 ? 'EXPENSE' : 'INCOME',
-              status: 'CONFIRMED',
-              amountInCents,
-              date,
-              description: row.description === '' ? null : row.description,
-              financialAccountId: account.id,
-              categoryId:
-                row.categoryId !== null &&
-                row.categoryId !== undefined &&
-                ownedCategories.has(row.categoryId)
-                  ? row.categoryId
-                  : null,
-              // Um movimento de extrato é algo que já aconteceu no banco.
-              settled: true,
-              settledOn: date,
-              paymentMethod: 'DEBIT',
-              paymentCondition: 'SINGLE',
-              fitId: row.fitId ?? null,
-              origin: 'IMPORTED',
-            },
-            select: { id: true },
-          });
-
-          created += 1;
-        } catch (error) {
-          /*
-           * Violação de `(financialAccountId, fitId)`: a linha já existe. Não é
-           * um erro para mostrar — é uma linha a menos a criar, e diz-se.
-           */
-          if (isUniqueViolation(error)) {
-            skipped += 1;
-            continue;
-          }
-
-          throw error;
-        }
-      }
+      /*
+       * A condição repete a conta e o utilizador: a lista já vem decidida pela
+       * função pura, mas um `deleteMany` com o âmbito errado é o pior sítio para
+       * confiar numa verificação feita noutro lado.
+       */
+      await tx.transaction.deleteMany({
+        where: {
+          id: { in: [...plan.toDelete] },
+          userId: user.id,
+          financialAccountId: account.id,
+        },
+      });
     });
   } catch (error) {
-    console.error('[importação] falhou a gravar:', error);
+    console.error('[importação] falhou a reversão:', error);
 
-    return fail('Não consegui gravar a importação. Tenta outra vez.');
+    return fail('Não consegui desfazer a importação. Nada foi apagado.');
   }
 
   revalidatePath('/transacoes');
   revalidatePath('/contas');
   revalidatePath('/importar');
 
-  return ok({ created, skipped });
+  return ok({ deleted: plan.toDelete.length, skipped: plan.skipped, missing: plan.missing });
 }

@@ -98,6 +98,14 @@ export function buildImportPreview(args: {
   return { format: args.format, ...base };
 }
 
+/** Aviso comum quando não há regras: sem elas, nada é sugerido. */
+function noRulesWarning(): string {
+  return (
+    'Não tens regras de categorização ativas: os movimentos entram sem sugestão de categoria e ' +
+    'ficam por classificar no extrato.'
+  );
+}
+
 function buildFromOfx(args: {
   readonly content: string;
   readonly account: PreviewAccount;
@@ -106,14 +114,7 @@ function buildFromOfx(args: {
   readonly categoryNames: ReadonlyMap<string, string>;
 }) {
   const statement = parseOfxDocument(args.content);
-  const warnings: string[] = [];
-
-  if (args.rules.length === 0) {
-    warnings.push(
-      'Não tens regras de categorização ativas: os movimentos entram sem sugestão de categoria e ' +
-        'ficam por classificar no extrato.',
-    );
-  }
+  const warnings: string[] = args.rules.length === 0 ? [noRulesWarning()] : [];
 
   return buildPreview({
     account: args.account,
@@ -127,6 +128,9 @@ function buildFromOfx(args: {
     })),
     existing: args.existing,
     rules: { rules: args.rules, categoryNames: args.categoryNames },
+    // O saldo **declarado** é o do primeiro extrato, o mesmo de onde vêm os
+    // movimentos: misturar o saldo de uma conta com os movimentos de outra era o
+    // defeito I3 da verificação.
     statedEndBalanceInCents: statement.ledgerBalanceInCents,
     warnings,
     issues: statement.issues,
@@ -141,14 +145,7 @@ function buildFromCsv(args: {
   readonly categoryNames: ReadonlyMap<string, string>;
 }) {
   const statement = parseCsvDocument(args.content);
-  const warnings: string[] = [];
-
-  if (args.rules.length === 0) {
-    warnings.push(
-      'Não tens regras de categorização ativas: os movimentos entram sem sugestão de categoria e ' +
-        'ficam por classificar no extrato.',
-    );
-  }
+  const warnings: string[] = args.rules.length === 0 ? [noRulesWarning()] : [];
 
   if (statement.separator === ',') {
     warnings.push(

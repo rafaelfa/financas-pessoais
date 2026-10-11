@@ -89,17 +89,16 @@ function capitalize(value: string): string {
 }
 
 /**
- * Frequência do formulário a partir da do modelo.
+ * Frequência inicial do formulário.
  *
- * O modelo de dados contempla `yearly`, mas os formulários desta fase só
- * oferecem semanal, mensal e trimestral (o mesmo conjunto que o schema Zod
- * aceita). Uma série anual antiga aparece como mensal em vez de derrubar o
- * formulário.
+ * O formulário oferece exatamente o mesmo conjunto que o schema Zod aceita, por
+ * isso a frequência de uma série existente entra **tal e qual**; só uma série nova
+ * precisa de uma escolha por omissão. Aqui havia uma coerção (`yearly → monthly`)
+ * que, ao gravar a série, convertia a linha da base de anual em mensal — uma
+ * alteração silenciosa de dados causada por abrir o formulário.
  */
-function supportedFrequency(
-  value: RecurrenceFrequency | undefined,
-): 'weekly' | 'monthly' | 'quarterly' {
-  return value === 'weekly' || value === 'quarterly' ? value : 'monthly';
+function supportedFrequency(value: RecurrenceFrequency | undefined): RecurrenceFrequency {
+  return value ?? 'monthly';
 }
 
 export function RecurrenceDialog({

@@ -64,7 +64,41 @@ export const confirmImportSchema = z.object({
   rows: z
     .array(importRowInputSchema)
     .min(1, 'Não escolheste nenhuma linha para importar.')
-    .max(MAX_IMPORT_ROWS),
+    .max(MAX_IMPORT_ROWS, `Uma importação não pode passar de ${MAX_IMPORT_ROWS} linhas.`),
+});
+
+/**
+ * Pedido de reversão de uma importação confirmada.
+ *
+ * Leva os identificadores que a importação criou **e o que ela escreveu** em cada
+ * um: a reversão só apaga o movimento que continua exatamente igual ao que foi
+ * gravado. Não existe uma variante «apagar tudo o que veio de importações desta
+ * conta» — seria a versão de dano máximo, e apagaria importações antigas que
+ * ninguém pediu para desfazer.
+ *
+ * A descrição chega como **impressão digital** (`sha256` em hexadecimal) e não
+ * como texto: este pedido nasce de um recibo guardado no browser, e o browser não
+ * deve ter lá descrições de extratos. O servidor calcula a impressão digital do
+ * valor que está na base e compara as duas.
+ */
+export const revertImportSchema = z.object({
+  accountId: entityIdSchema,
+  expected: z
+    .array(
+      z.object({
+        transactionId: entityIdSchema,
+        fitId: z.string().trim().max(80).nullish(),
+        date: calendarDateSchema,
+        amountInCents: centsSchema,
+        descriptionDigest: z
+          .string()
+          .trim()
+          .regex(/^[0-9a-f]{64}$/, 'Impressão digital da descrição inválida.'),
+        categoryId: entityIdSchema.nullish(),
+      }),
+    )
+    .min(1, 'Não há nada para desfazer.')
+    .max(MAX_IMPORT_ROWS, `Uma reversão não pode passar de ${MAX_IMPORT_ROWS} movimentos.`),
 });
 
 /**
@@ -94,6 +128,7 @@ export const exportTransactionsSchema = z
 export type ConfirmImportInput = z.infer<typeof confirmImportSchema>;
 export type PreviewImportInput = z.infer<typeof previewImportSchema>;
 export type ExportTransactionsInput = z.infer<typeof exportTransactionsSchema>;
+export type RevertImportInput = z.infer<typeof revertImportSchema>;
 
 /*
  * `ImportFormat`, `ImportRowStatus` e `ImportRowInput` **não** são reexportados

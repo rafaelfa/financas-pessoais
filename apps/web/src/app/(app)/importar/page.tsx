@@ -1,74 +1,39 @@
-import { Download, FileUp } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { EmptyState } from '@/components/empty-state';
+import { ImportExportPanel } from '@/components/import-export-panel';
+import { ImportWorkflow } from '@/components/import-workflow';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { listAccounts } from '@/server/accounts';
+import { listCategories } from '@/server/categories';
 
 export const metadata: Metadata = { title: 'Importar' };
 
-export default function ImportarPage() {
+/**
+ * Importar e exportar.
+ *
+ * O ecrã é o mesmo para as duas direções porque respondem à mesma pergunta —
+ * “como é que os meus dados entram e saem daqui?” — mas fazem coisas muito
+ * diferentes: a importação é a operação mais perigosa da aplicação e por isso
+ * passa por uma pré-visualização que não grava nada; a exportação é a porta de
+ * saída e não tem risco nenhum.
+ *
+ * As categorias são carregadas para alimentar a sugestão editável de cada linha
+ * (o servidor volta a validar que são do utilizador e não internas).
+ */
+export default async function ImportarPage() {
+  const [accounts, categories] = await Promise.all([listAccounts(), listCategories()]);
+
   return (
     <>
       <PageHeader
         title="Importar e exportar"
-        description="Traz os extratos que já tens e leva os teus dados quando quiseres. Nada fica preso aqui."
+        description="Traz os extratos que já tens e leva os teus dados quando quiseres. A importação mostra tudo antes de gravar, e nada fica preso aqui."
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Importar um extrato</CardTitle>
-            <CardDescription>
-              Ficheiros OFX (1.x ou 2.x) e CSV do teu banco. Antes de gravar nada, mostramos linha a
-              linha o que vai entrar e o que já existe.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={FileUp}
-              title="Arrasta o ficheiro para aqui"
-              description="A leitura de OFX 1.x em formato SGML — o que os bancos portugueses costumam exportar — já foi validada com extratos de teste. A deduplicação usa o identificador único de cada movimento."
-              action={
-                <Button size="sm" variant="outline">
-                  Escolher ficheiro
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
+      <div className="space-y-8">
+        <ImportWorkflow accounts={accounts} categories={categories} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Exportar</CardTitle>
-            <CardDescription>
-              Qualquer vista filtrada pode sair em CSV, Excel ou PDF. Há também uma cópia completa
-              em JSON, para restauro.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" disabled>
-              <Download className="size-4" />
-              CSV
-            </Button>
-            <Button size="sm" variant="outline" disabled>
-              <Download className="size-4" />
-              Excel
-            </Button>
-            <Button size="sm" variant="outline" disabled>
-              <Download className="size-4" />
-              PDF
-            </Button>
-            <Button size="sm" variant="outline" disabled>
-              <Download className="size-4" />
-              Cópia de segurança
-            </Button>
-            <p className="w-full text-xs text-muted-foreground">
-              A exportação fica disponível quando houver dados para exportar.
-            </p>
-          </CardContent>
-        </Card>
+        <ImportExportPanel accounts={accounts} />
       </div>
     </>
   );

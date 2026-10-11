@@ -5,8 +5,10 @@ import {
   createRecurrenceSchema,
   deleteByIdSchema,
   dueOccurrences,
+  seriesDayOfMonth,
   setActiveSchema,
   toIsoDate,
+  toRecurrenceFrequency,
   updateRecurrenceSchema,
 } from '@repo/shared';
 import { revalidatePath } from 'next/cache';
@@ -93,7 +95,19 @@ export async function createRecurrence(input: unknown): Promise<ActionResult<{ i
         description: value.description ?? null,
         frequency: FREQUENCY_BY_INPUT[value.frequency],
         interval: value.interval,
-        dayOfMonth: value.dayOfMonth ?? null,
+        /*
+         * O dia do mês fica **gravado** na criação, a partir do dia da data de
+         * início quando o utilizador não o indica. É a única memória do dia
+         * contratado: sem ela, o motor reconstrói o dia alvo a partir da última
+         * data gerada e, depois de a série passar por fevereiro, o 31 perde-se
+         * para sempre (31/01 → 28/02 → 28/03). Numa série semanal o dia não faz
+         * parte da regra e fica nulo.
+         */
+        dayOfMonth: seriesDayOfMonth({
+          frequency: value.frequency,
+          startDate: value.startDate,
+          dayOfMonth: value.dayOfMonth,
+        }),
         startDate,
         endDate: value.endDate == null ? null : asDate(value.endDate),
         // A primeira ocorrência a gerar é a data de início: quem cria uma série
@@ -128,7 +142,7 @@ export async function updateRecurrence(input: unknown): Promise<ActionResult<{ i
   const value = parsed.data;
   const existing = await prisma.recurrence.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true, startDate: true, endDate: true },
+    select: { id: true, startDate: true, endDate: true, frequency: true, dayOfMonth: true },
   });
 
   if (!existing) {
@@ -159,6 +173,22 @@ export async function updateRecurrence(input: unknown): Promise<ActionResult<{ i
     });
   }
 
+  /*
+   * Uma série que não é semanal mantém sempre um dia gravado.
+   *
+   * A edição é parcial: quando o cliente **omite** o campo, mantém-se o que está
+   * na base; quando envia `null` (o formulário limpa-o ao mudar de natureza), o
+   * dia é reconstruído a partir da data de início em vez de desaparecer. Sem
+   * isto, gravar uma edição voltava a deixar a série dependente do dia da última
+   * data gerada — que é precisamente a informação que se perde.
+   */
+  const effectiveFrequency = value.frequency ?? toRecurrenceFrequency(existing.frequency);
+  const dayOfMonth = seriesDayOfMonth({
+    frequency: effectiveFrequency,
+    startDate,
+    dayOfMonth: value.dayOfMonth === undefined ? existing.dayOfMonth : value.dayOfMonth,
+  });
+
   try {
     await prisma.recurrence.update({
       where: { id: value.id },
@@ -184,7 +214,8 @@ export async function updateRecurrence(input: unknown): Promise<ActionResult<{ i
           ? { frequency: FREQUENCY_BY_INPUT[value.frequency] }
           : {}),
         ...(value.interval !== undefined ? { interval: value.interval } : {}),
-        ...(value.dayOfMonth !== undefined ? { dayOfMonth: value.dayOfMonth } : {}),
+        // Sempre escrito: o dia da série nunca volta a ficar nulo por uma edição.
+        dayOfMonth,
         ...(value.startDate !== undefined ? { startDate: asDate(value.startDate) } : {}),
         ...(value.endDate !== undefined
           ? { endDate: value.endDate == null ? null : asDate(value.endDate) }
@@ -288,12 +319,12 @@ export async function generateDueRecurrences(): Promise<
   let truncated = false;
 
   for (const recurrence of recurrences) {
-    const frequency =
-      recurrence.frequency === 'WEEKLY'
-        ? 'weekly'
-        : recurrence.frequency === 'QUARTERLY'
-          ? 'quarterly'
-          : 'monthly';
+    /*
+     * A conversão vive no motor e falha alto: um `YEARLY` gravado na base (o enum
+     * admite-o) deixava de cair numa cauda `else` que o tornava mensal. Era aqui
+     * o pior dos quatro sítios — o gerador criava **doze ocorrências por ano**.
+     */
+    const frequency = toRecurrenceFrequency(recurrence.frequency);
 
     const result = dueOccurrences({
       nextRunDate: toIsoDate(recurrence.nextRunDate),

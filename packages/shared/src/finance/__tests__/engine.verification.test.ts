@@ -1721,11 +1721,17 @@ describe('6. objetivos: casos limite', () => {
     expect(periodsBetween('2026-10-10', '2026-10-18', 'weekly')).toBe(2);
   });
 
-  it('periodsBetween arredonda para cima em trimestres e anos', () => {
+  it('periodsBetween arredonda para cima em trimestres', () => {
     expect(periodsBetween('2026-10-01', '2026-10-15', 'quarterly')).toBe(1);
     expect(periodsBetween('2026-10-01', '2027-04-01', 'quarterly')).toBe(2);
-    expect(periodsBetween('2026-10-01', '2027-01-01', 'yearly')).toBe(1);
-    expect(periodsBetween('2026-10-01', '2028-10-01', 'yearly')).toBe(2);
+    /*
+     * T7.4 — as duas asserções de `yearly` que aqui estavam
+     * (`'2026-10-01' → '2027-01-01'` = 1 e `→ '2028-10-01'` = 2) foram removidas
+     * com a frequência anual: verificavam apenas um valor que deixou de existir no
+     * tipo, e o próprio `it` chamava-se «…em trimestres e anos». A regra que lhes
+     * dava sentido — arredondar o número de períodos para cima — continua coberta
+     * pelas duas asserções de trimestres, que ficaram intactas.
+     */
   });
 
   it('goalOverview soma metas e acumulados, incluindo os negativos', () => {
