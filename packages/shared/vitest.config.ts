@@ -15,6 +15,15 @@ import { defineConfig } from 'vitest/config';
  * camada de servidor — hoje o `import-confirm.ts`, que tem de ser testado com um
  * duplo do PostgreSQL e não pode ser importado por caminho relativo sem partir o
  * `rootDir` deste pacote (`TS6059`). Sem esta linha, o teste não corre em CI.
+ *
+ * **O fuso é fixado em `Europe/Lisbon`.** A aplicação formata datas com `Intl`
+ * em pt-PT, e um formatador sem `timeZone` explícito usa o fuso da máquina: o
+ * mesmo instante dava `13:00` no portátil de desenvolvimento e `12:00` no
+ * `ubuntu-latest` do GitHub Actions, que corre em UTC. Foi a primeira coisa que
+ * a integração contínua apanhou, e a correção certa não é afrouxar o teste — é
+ * fixar o ambiente, para que o resultado seja o mesmo em qualquer máquina e o
+ * produto seja determinístico. O fuso é o de `Europe/Lisbon` porque é o que a
+ * aplicação usa (§3.7 do plano).
  */
 export default defineConfig({
   resolve: {
@@ -26,5 +35,8 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     passWithNoTests: false,
+    env: {
+      TZ: 'Europe/Lisbon',
+    },
   },
 });
