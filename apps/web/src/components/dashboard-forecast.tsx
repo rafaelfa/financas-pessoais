@@ -64,9 +64,12 @@ const MAX_LISTED_CHANGES = 10;
 export function DashboardForecast({
   forecast,
   className,
+  description,
 }: {
   readonly forecast: DashboardForecastData;
   readonly className?: string;
+  /** Substitui a descrição da moldura quando há algo a explicar (ex.: âmbito). */
+  readonly description?: string;
 }) {
   const start = forecast.days[0] ?? null;
   const last = forecast.days[forecast.days.length - 1] ?? null;
@@ -99,9 +102,10 @@ export function DashboardForecast({
     <ChartCard
       title="Previsão de saldo"
       description={
-        last === null
+        description ??
+        (last === null
           ? undefined
-          : `De hoje até ${formatDayLong(last.date)}: o saldo previsto conta com as recorrências ativas e as faturas por pagar nas respetivas datas de vencimento.`
+          : `De hoje até ${formatDayLong(last.date)}: o saldo previsto conta com as recorrências ativas e as faturas por pagar nas respetivas datas de vencimento.`)
       }
       isEmpty={!hasAnythingToForecast}
       emptyMessage="Ainda não há saldo nem movimentos agendados para prever. Assim que houver uma conta com movimentos, uma recorrência ativa ou uma fatura por pagar, a previsão aparece aqui."

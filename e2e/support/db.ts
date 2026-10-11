@@ -123,6 +123,106 @@ export async function lerAprovisionamento(email: string): Promise<Aprovisionamen
   });
 }
 
+/**
+ * Apaga um utilizador de teste pelo e-mail exato.
+ *
+ * É o mesmo caminho que `apagarUtilizadoresDeTeste` faz em bloco e que o
+ * `globalTeardown` repete no fim: serve para um spec que cria um utilizador
+ * **próprio** o poder largar no `afterAll`, sem esperar pelo fim da corrida.
+ */
+export async function apagarUtilizador(email: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query('DELETE FROM "user" WHERE email = $1', [email]);
+
+    return result.rowCount ?? 0;
+  });
+}
+
+/**
+ * O `id` de um lançamento do utilizador, pela descrição.
+ *
+ * As descrições dos specs levam um sufixo da corrida, para não colidirem com os
+ * movimentos que outros specs deixaram no mesmo utilizador.
+ */
+export async function idDoLancamento(
+  email: string,
+  descricao: string,
+): Promise<string | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT t.id
+         FROM "transaction" t
+         JOIN financial_account a ON a.id = t."financialAccountId"
+         JOIN "user" u ON u.id = a."userId"
+        WHERE u.email = $1 AND t.description = $2
+        ORDER BY t."createdAt" DESC
+        LIMIT 1`,
+      [email, descricao],
+    );
+
+    const id = result.rows[0]?.id;
+
+    return typeof id === 'string' ? id : undefined;
+  });
+}
+
+/** Um lançamento lido da base, com os campos que o diagnóstico mede. */
+export interface LancamentoMedido {
+  readonly id: string;
+  readonly status: string;
+  readonly origin: string;
+  readonly settled: boolean;
+  readonly amountInCents: number;
+  readonly date: string;
+}
+
+/** Lê o lançamento por `id`: é esta a leitura antes/depois de cada passo. */
+export async function lerLancamento(id: string): Promise<LancamentoMedido | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT id, status::text AS status, origin::text AS origin, settled,
+              "amountInCents" AS amount, to_char(date, 'YYYY-MM-DD') AS dia
+         FROM "transaction"
+        WHERE id = $1`,
+      [id],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return {
+      id: String(row.id),
+      status: String(row.status),
+      origin: String(row.origin),
+      settled: Boolean(row.settled),
+      amountInCents: Number(row.amount),
+      date: String(row.dia),
+    };
+  });
+}
+
+/**
+ * Força o `status` de um lançamento.
+ *
+ * É **preparação do cenário**, não o caminho medido: garante que o lançamento
+ * está `PENDING` antes de se clicar no menu, para que a mudança observada seja
+ * atribuível ao clique e não a outra escrita qualquer.
+ */
+export async function definirStatusDoLancamento(
+  id: string,
+  status: 'PENDING' | 'CONFIRMED' | 'IGNORED',
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query('UPDATE "transaction" SET status = $2::"TransactionStatus" WHERE id = $1', [
+      id,
+      status,
+    ]);
+  });
+}
+
 /** Conta as transações de um utilizador (por e-mail) numa conta com dado nome. */
 export async function contarTransacoes(email: string, nomeDaConta?: string): Promise<number> {
   return withClient(async (client) => {

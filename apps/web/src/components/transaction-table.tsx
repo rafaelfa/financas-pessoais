@@ -9,6 +9,7 @@ import {
   Pencil,
   Trash,
   Wallet,
+  RefreshCw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -126,7 +127,7 @@ export function TransactionTable({
     });
   }
 
-  function changeStatus(transaction: TransactionView, status: 'confirmed' | 'ignored') {
+  function changeStatus(transaction: TransactionView, status: 'confirmed' | 'ignored' | 'pending') {
     setBusyId(transaction.id);
 
     startTransition(async () => {
@@ -138,7 +139,12 @@ export function TransactionTable({
         return;
       }
 
-      toast.success(status === 'ignored' ? 'Lançamento ignorado.' : 'Lançamento confirmado.');
+      const messages: Record<string, string> = {
+        ignored: 'Lançamento ignorado.',
+        confirmed: 'Lançamento confirmado.',
+        pending: 'Lançamento marcado como por confirmar.',
+      };
+      toast.success(messages[status]);
       router.refresh();
     });
   }
@@ -335,6 +341,13 @@ export function TransactionTable({
                           >
                             <Ban className="size-4" aria-hidden />
                             Ignorar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={transaction.status === 'pending'}
+                            onSelect={() => changeStatus(transaction, 'pending')}
+                          >
+                            <RefreshCw className="size-4" aria-hidden />
+                            Marcar como por confirmar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
