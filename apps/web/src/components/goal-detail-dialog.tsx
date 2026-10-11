@@ -1,6 +1,9 @@
 'use client';
 
+import { Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
+import { toast } from 'sonner';
 
 import { Amount } from '@/components/amount';
 import {
@@ -11,6 +14,17 @@ import {
   goalVerdict,
   goalVerdictSentence,
 } from '@/components/goal-progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { deleteGoalMovement } from '@/server/goals-actions';
 import type { GoalView } from '@/server/goals';
 
 /**
@@ -48,9 +63,45 @@ export type GoalDetailData = GoalView & { readonly movements: readonly GoalDetai
 
 export function GoalDetailDialog({ detail }: { readonly detail: GoalDetailData | null }) {
   const router = useRouter();
+  const [removing, setRemoving] = useState<GoalDetailMovement | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function close() {
     router.push('/objetivos');
+  }
+
+  /**
+   * Apaga um movimento do histórico.
+   *
+   * Se o movimento tiver criado um lançamento na conta, o lançamento vai atrás —
+   * deixá-lo faria o saldo continuar a refletir um depósito que já não existe. O
+   * aviso é dado **antes** de confirmar, com base no `transactionId` que o
+   * servidor já enviou, e o `toast` confirma o que realmente aconteceu.
+   */
+  function confirmRemove() {
+    const movement = removing;
+
+    if (movement === null) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await deleteGoalMovement({ id: movement.id });
+
+      if (!result.ok) {
+        toast.error(result.error);
+        setRemoving(null);
+        return;
+      }
+
+      toast.success(
+        result.data.removedTransaction
+          ? 'Movimento apagado. O lançamento na conta também foi apagado.'
+          : 'Movimento apagado.',
+      );
+      setRemoving(null);
+      router.refresh();
+    });
   }
 
   if (detail === null) {
@@ -204,10 +255,24 @@ export function GoalDetailDialog({ detail }: { readonly detail: GoalDetailData |
                         </p>
                       </div>
 
-                      <Amount
-                        amountInCents={isDeposit ? movement.amountInCents : -movement.amountInCents}
-                        withSign
-                      />
+                      <div className="flex items-center gap-2">
+                        <Amount
+                          amountInCents={
+                            isDeposit ? movement.amountInCents : -movement.amountInCents
+                          }
+                          withSign
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="min-h-11 min-w-11 sm:min-h-7 sm:min-w-7"
+                          aria-label={`Apagar o ${isDeposit ? 'depósito' : 'levantamento'} de ${formatDay(movement.date)}`}
+                          onClick={() => setRemoving(movement)}
+                        >
+                          <Trash className="size-4" aria-hidden />
+                        </Button>
+                      </div>
                     </li>
                   );
                 })}
@@ -222,6 +287,42 @@ export function GoalDetailDialog({ detail }: { readonly detail: GoalDetailData |
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoving(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Trash aria-hidden />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Apagar este movimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removing !== null && removing.transactionId !== null
+                ? 'Este movimento criou um lançamento na conta. Ao apagá-lo, o lançamento também é apagado e o saldo da conta muda. Não há forma de recuperar.'
+                : 'O movimento desaparece do histórico do objetivo e o acumulado recalcula-se. Não há forma de recuperar.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={pending}
+              onClick={(event) => {
+                event.preventDefault();
+                confirmRemove();
+              }}
+            >
+              {pending ? 'A apagar…' : 'Apagar movimento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

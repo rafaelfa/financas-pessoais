@@ -143,6 +143,15 @@ export function RuleApplyDialog({ preview }: { readonly preview: RulePreview | n
               </Badge>
             </div>
 
+            {/*
+             * A consulta do servidor analisa os lançamentos sem categoria mais
+             * recentes (limite de 500). Dizê-lo evita que a contagem pareça
+             * errada a quem tem mais do que isso por categorizar.
+             */}
+            <p className="text-xs text-muted-foreground">
+              A pré-visualização analisa os lançamentos sem categoria mais recentes (até 500).
+            </p>
+
             {preview.matches.length === 0 ? (
               <Alert>
                 <Info aria-hidden />

@@ -268,6 +268,7 @@ export function GoalCard({
           targetAmountInCents: goal.targetAmountInCents,
           targetDate: goal.targetDate,
           contributionFrequency: goal.contributionFrequency,
+          initialReservedInCents: goal.initialReservedInCents,
         }}
         open={editOpen}
         onOpenChange={setEditOpen}
