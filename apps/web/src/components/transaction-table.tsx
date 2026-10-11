@@ -1,6 +1,15 @@
 'use client';
 
-import { Ban, CircleCheck, EllipsisVertical, ArrowLeftRight, Pencil, Trash } from 'lucide-react';
+import {
+  Ban,
+  CircleCheck,
+  CreditCard,
+  EllipsisVertical,
+  ArrowLeftRight,
+  Pencil,
+  Trash,
+  Wallet,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -43,7 +52,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { deleteTransaction, setTransactionStatus } from '@/server/transactions-actions';
+import {
+  deleteTransaction,
+  setTransactionStatus,
+  updateTransaction,
+} from '@/server/transactions-actions';
 import type { AccountView } from '@/server/accounts';
 import type { CategoryView } from '@/server/categories';
 import type { TransactionView } from '@/server/transactions';
@@ -83,6 +96,35 @@ export function TransactionTable({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<TransactionView | null>(null);
   const [deleting, setDeleting] = useState<TransactionView | null>(null);
+
+  /**
+   * Marca como liquidado ou por liquidar.
+   *
+   * É o interruptor que decide se o movimento **move o saldo**: só o que está
+   * liquidado conta. Estava só no diálogo de edição — escondido — e o utilizador
+   * via um "Por liquidar" que não conseguia tirar, porque o menu só oferecia
+   * mudar o *estado* (confirmado/ignorado), que é outra coisa.
+   */
+  function changeSettled(transaction: TransactionView, settled: boolean) {
+    setBusyId(transaction.id);
+
+    startTransition(async () => {
+      const result = await updateTransaction({ id: transaction.id, settled });
+      setBusyId(null);
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(
+        settled
+          ? 'Marcado como liquidado — já conta no saldo.'
+          : 'Marcado como por liquidar — deixa de contar no saldo.',
+      );
+      router.refresh();
+    });
+  }
 
   function changeStatus(transaction: TransactionView, status: 'confirmed' | 'ignored') {
     setBusyId(transaction.id);
@@ -198,6 +240,15 @@ export function TransactionTable({
                       <span className="mt-0.5 flex flex-wrap items-center gap-1.5 sm:hidden">
                         <TransactionKindBadge kind={transaction.kind} />
                         <TransactionStatusBadge status={transaction.status} />
+                        {transaction.cardName === null ? null : (
+                          <Badge variant="secondary" className="font-normal">
+                            <CreditCard className="size-3" aria-hidden />
+                            {transaction.cardName}
+                            {transaction.installmentCount === null
+                              ? ''
+                              : ` · ${transaction.installmentNumber ?? 1}/${transaction.installmentCount}`}
+                          </Badge>
+                        )}
                         {transaction.settled ? null : (
                           <Badge variant="outline" className="font-normal text-muted-foreground">
                             Por liquidar
@@ -207,7 +258,18 @@ export function TransactionTable({
                     </TableCell>
 
                     <TableCell className="hidden md:table-cell">
-                      {transaction.accountName ?? '—'}
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {transaction.accountName ?? '—'}
+                        {transaction.cardName === null ? null : (
+                          <Badge variant="secondary" className="font-normal">
+                            <CreditCard className="size-3" aria-hidden />
+                            {transaction.cardName}
+                            {transaction.installmentCount === null
+                              ? ''
+                              : ` · ${transaction.installmentNumber ?? 1}/${transaction.installmentCount}`}
+                          </Badge>
+                        )}
+                      </span>
                     </TableCell>
 
                     <TableCell className="hidden lg:table-cell">
@@ -273,6 +335,15 @@ export function TransactionTable({
                           >
                             <Ban className="size-4" aria-hidden />
                             Ignorar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onSelect={() => changeSettled(transaction, !transaction.settled)}
+                          >
+                            <Wallet className="size-4" aria-hidden />
+                            {transaction.settled
+                              ? 'Marcar como por liquidar'
+                              : 'Marcar como liquidado'}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={() => setEditing(transaction)}>

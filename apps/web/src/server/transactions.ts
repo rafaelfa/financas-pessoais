@@ -27,6 +27,12 @@ export interface TransactionView {
   readonly settled: boolean;
   readonly tags: string[];
   readonly transferGroupId: string | null;
+  /** Cartão usado, quando a compra foi a crédito. */
+  readonly cardId: string | null;
+  readonly cardName: string | null;
+  /** Posição no parcelamento, quando a compra foi parcelada. */
+  readonly installmentNumber: number | null;
+  readonly installmentCount: number | null;
 }
 
 export interface TransactionFilters {
@@ -103,6 +109,10 @@ export async function listTransactions(filters: TransactionFilters = {}): Promis
         financialAccount: { select: { name: true } },
         category: { select: { name: true } },
         tags: { select: { name: true } },
+        // O cartão faz parte da identificação de uma compra: sem ele, um gasto a
+        // crédito parece igual a um gasto da conta, e o extrato deixa de explicar
+        // de onde saiu o dinheiro.
+        card: { select: { name: true } },
       },
     }),
     prisma.transaction.count({ where }),
@@ -125,6 +135,10 @@ export async function listTransactions(filters: TransactionFilters = {}): Promis
       settled: row.settled,
       tags: row.tags.map((tag) => tag.name),
       transferGroupId: row.transferGroupId,
+      cardId: row.cardId,
+      cardName: row.card?.name ?? null,
+      installmentNumber: row.installmentNumber,
+      installmentCount: row.installmentCount,
     })),
     total,
     sumInCents: aggregate._sum.amountInCents ?? 0,

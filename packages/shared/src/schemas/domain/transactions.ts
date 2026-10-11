@@ -54,7 +54,17 @@ const createTransactionShape = z.object({
   goalId: entityIdSchema.nullish(),
   transferGroupId: z.string().trim().min(1).max(60).nullish(),
   status: transactionStatusSchema.default('confirmed'),
-  settled: z.boolean().default(false),
+  /**
+   * "Já paguei / já recebi". **Só o que está liquidado move o saldo de uma conta.**
+   *
+   * O valor por omissão é `true` porque quem lança à mão está a registar algo que
+   * já aconteceu. As transferências sempre se comportaram assim; os gastos e os
+   * ganhos não, e essa diferença era um defeito silencioso: um ganho de 50 €
+   * lançado à mão nascia por liquidar, não mexia no saldo, e a conta ficava com um
+   * valor que o utilizador não conseguia explicar. Quem tem contas por pagar
+   * marca-as depois, no extrato.
+   */
+  settled: z.boolean().default(true),
   paymentMethod: paymentMethodSchema.default('debit'),
   paymentCondition: paymentConditionSchema.default('single'),
   installmentCount: z.number().int().min(2).max(72).nullish(),
