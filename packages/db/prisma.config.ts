@@ -22,8 +22,20 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    /*
+     * O Prisma 7 deixou de ler o comando de seed do `package.json` e passou a
+     * exigi-lo aqui. Sem esta linha, `prisma db seed` não sabe o que correr.
+     */
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    /*
+     * A ligação **direta**, não a agrupada. O Neon expõe duas URLs para a mesma
+     * base: a `-pooler` serve a aplicação, mas um pooler em modo transação não
+     * corre migrações (`prisma migrate` precisa de sessão e de um *advisory
+     * lock*). A `DIRECT_URL` é a que o `.env.example` já documenta para este
+     * fim; o `DATABASE_URL` fica a servir a aplicação.
+     */
+    url: env('DIRECT_URL'),
   },
 });

@@ -8,7 +8,7 @@ function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
   return (
     <nav
       role="navigation"
-      aria-label="pagination"
+      aria-label="Paginação"
       data-slot="pagination"
       className={cn('mx-auto flex w-full justify-center', className)}
       {...props}
@@ -50,12 +50,12 @@ function PaginationLink({ className, isActive, size = 'icon', ...props }: Pagina
 
 function PaginationPrevious({
   className,
-  text = 'Previous',
+  text = 'Anterior',
   ...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink
-      aria-label="Go to previous page"
+      aria-label="Página anterior"
       size="default"
       className={cn('pl-1.5!', className)}
       {...props}
@@ -68,12 +68,12 @@ function PaginationPrevious({
 
 function PaginationNext({
   className,
-  text = 'Next',
+  text = 'Seguinte',
   ...props
 }: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
   return (
     <PaginationLink
-      aria-label="Go to next page"
+      aria-label="Página seguinte"
       size="default"
       className={cn('pr-1.5!', className)}
       {...props}
@@ -87,7 +87,6 @@ function PaginationNext({
 function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
-      aria-hidden
       data-slot="pagination-ellipsis"
       className={cn(
         "flex size-8 items-center justify-center [&_svg:not([class*='size-'])]:size-4",
@@ -95,8 +94,8 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'
       )}
       {...props}
     >
-      <MoreHorizontalIcon />
-      <span className="sr-only">More pages</span>
+      <MoreHorizontalIcon aria-hidden />
+      <span className="sr-only">Mais páginas</span>
     </span>
   );
 }

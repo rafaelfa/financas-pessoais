@@ -1,0 +1,58 @@
+name: Fumo em produção
+
+# O `pnpm build` compila as páginas mas não as executa com sessão. Um erro que só
+# acontece em execução — como importar uma constante de um módulo `'use client'`
+# num Server Component, que deixou `/transacoes` a devolver 500 em produção
+# durante uma fase inteira — passa por lint, typecheck, test e build sem que nada
+# se queixe. Por isso o fumo é um passo à parte, com acesso à base de produção, e
+# corre à mão: não é seguro nem barato fazê-lo em cada `push`.
+#
+# O que faz: cria um utilizador de teste (`smoke-…@exemplo.pt`), confirma que o
+# registo o aprovisiona com as categorias de Portugal, entra, pede todas as
+# páginas autenticadas e falha se alguma responder com erro de servidor. No fim
+# apaga o utilizador de teste, mesmo que uma verificação falhe.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL a testar (o normal é o domínio de produção)
+        required: true
+        default: https://financas-pessoais-psi-lac.vercel.app
+        type: string
+
+concurrency:
+  group: smoke-${{ inputs.url }}
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: 10.17.1
+  NODE_VERSION: 22
+
+jobs:
+  fumo:
+    name: fumo autenticado
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Correr o fumo contra o URL indicado
+        env:
+          # O fumo apaga o utilizador de teste no fim, e é por isso que precisa da
+          # ligação à base: sem ela cria lixo em produção a cada execução.
+          DATABASE_URL: ${{ secrets.SMOKE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SMOKE_DATABASE_URL }}
+        run: node packages/db/smoke.mjs "${{ inputs.url }}"

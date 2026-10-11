@@ -1,0 +1,106 @@
+name: CI
+
+# O gate da Fase 0–7 sempre correu à mão, nesta máquina, com escalada de sandbox.
+# Isso tem duas consequências que este ficheiro corrige: ninguém de fora consegue
+# reproduzir o gate, e uma regressão só se descobre quando alguém se lembra de o
+# correr. Aqui o gate passa a ser o mesmo para toda a gente, numa máquina limpa.
+#
+# O `build` corre com uma base de dados **falsa mas válida**: as páginas são
+# dinâmicas e não são pré-renderizadas, portanto o `next build` precisa de uma
+# `DATABASE_URL` que analise, não de uma base a sério. Se um dia uma página passar
+# a consultar a base no build, este passo falha — e é bom que falhe, porque em
+# produção isso seria um erro de build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Versão do pnpm fixada no package.json (`packageManager`); aqui só se repete
+  # para o `pnpm/action-setup` não ter de adivinhar.
+  PNPM_VERSION: 10.17.1
+  NODE_VERSION: 22
+
+jobs:
+  gate:
+    name: format · lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        # A mesma imagem do `docker-compose.yml`, para o CI não divergir do
+        # ambiente de desenvolvimento offline documentado.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: financas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d financas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Valores de CI: não são segredos e não apontam para nenhuma base a sério.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/financas?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/financas?schema=public
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-for-real-sessions-000000
+      BETTER_AUTH_URL: http://localhost:3000
+      CRON_SECRET: ci-only-cron-secret
+      NODE_ENV: test
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # `--frozen-lockfile` é o ponto deste passo: se o `pnpm-lock.yaml` não
+      # corresponder aos `package.json`, o CI para aqui em vez de resolver
+      # versões novas em silêncio. É a mesma regra do §3.10 do plano (versões
+      # fixadas), aplicada à instalação.
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      # O cliente Prisma é gerado pelo próprio `turbo` como dependência do
+      # `build`/`test`, mas gerá-lo aqui dá um erro claro e cedo se o esquema
+      # estiver inválido, em vez de um erro de tipos a meio de outro passo.
+      - name: Validar o esquema Prisma e gerar o cliente
+        run: |
+          pnpm db:validate
+          pnpm db:generate
+
+      # A ordem é deliberada: o que é mais barato falhar primeiro. `format:check`
+      # e `lint` apanham a maior parte das distrações em segundos; o `build` é o
+      # que mais apanha e o mais caro, por isso fica por último.
+      - name: Formatação
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Tipos
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

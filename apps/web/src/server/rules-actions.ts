@@ -61,6 +61,25 @@ async function ownsAccount(userId: string, accountId: string): Promise<boolean> 
   return account !== null;
 }
 
+/**
+ * Confirma que o cartão existe e é do utilizador.
+ *
+ * O `cardId` de uma regra é a única referência desta ação que **não** tem chave
+ * estrangeira no esquema (`schema.prisma`, `TransactionRule.cardId` é uma coluna
+ * solta), pelo que nada a jusante a recusaria: sem esta verificação, um
+ * identificador de outro utilizador ficava gravado tal e qual. É a regra §5.5 do
+ * handoff — todo o identificador vindo do cliente é confirmado como sendo do
+ * utilizador antes de ser usado.
+ */
+async function ownsCard(userId: string, cardId: string): Promise<boolean> {
+  const card = await prisma.creditCard.findFirst({
+    where: { id: cardId, userId },
+    select: { id: true },
+  });
+
+  return card !== null;
+}
+
 const UNSUPPORTED_ACTION =
   'Nesta fase só se categoriza automaticamente. As outras ações chegam mais tarde — a regra não foi guardada para a interface não prometer o que não faz.';
 
@@ -86,6 +105,10 @@ export async function createRule(input: unknown): Promise<ActionResult<{ id: str
 
   if (value.accountId != null && !(await ownsAccount(user.id, value.accountId))) {
     return fail('Conta não encontrada.', { accountId: ['Escolhe uma conta tua.'] });
+  }
+
+  if (value.cardId != null && !(await ownsCard(user.id, value.cardId))) {
+    return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
   }
 
   try {
@@ -154,6 +177,10 @@ export async function updateRule(input: unknown): Promise<ActionResult<{ id: str
 
   if (value.accountId != null && !(await ownsAccount(user.id, value.accountId))) {
     return fail('Conta não encontrada.', { accountId: ['Escolhe uma conta tua.'] });
+  }
+
+  if (value.cardId != null && !(await ownsCard(user.id, value.cardId))) {
+    return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
   }
 
   try {

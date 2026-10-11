@@ -75,13 +75,29 @@ export function MoneyInput({
   function handleChange(next: string) {
     setText(next);
 
-    // Durante a escrita só propagamos números simples: uma conta a meio
-    // (`12,50 +`) não é um valor, e propagá-la faria o formulário oscilar.
-    if (!isCalculation(next)) {
-      const value = next.trim() === '' ? null : evaluateAmountExpression(next);
-      setError(value === null && next.trim() !== '' ? 'Valor inválido.' : null);
-      onValueChange?.(value);
+    /*
+     * Uma conta **válida** também limpa o erro anterior.
+     *
+     * Antes, só um texto que não fosse conta tocava no erro: quem escrevesse
+     * `abc` (erro «Valor inválido.») e depois corrigisse para `12,50 + 3,20`
+     * ficava com a mensagem presa, e a linha do resultado só aparece quando não
+     * há erro — ou seja, a correção certa era invisível. Era o I15.
+     *
+     * Uma conta a meio (`12,50 +`) continua a **não** limpar nada: esse texto já
+     * era inválido antes e não se propaga, pela razão original — propagar uma
+     * expressão incompleta faria o formulário oscilar.
+     */
+    if (isCalculation(next)) {
+      if (evaluateAmountExpression(next) !== null) {
+        setError(null);
+      }
+
+      return;
     }
+
+    const value = next.trim() === '' ? null : evaluateAmountExpression(next);
+    setError(value === null && next.trim() !== '' ? 'Valor inválido.' : null);
+    onValueChange?.(value);
   }
 
   function commit() {

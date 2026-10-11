@@ -355,6 +355,130 @@ describe('previewFromCsv — duplicados sem fitId', () => {
     expect(second.totalDebitsInCents).toBe(0);
   });
 
+  /*
+   * O ciclo completo exportar → reimportar, que é o cenário real do utilizador.
+   *
+   * O teste anterior é generoso de mais: passa as linhas que já existem com o
+   * `fitId` derivado, mas o CSV exportado traz o identificador na coluna `Id` e
+   * **também** os valores, pelo que a reimportação passa pela mesma indexação que
+   * a produção. O que faltava era o sufixo de ocorrência: a exportação escreve
+   * `impressão:2` para o segundo café igual, e o índice só reconhecia a impressão
+   * base, pelo que a segunda cópia aparecia como **nova e já selecionada** —
+   * confirmar duplicava o movimento. Foi o I11, medido pelo qa-verificador.
+   *
+   * Este teste reproduz a exportação pela mesma função (`fingerprintOf`) e a
+   * convenção de sufixo de `apps/web/src/server/export.ts`, para não depender de
+   * um ficheiro de amostra que ninguém atualiza quando a fórmula muda.
+   */
+  it('reimportar o CSV exportado reconhece os dois movimentos iguais (I11)', () => {
+    const description = 'cafe e2e';
+    const base = fingerprintOf('2026-10-05', -1_230, description);
+
+    expect(base).not.toBeNull();
+
+    // O que a exportação escreveu: dois `Id` distintos para dois movimentos iguais,
+    // o segundo com o sufixo de ocorrência.
+    const exported = [`${base ?? ''}`, `${base ?? ''}:2`];
+
+    const statement = parseCsvDocument(
+      [
+        'Data;Descrição;Valor;Id',
+        `05/10/2026;${description};-12,30;${exported[0] ?? ''}`,
+        `05/10/2026;${description};-12,30;${exported[1] ?? ''}`,
+      ].join('\n'),
+    );
+
+    const preview = previewFromCsv({
+      account: ACCOUNT,
+      statement,
+      existing: exported.map((fitId) => ({
+        fitId,
+        date: new Date('2026-10-05T00:00:00.000Z'),
+        amountInCents: -1_230,
+        description,
+      })),
+      rules: { rules: [], categoryNames: new Map() },
+    });
+
+    expect(preview.duplicateCount).toBe(2);
+    expect(preview.newCount).toBe(0);
+    expect(preview.rows.every((row) => !row.selected)).toBe(true);
+    expect(preview.totalDebitsInCents).toBe(0);
+  });
+
+  /*
+   * A primeira volta do ciclo, que o teste anterior não cobre: na conta estão
+   * movimentos **manuais** iguais — sem `fitId`, que é o caso normal de quem lança
+   * dois cafés iguais à mão e só depois exporta. O índice antigo só derivava a
+   * impressão base (uma vez), pelo que o `:2` **do ficheiro** não encontrava nada
+   * e era oferecido como novo. O `qa-verificador` mediu-o como I11a, depois de a
+   * correção do I11b já estar feita — as duas metades do mesmo defeito.
+   */
+  it('reimportar um ficheiro com repetições quando os movimentos são manuais (I11a)', () => {
+    const description = 'cafe e2e';
+    const statement = parseCsvDocument(
+      [
+        'Data;Descrição;Valor',
+        `05/10/2026;${description};-12,30`,
+        `05/10/2026;${description};-12,30`,
+      ].join('\n'),
+    );
+
+    // Dois movimentos lançados à mão: nada de `fitId` gravado.
+    const manualRows = [1, 2].map(() => ({
+      fitId: null,
+      date: new Date('2026-10-05T00:00:00.000Z'),
+      amountInCents: -1_230,
+      description,
+    }));
+
+    const preview = previewFromCsv({
+      account: ACCOUNT,
+      statement,
+      existing: manualRows,
+      rules: { rules: [], categoryNames: new Map() },
+    });
+
+    expect(preview.duplicateCount).toBe(2);
+    expect(preview.newCount).toBe(0);
+    expect(preview.rows.every((row) => !row.selected)).toBe(true);
+  });
+
+  /*
+   * O contra-exemplo, que impede a correção de ser boa demais: se na conta só
+   * existe **um** café, um ficheiro com dois tem de continuar a aceitar o segundo
+   * — é mesmo um movimento novo. Sem este teste, contar ocorrências poderia
+   * transformar-se em "descartar repetições", que foi o defeito I4.
+   */
+  it('um segundo café igual continua a entrar quando só existe um na conta', () => {
+    const description = 'cafe e2e';
+    const statement = parseCsvDocument(
+      [
+        'Data;Descrição;Valor',
+        `05/10/2026;${description};-12,30`,
+        `05/10/2026;${description};-12,30`,
+      ].join('\n'),
+    );
+
+    const preview = previewFromCsv({
+      account: ACCOUNT,
+      statement,
+      existing: [
+        {
+          fitId: null,
+          date: new Date('2026-10-05T00:00:00.000Z'),
+          amountInCents: -1_230,
+          description,
+        },
+      ],
+      rules: { rules: [], categoryNames: new Map() },
+    });
+
+    expect(preview.duplicateCount).toBe(1);
+    expect(preview.newCount).toBe(1);
+    expect(preview.totalDebitsInCents).toBe(1_230);
+  });
+
   it('conta nos totais apenas o que seria criado', () => {
     const statement = parseCsvDocument(
       [

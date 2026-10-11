@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { SignOutButton } from '@/components/sign-out-button';
 import {
   Sidebar,
   SidebarContent,
@@ -49,20 +50,26 @@ export function AppSidebar() {
             <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActiveRoute(pathname, item.href)}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {section.items.map((item) => {
+                  /*
+                   * `aria-current="page"` é o que diz ao leitor de ecrã onde
+                   * está: o destaque da barra lateral é cor e fundo, e a cor
+                   * sozinha não é informação para quem não a vê (WCAG 1.4.1).
+                   * O menu de baixo, no telemóvel, já o fazia.
+                   */
+                  const active = isActiveRoute(pathname, item.href);
+
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                        <Link href={item.href} aria-current={active ? 'page' : undefined}>
+                          <item.icon aria-hidden />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -70,8 +77,15 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        {/*
+          Terminar a sessão fica no fundo, onde se procura: fora do percurso de
+          trabalho diário, mas sempre à vista.
+        */}
+        <SidebarMenu>
+          <SignOutButton />
+        </SidebarMenu>
         <p className="px-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-          Moeda: EUR · Fase 2
+          Moeda: EUR
         </p>
       </SidebarFooter>
       <SidebarRail />

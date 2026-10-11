@@ -26,6 +26,8 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@better-auth/utils": "0.4.2",
+    "@repo/shared": "workspace:*",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
     "eslint": "^9.39.5",

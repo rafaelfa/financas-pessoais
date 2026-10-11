@@ -41,3 +41,14 @@ Thumbs.db
 
 # Test output
 coverage/
+
+# Playwright
+# Os relatórios e o estado de autenticação dos testes ponta a ponta são gerados
+# em cada corrida e não pertencem ao repositório — incluem cookies de sessão de
+# utilizadores de teste.
+test-results/
+playwright-report/
+playwright/.cache/
+e2e/.auth/
+e2e/.results/
+e2e/.tmp/

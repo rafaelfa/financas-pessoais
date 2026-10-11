@@ -23,20 +23,24 @@ export default function EntrarPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
+    setErro(null);
 
     const { error } = await signIn.email({ email, password });
 
     if (error) {
-      setPending(false);
-      toast.error(
+      const mensagem =
         error.message === 'Invalid email or password'
           ? 'E-mail ou palavra-passe incorretos.'
-          : (error.message ?? 'Não consegui entrar. Tenta outra vez.'),
-      );
+          : (error.message ?? 'Não consegui entrar. Tenta outra vez.');
+
+      setPending(false);
+      setErro(mensagem);
+      toast.error(mensagem);
       return;
     }
 
@@ -49,11 +53,25 @@ export default function EntrarPage() {
     <Card>
       <form onSubmit={onSubmit}>
         <CardHeader>
-          <CardTitle>Entrar</CardTitle>
+          <CardTitle as="h1">Entrar</CardTitle>
           <CardDescription>Acede às tuas contas, orçamento e objetivos.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/*
+            O erro fica **no DOM**, e não só num `toast` que desaparece: um aviso
+            efémero não é alcançável por quem chega ao formulário depois dele, e
+            uma auditoria automática não tem o que analisar. É o requisito 3.3.1.
+          */}
+          {erro !== null && (
+            <p
+              role="alert"
+              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {erro}
+            </p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
             <Input

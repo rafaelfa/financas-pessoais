@@ -32,9 +32,22 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+/**
+ * Título de um cartão.
+ *
+ * Sai como `div` por omissão — na maioria dos ecrãs o `h1` da página é o
+ * `PageHeader` e o título do cartão é um rótulo, não um nível de título. O `as`
+ * existe para os ecrãs que **não** têm `h1` nenhum (entrar e registar): sem ele,
+ * as duas páginas de autenticação não tinham um único título para um leitor de
+ * ecrã anunciar nem para navegar por títulos.
+ */
+function CardTitle({
+  className,
+  as: Tag = 'div',
+  ...props
+}: React.ComponentProps<'div'> & { as?: 'div' | 'h1' | 'h2' | 'h3' }) {
   return (
-    <div
+    <Tag
       data-slot="card-title"
       className={cn(
         'font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm',

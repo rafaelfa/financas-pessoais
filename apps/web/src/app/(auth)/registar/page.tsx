@@ -24,20 +24,24 @@ export default function RegistarPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
+    setErro(null);
 
     const { error } = await signUp.email({ name, email, password });
 
     if (error) {
-      setPending(false);
-      toast.error(
+      const mensagem =
         error.message === 'User already exists'
           ? 'Já existe uma conta com este e-mail.'
-          : (error.message ?? 'Não consegui criar a conta. Tenta outra vez.'),
-      );
+          : (error.message ?? 'Não consegui criar a conta. Tenta outra vez.');
+
+      setPending(false);
+      setErro(mensagem);
+      toast.error(mensagem);
       return;
     }
 
@@ -50,13 +54,23 @@ export default function RegistarPage() {
     <Card>
       <form onSubmit={onSubmit}>
         <CardHeader>
-          <CardTitle>Criar conta</CardTitle>
+          <CardTitle as="h1">Criar conta</CardTitle>
           <CardDescription>
             Uma conta só para ti. Os teus dados ficam isolados e nunca são partilhados.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Ver `entrar/page.tsx`: o erro tem de ficar no DOM, não só num toast. */}
+          {erro !== null && (
+            <p
+              role="alert"
+              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {erro}
+            </p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Input

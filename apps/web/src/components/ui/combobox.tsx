@@ -38,9 +38,11 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
       data-slot="combobox-clear"
       render={<InputGroupButton variant="ghost" size="icon-xs" />}
       className={cn(className)}
+      /* É um alvo só com ícone: sem nome por omissão, o botão não diz o que faz. Quem chamar pode substituí-lo (`{...props}` vem depois). */
+      aria-label="Limpar a seleção"
       {...props}
     >
-      <XIcon className="pointer-events-none" />
+      <XIcon className="pointer-events-none" aria-hidden />
     </ComboboxPrimitive.Clear>
   );
 }

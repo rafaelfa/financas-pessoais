@@ -48,9 +48,16 @@ export function CommandPalette() {
         className="gap-2 text-muted-foreground"
         onClick={() => setOpen(true)}
       >
-        <Search className="size-4" />
-        <span className="hidden sm:inline">Ir para…</span>
-        <Kbd className="hidden sm:inline-flex">⌘K</Kbd>
+        <Search className="size-4" aria-hidden />
+        {/*
+          `sr-only` (e não `hidden`) porque `display: none` tira o texto do nome
+          acessível: em telemóvel o botão ficava sem nome nenhum para um leitor de
+          ecrã. Assim continua escondido à vista e continua a nomear o botão.
+        */}
+        <span className="sr-only sm:not-sr-only">Ir para…</span>
+        <Kbd className="hidden sm:inline-flex" aria-hidden>
+          ⌘K
+        </Kbd>
       </Button>
 
       <CommandDialog

@@ -227,6 +227,23 @@ export interface ImportRowCandidate {
  * `fitId`, ou de importações antigas), acrescenta-se a impressão digital como
  * chave alternativa: sem isso, os movimentos importados antes da correção
  * deixariam de ser reconhecidos e voltariam a entrar na primeira reimportação.
+ *
+ * **A ocorrência também é indexada — contando.** Duas linhas iguais no mesmo
+ * ficheiro (dois cafés iguais no mesmo dia) recebem `impressão` e `impressão:2`, e
+ * é isso que a exportação escreve na coluna `Id`. Indexar só a impressão base
+ * deixava passar duas situações distintas, ambas medidas pelo `qa-verificador`:
+ *
+ * - o `:2` **gravado** (segunda volta do ciclo exportar → reimportar) — aqui a
+ *   chave existe, mas nenhuma linha a usava como chave primária;
+ * - o `:2` **do ficheiro** quando na conta há movimentos **manuais** iguais, sem
+ *   `fitId` (primeira volta do ciclo) — aqui não havia nada com sufixo nenhum.
+ *
+ * Por isso conta-se quantos movimentos existem com a mesma impressão base e
+ * indexa-se `impressão:1..impressão:N`. Uma conta com **um** café e um ficheiro
+ * com dois continua a marcar o segundo como novo (é mesmo um movimento novo); uma
+ * conta com dois cafés iguais marca os dois como já existentes. A contagem é a
+ * mesma dos dois lados: `withImportIdentifiers` numera as ocorrências do ficheiro
+ * pela mesma ordem.
  */
 function indexExisting(existing: readonly ExistingTransactionFingerprint[]): {
   readonly fitIds: Set<string>;
@@ -234,6 +251,10 @@ function indexExisting(existing: readonly ExistingTransactionFingerprint[]): {
 } {
   const fitIds = new Set<string>();
   const rows = new Map<string, ExistingTransactionFingerprint>();
+  const occurrences = new Map<string, number>();
+  /** Linha representativa de cada impressão, para as chaves com sufixo. */
+  const sample = new Map<string, ExistingTransactionFingerprint>();
+  const counts = new Map<string, number>();
 
   for (const row of existing) {
     if (row.fitId !== null && row.fitId !== '') {
@@ -243,11 +264,48 @@ function indexExisting(existing: readonly ExistingTransactionFingerprint[]): {
 
     const derived = importFitId(null, isoDate(row.date), row.amountInCents, row.description ?? '');
 
-    if (derived !== null) {
-      fitIds.add(derived);
+    if (derived === null) {
+      continue;
+    }
 
-      if (!rows.has(derived)) {
-        rows.set(derived, row);
+    const occurrence = (counts.get(derived) ?? 0) + 1;
+    counts.set(derived, occurrence);
+    occurrences.set(derived, occurrence);
+
+    /*
+     * A chave base entra aqui, e não no segundo passo: uma impressão que aparece
+     * **uma só vez** não tem sufixo nenhum, e o ciclo do segundo passo (que
+     * começa em 2) nunca a acrescentaria. Sem esta linha, o duplicado simples —
+     * o caso mais comum de todos — deixava de ser reconhecido.
+     */
+    fitIds.add(derived);
+
+    if (!rows.has(derived)) {
+      rows.set(derived, row);
+    }
+
+    if (!sample.has(derived)) {
+      sample.set(derived, row);
+    }
+  }
+
+  /*
+   * Segundo passo, sobre a contagem final: acrescenta as ocorrências `:2..:N`. A
+   * contagem só está completa no fim, por isso uma linha que apareça primeiro não
+   * pode decidir o número de ocorrências por si.
+   */
+  for (const [derived, occurrence] of occurrences) {
+    for (let index = 2; index <= occurrence; index += 1) {
+      const id = `${derived}:${String(index)}`;
+
+      fitIds.add(id);
+
+      if (!rows.has(id)) {
+        const representative = sample.get(derived);
+
+        if (representative !== undefined) {
+          rows.set(id, representative);
+        }
       }
     }
   }
