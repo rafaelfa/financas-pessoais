@@ -13,21 +13,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { dashboardViewFromParam, type DashboardView } from '@/server/dashboard-scope';
 import type { DashboardScopeEntity } from '@/server/dashboard-scope';
 
 /**
  * Seletor de âmbito do painel: a carteira toda, uma conta ou um cartão.
  *
- * O estado vive no **URL** (`?vista=conta&id=<uuid>`), não em `useState`: um
- * painel filtrado por conta é uma vista que se partilha e que sobrevive a
- * recarregar a página. Como o servidor lê os mesmos parâmetros, o que está no
- * ecrã é exatamente o que o endereço diz — e um `id` de outra pessoa é recusado
- * lá, não aqui.
+ * **Estado derivado do URL.** O `viewKind` vem diretamente do parâmetro `vista`
+ * no URL — não de `useState`, de modo a que o dropdown apareça **imediatamente**
+ * ao clicar num botão, sem esperar pela resposta do servidor.
  *
- * Num cartão não se escolhe um "cartão" sem se escolher qual: a lista de
- * seleção faz parte do botão. Escolher o botão troca a vista e abre a lista com
- * as opções desse tipo; escolher uma opção fecha-a. Sem cartões (ou sem contas),
- * o botão abre com a explicação do que fazer no ecrã que os cria.
+ * Antes desta abordagem, o `viewKind` vinha da prop `scope` (resultado do
+ * `resolveDashboardScope` server-side). O problema: ao clicar em "Conta", o URL
+ * ficava `?vista=conta` (sem `id`), e o servidor devolvia `kind: 'tudo'` — o
+ * dropdown não aparecia e o utilizador não podia escolher a conta. Agora, enquanto
+ * o URL diz `vista=conta`, o dropdown aparece com as contas da base de dados.
+ *
+ * O `id` (para seleccionar uma entidade) continua a vir validado pelo servidor
+ * (prop `scope.id`): um `id` alheio não é encontrado no `Select`, e a prop `scope`
+ * traz a explicação da recusa. No entanto, o dropdown só desaparece quando o URL
+ * volta a `vista=tudo`.
  */
 
 /** Alvo de toque: 44 px em telemóvel, denso a partir de `sm`. */
@@ -41,7 +46,7 @@ const EMPTY_PICKER = '__sem_escolha__';
 
 /** Título curto e ícone de cada vista. */
 const VIEWS: ReadonlyArray<{
-  readonly kind: 'tudo' | 'conta' | 'cartao';
+  readonly kind: DashboardView;
   readonly title: string;
   readonly icon: ComponentType<{ className?: string }>;
 }> = [
@@ -56,7 +61,7 @@ export function DashboardScopeSwitch({
   cards,
 }: {
   readonly scope: {
-    readonly kind: 'tudo' | 'conta' | 'cartao';
+    readonly kind: DashboardView;
     readonly id: string | null;
   };
   readonly accounts: readonly DashboardScopeEntity[];
@@ -66,11 +71,19 @@ export function DashboardScopeSwitch({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const entities = scope.kind === 'cartao' ? cards : accounts;
-  const hasEntities = scope.kind === 'tudo' ? true : entities.length > 0;
+  /**
+   * O estado de UI (qual dropdown está aberto) vem directamente do URL: assim,
+   * ao clicar em "Conta", o dropdown aparece antes da ida ao servidor validar.
+   */
+  const urlView = dashboardViewFromParam(searchParams.get('vista'));
+  const viewKind: DashboardView = urlView;
+  const urlId = scope.id;
+
+  const entities = viewKind === 'cartao' ? cards : accounts;
+  const hasEntities = viewKind === 'tudo' ? true : entities.length > 0;
 
   /** Reescreve só `vista` e `id`, preservando o resto da query. */
-  function push(next: { vista: 'tudo' | 'conta' | 'cartao'; id?: string }) {
+  function push(next: { vista: DashboardView; id?: string }) {
     const params = new URLSearchParams(searchParams.toString());
 
     if (next.vista === 'tudo') {
@@ -90,7 +103,7 @@ export function DashboardScopeSwitch({
     router.push(query === '' ? pathname : `${pathname}?${query}`);
   }
 
-  const pickerLabel = scope.kind === 'cartao' ? 'Cartão' : 'Conta';
+  const pickerLabel = viewKind === 'cartao' ? 'Cartão' : 'Conta';
 
   return (
     <section
@@ -108,7 +121,7 @@ export function DashboardScopeSwitch({
       <div className="mt-3 flex flex-wrap gap-2">
         <div role="radiogroup" aria-labelledby={GROUP_LABEL_ID} className="flex flex-wrap gap-2">
           {VIEWS.map((view) => {
-            const selected = scope.kind === view.kind;
+            const selected = viewKind === view.kind;
             const Icon = view.icon;
 
             return (
@@ -136,7 +149,7 @@ export function DashboardScopeSwitch({
           })}
         </div>
 
-        {scope.kind === 'tudo' ? null : (
+        {viewKind === 'tudo' ? null : (
           <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
             <Label htmlFor="painel-ambito-entidade" className="text-xs text-muted-foreground">
               {pickerLabel}
@@ -144,10 +157,10 @@ export function DashboardScopeSwitch({
 
             {hasEntities ? (
               <Select
-                value={scope.id ?? EMPTY_PICKER}
+                value={urlId ?? EMPTY_PICKER}
                 onValueChange={(value) =>
                   push({
-                    vista: scope.kind,
+                    vista: viewKind,
                     ...(value === EMPTY_PICKER ? {} : { id: value }),
                   })
                 }
@@ -157,7 +170,7 @@ export function DashboardScopeSwitch({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={EMPTY_PICKER}>
-                    {scope.kind === 'cartao' ? 'Escolhe um cartão' : 'Escolhe uma conta'}
+                    {viewKind === 'cartao' ? 'Escolhe um cartão' : 'Escolhe uma conta'}
                   </SelectItem>
                   {entities.map((entity) => (
                     <SelectItem key={entity.id} value={entity.id}>
@@ -168,7 +181,7 @@ export function DashboardScopeSwitch({
               </Select>
             ) : (
               <p className="rounded-lg border border-dashed px-3 py-1.5 text-xs text-muted-foreground">
-                {scope.kind === 'cartao'
+                {viewKind === 'cartao'
                   ? 'Ainda não tens cartões. Cria um em Cartões para veres aqui os lançamentos dele.'
                   : 'Ainda não tens contas. Cria uma em Contas para veres aqui os movimentos dela.'}
               </p>
