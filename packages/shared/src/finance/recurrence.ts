@@ -38,7 +38,14 @@ function parseDate(isoDate: string): { year: number; month: number; day: number 
   return { year, month, day };
 }
 
-/** Quantos meses avança cada frequência (a frequência semanal é tratada em dias). */
+/**
+ * Quantos meses avança cada frequência (a semanal é tratada em dias).
+ *
+ * A frequência anual existe no tipo do motor (`RecurrenceFrequency`) mesmo sem
+ * coluna correspondente na base de dados. Antes, caía na cauda `default` e
+ * avançava **um mês** — uma série anual teria gerado doze ocorrências por ano em
+ * silêncio. Um valor desconhecido tem de avançar o que promete, ou falhar alto.
+ */
 function monthsPerStep(frequency: RecurrenceFrequency): number {
   switch (frequency) {
     case 'weekly':
@@ -47,6 +54,8 @@ function monthsPerStep(frequency: RecurrenceFrequency): number {
       return 1;
     case 'quarterly':
       return 3;
+    case 'yearly':
+      return 12;
     default:
       return 1;
   }
@@ -172,6 +181,11 @@ export function describeFrequency(args: {
     }
     case 'quarterly': {
       const base = interval === 1 ? 'todos os trimestres' : `${every}trimestres`;
+
+      return args.dayOfMonth === undefined ? base : `${base}, dia ${args.dayOfMonth}`;
+    }
+    case 'yearly': {
+      const base = interval === 1 ? 'todos os anos' : `${every}anos`;
 
       return args.dayOfMonth === undefined ? base : `${base}, dia ${args.dayOfMonth}`;
     }

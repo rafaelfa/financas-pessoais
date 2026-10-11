@@ -31,6 +31,20 @@ describe('próxima ocorrência', () => {
     expect(nextOccurrence({ from: '2026-01-10', frequency: 'quarterly' })).toBe('2026-04-10');
   });
 
+  it('avança um ano na frequência anual', () => {
+    /*
+     * A frequência anual existe no tipo do motor mesmo sem coluna na base de
+     * dados. Antes caía numa cauda `default` que avançava **um mês**: uma série
+     * anual geraria doze ocorrências por ano, em silêncio.
+     */
+    expect(nextOccurrence({ from: '2026-03-15', frequency: 'yearly' })).toBe('2027-03-15');
+    expect(nextOccurrence({ from: '2026-03-15', frequency: 'yearly', interval: 2 })).toBe(
+      '2028-03-15',
+    );
+    // E salta corretamente um 29 de fevereiro.
+    expect(nextOccurrence({ from: '2028-02-29', frequency: 'yearly' })).toBe('2029-02-28');
+  });
+
   it('cai no último dia quando o mês é mais curto', () => {
     // 31 de janeiro + 1 mês: fevereiro de 2026 não tem 31 dias.
     expect(nextOccurrence({ from: '2026-01-31', frequency: 'monthly', dayOfMonth: 31 })).toBe(
