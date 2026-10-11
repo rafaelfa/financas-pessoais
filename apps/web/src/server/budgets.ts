@@ -1,5 +1,6 @@
 import { prisma } from '@repo/db/client';
 import {
+  budgetPeriodFor,
   budgetStatusList,
   budgetSummary,
   categoriesWithoutLimit,
@@ -8,7 +9,6 @@ import {
 
 import { todayInLisbon } from '@/lib/today';
 
-import { currentPeriod, monthPeriodFor } from './budget-period';
 import { TRANSACTION_SELECT } from './accounts';
 import { toFinanceCategory, toFinanceTransaction } from './mapping';
 import { requireUser } from './session';
@@ -109,15 +109,17 @@ export async function listBudgets(): Promise<BudgetView[]> {
 
   return budgets.map((budget) => {
     const scope = budget.scope === 'MONTHLY_DEFAULT' ? 'monthly_default' : 'single_month';
-    const period =
-      scope === 'monthly_default'
-        ? monthPeriodFor({ user, today })
-        : currentPeriod({
-            scope,
-            periodStart: budget.periodStart.toISOString().slice(0, 10),
-            user,
-            today,
-          });
+    /*
+     * O período é resolvido no domínio, pela mesma função que o fecho de mês usa:
+     * um orçamento `single_month` pertence ao mês em que foi criado, um
+     * `monthly_default` ao mês em curso. Duas cópias desta regra era a forma mais
+     * rápida de o ecrã do orçamento e o assistente de fecho discordarem.
+     */
+    const period = budgetPeriodFor({
+      budget: { scope, periodStart: budget.periodStart.toISOString().slice(0, 10) },
+      user,
+      today,
+    });
 
     const financeLimits = budget.limits.map((limit) => ({
       id: limit.id,

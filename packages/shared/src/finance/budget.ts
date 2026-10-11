@@ -1,3 +1,4 @@
+import { budgetPeriodFor, type BudgetScopeValue } from './budget-period';
 import { daysBetween } from './period';
 import { expenseByCategory, type ResultOptions } from './result';
 import type {
@@ -236,4 +237,58 @@ export function categoriesWithoutLimit(
   return categories.filter(
     (category) => category.kind === 'expense' && !category.internal && !withLimit.has(category.id),
   );
+}
+
+/** Um orçamento como a camada de servidor o carrega, com os limites já incluídos. */
+export interface FinanceBudgetPlan {
+  readonly id: string;
+  readonly scope: BudgetScopeValue;
+  /** Data de início gravada (`YYYY-MM-DD`); sentinela em `monthly_default`. */
+  readonly periodStart: string;
+  readonly limits: readonly FinanceBudgetLimit[];
+}
+
+/**
+ * Limites excedidos em todos os orçamentos, cada um medido contra o **seu**
+ * período.
+ *
+ * O fecho de mês avaliava todos os orçamentos contra o mês em curso: um
+ * orçamento de setembro aparecia com o consumo de outubro (170,00 € onde o ecrã
+ * do orçamento mostrava 0) e o contador de "orçamentos excedidos" bloqueava o
+ * fecho por um motivo que não existia. A resolução do período vive em
+ * `budgetPeriodFor`, a mesma que `/orcamento` usa — uma segunda cópia da regra
+ * era a forma mais rápida de os dois ecrãs voltarem a discordar.
+ */
+export function exceededLimits(args: {
+  readonly budgets: readonly FinanceBudgetPlan[];
+  readonly transactions: readonly FinanceTransaction[];
+  readonly user: { readonly monthStartDay: number };
+  /** Data de referência (normalmente hoje). */
+  readonly today: string;
+  readonly categories?: readonly FinanceCategory[];
+}): number {
+  const resultOptions: ResultOptions = {
+    categories: args.categories,
+    monthStartDay: args.user.monthStartDay,
+  };
+
+  let exceeded = 0;
+
+  for (const budget of args.budgets) {
+    const statuses = budgetStatusList({
+      limits: budget.limits,
+      transactions: args.transactions,
+      period: budgetPeriodFor({
+        budget,
+        user: args.user,
+        today: args.today,
+      }),
+      referenceDate: args.today,
+      resultOptions,
+    });
+
+    exceeded += statuses.filter((status) => status.state === 'exceeded').length;
+  }
+
+  return exceeded;
 }

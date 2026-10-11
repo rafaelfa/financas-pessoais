@@ -853,10 +853,10 @@ model Goal {
   targetAmountInCents         Int
   /// Valor já reservado à data de criação, em cêntimos.
   initialReservedInCents      Int                  @default(0)
-  /// Valor acumulado (cache do resultado dos movimentos, em cêntimos). O motor
-  /// financeiro é a fonte de verdade; este campo evita uma agregação por
-  /// objetivo em cada listagem.
-  accumulatedInCents          Int                  @default(0)
+  // `accumulatedInCents` foi removido: era uma cache escrita **apenas na criação**
+  // e passava a divergir dos movimentos no primeiro depósito (a verificação
+  // adversarial das Fases 5 e 6 mediu 50 000 na coluna contra 75 000 no motor).
+  // O progresso é derivado, e o motor (`goalProgress`) é a fonte de verdade.
   /// Data de conclusão pretendida (data de calendário).
   targetDate                  DateTime             @db.Date
   contributionFrequency       RecurrenceFrequency  @default(MONTHLY)

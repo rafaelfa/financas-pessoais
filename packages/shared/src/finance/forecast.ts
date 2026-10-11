@@ -1,5 +1,5 @@
 import { totalBalanceInCents } from './balance';
-import { nextOccurrence } from './recurrence';
+import { nextOccurrence, seriesTargetDay } from './recurrence';
 import type {
   FinanceAccount,
   FinanceTransaction,
@@ -18,7 +18,10 @@ import type {
  * - as **ocorrências futuras das recorrências ativas**, pelas mesmas datas que o
  *   gerador usaria (a mesma função `nextOccurrence`, para a previsão não divergir
  *   do que vai ser realmente criado);
- * - as **faturas de cartão por pagar**, na respetiva data de vencimento.
+ * - as **faturas de cartão por pagar**, na respetiva data de vencimento;
+ * - as **obrigações já registadas mas por liquidar**, na data do movimento.
+ *
+ * Em todas elas, o que vence hoje ou já venceu conta **como sendo de hoje**.
  *
  * Não entra nada que dependa de adivinhação: gastos variáveis do dia a dia não se
  * preveem, e uma previsão que inventa valores é pior do que não existir.
@@ -93,6 +96,13 @@ function occurrencesBetween(args: {
   const dates: string[] = [];
   let cursor = args.recurrence.nextRunDate;
 
+  // O dia alvo resolve-se uma vez, a partir da primeira data da série: lê-lo do
+  // cursor (já ajustado) prendia uma série do dia 31 ao 28 depois de fevereiro.
+  const targetDay = seriesTargetDay({
+    nextRunDate: args.recurrence.nextRunDate,
+    dayOfMonth: args.recurrence.dayOfMonth,
+  });
+
   // Uma série parada no passado pode ter muitas ocorrências em atraso; o limite
   // existe para a previsão não se transformar num ciclo sobre anos de história.
   for (let guard = 0; guard < 400; guard += 1) {
@@ -119,7 +129,7 @@ function occurrencesBetween(args: {
       from: cursor,
       frequency: args.recurrence.frequency,
       interval: args.recurrence.interval,
-      dayOfMonth: args.recurrence.dayOfMonth,
+      dayOfMonth: targetDay,
     });
 
     if (next <= cursor) {
@@ -171,15 +181,18 @@ export function cashFlowForecast(input: {
   }
 
   for (const invoice of input.unpaidInvoices) {
-    if (
-      invoice.outstandingInCents <= 0 ||
-      invoice.dueDate <= input.from ||
-      invoice.dueDate > horizonEnd
-    ) {
+    if (invoice.outstandingInCents <= 0 || invoice.dueDate > horizonEnd) {
       continue;
     }
 
-    schedule(invoice.dueDate, {
+    /*
+     * Uma fatura que vence **hoje** (ou que já venceu e continua por pagar) é uma
+     * obrigação de hoje, não uma data passada: o passado não se prevê. O guarda
+     * anterior descartava-a e a previsão prometia 120,00 € que já estavam
+     * comprometidos — enquanto o bloco dos «próximos 7 dias» do mesmo ecrã os
+     * mostrava. É o mesmo critério que as recorrências vencidas já usavam.
+     */
+    schedule(invoice.dueDate < input.from ? input.from : invoice.dueDate, {
       label: `Fatura ${invoice.cardName}`,
       // Pagar uma fatura tira dinheiro da conta.
       amountInCents: -invoice.outstandingInCents,
@@ -196,6 +209,10 @@ export function cashFlowForecast(input: {
    * encontrado pelo programador da interface, ao comparar a previsão com o bloco
    * dos próximos 7 dias.
    *
+   * Uma obrigação com data de hoje (ou já vencida e por liquidar) cai **em hoje**,
+   * pelo mesmo critério das recorrências vencidas: senão a previsão do dia 1
+   * ignorava precisamente o que vence no dia 1.
+   *
    * As compras de cartão ficam de fora (`invoiceId` preenchido): a dívida delas
    * entra pelo passo das faturas, e contá-las aqui seria contá-la duas vezes.
    */
@@ -208,11 +225,11 @@ export function cashFlowForecast(input: {
       continue;
     }
 
-    if (transaction.date <= input.from || transaction.date > horizonEnd) {
+    if (transaction.date > horizonEnd) {
       continue;
     }
 
-    schedule(transaction.date, {
+    schedule(transaction.date < input.from ? input.from : transaction.date, {
       label: transaction.description ?? 'Lançamento por liquidar',
       amountInCents: transaction.amountInCents,
       source: 'pending',

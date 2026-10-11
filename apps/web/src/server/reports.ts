@@ -1,10 +1,12 @@
 import { prisma } from '@repo/db/client';
 import {
+  daysBetween,
   expenseByCategory,
+  isWithinPeriod,
   monthlyResult,
   periodRange,
   previousPeriod,
-  resultSeries,
+  resultSeriesForPeriod,
   type AccountingBasis,
   type FinancePeriod,
 } from '@repo/shared';
@@ -217,8 +219,10 @@ function buildReport(args: {
     if (
       transaction.categoryId !== null &&
       transaction.kind === 'EXPENSE' &&
-      transaction.date.toISOString().slice(0, 10) >= period.start &&
-      transaction.date.toISOString().slice(0, 10) <= period.end
+      // `isWithinPeriod` é o predicado do motor: `end` é **exclusivo**. A
+      // comparação à mão usava `<= period.end` e contava o primeiro dia do mês
+      // seguinte.
+      isWithinPeriod(period, transaction.date.toISOString().slice(0, 10))
     ) {
       countByCategory.set(
         transaction.categoryId,
@@ -239,11 +243,12 @@ function buildReport(args: {
     .sort((a, b) => b.amountInCents - a.amountInCents);
 
   // A evolução mensal usa o mesmo motor, com os mesmos parâmetros: o gráfico e o
-  // resumo não podem discordar.
-  const byMonth: ReportMonthLine[] = resultSeries(
+  // resumo não podem discordar. `resultSeriesForPeriod` converte o fim exclusivo
+  // do período para o intervalo que `resultSeries` espera (pontas incluídas) —
+  // sem isso, o gráfico mostrava uma barra do mês seguinte.
+  const byMonth: ReportMonthLine[] = resultSeriesForPeriod(
     context.financeTransactions,
-    period.start,
-    period.end,
+    period,
     resultOptions,
   ).map((month) => ({
     key: month.period.key,
@@ -253,14 +258,13 @@ function buildReport(args: {
     netInCents: month.netInCents,
   }));
 
-  const days = Math.max(
-    1,
-    Math.round(
-      (new Date(`${period.end}T00:00:00.000Z`).getTime() -
-        new Date(`${period.start}T00:00:00.000Z`).getTime()) /
-        86_400_000,
-    ) + 1,
-  );
+  /*
+   * Dias do período. `end` é **exclusivo**, portanto a contagem é exatamente
+   * `daysBetween(start, end)` — o `+ 1` anterior era a convenção inclusiva outra
+   * vez, e fazia a despesa média diária dividir por 32 dias num mês de 31 (e por
+   * 29 em fevereiro). É a mesma primitiva que a projeção do orçamento já usa.
+   */
+  const days = Math.max(1, daysBetween(period.start, period.end));
 
   return {
     key: period.key,
@@ -274,7 +278,9 @@ function buildReport(args: {
     transactionCount: context.transactions.filter((transaction) => {
       const date = transaction.date.toISOString().slice(0, 10);
 
-      return date >= period.start && date <= period.end && transaction.kind !== 'TRANSFER';
+      // Fronteira pelo predicado do motor (`end` exclusivo): `<= period.end`
+      // incluía o primeiro dia do mês seguinte.
+      return isWithinPeriod(period, date) && transaction.kind !== 'TRANSFER';
     }).length,
     averageDailyExpenseInCents: Math.round(result.expenseInCents / days),
     byCategory,

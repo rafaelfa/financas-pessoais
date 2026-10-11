@@ -71,6 +71,11 @@ function monthsPerStep(frequency: RecurrenceFrequency): number {
  *   ocorrência seguinte volta ao 31 se o mês o tiver;
  * - o ajuste é calculado a partir do dia alvo original, e não da data ajustada,
  *   precisamente para não haver deriva (31 → 28 → 28 seria o erro clássico).
+ *
+ * Atenção: sem `dayOfMonth`, o dia alvo é o **dia de `from`**. Quem percorre uma
+ * série tem de resolver o dia uma só vez (`seriesTargetDay`) e passá-lo em todas
+ * as iterações; caso contrário, a deriva regressa assim que o cursor passa por um
+ * mês curto.
  */
 export function nextOccurrence(args: {
   readonly from: string;
@@ -100,6 +105,22 @@ export interface RecurrenceOccurrence {
 }
 
 /**
+ * Dia-alvo fixo de uma série.
+ *
+ * A coluna `dayOfMonth` é nullable. Quando é nula, o dia alvo tem de ser lido
+ * **uma só vez**, da primeira data conhecida da série — e não do cursor, que já
+ * vem ajustado: 31/01 → 28/02 e, a partir daí, o cursor estava no 28, o que dava
+ * **28/03, 28/04, … para sempre**. É o mesmo cuidado que o `dayOfMonth` dado já
+ * tinha, e tem de valer também para o caminho por omissão, que é o mais usado.
+ */
+export function seriesTargetDay(args: {
+  readonly nextRunDate: string;
+  readonly dayOfMonth?: number;
+}): number {
+  return args.dayOfMonth ?? Number(args.nextRunDate.slice(8, 10));
+}
+
+/**
  * Todas as ocorrências em atraso, até `today` inclusive.
  *
  * Devolve também a próxima data por gerar, para o chamador a gravar. O limite de
@@ -121,6 +142,13 @@ export function dueOccurrences(args: {
   let cursor = args.nextRunDate;
   let truncated = false;
 
+  // O dia alvo resolve-se uma vez, a partir da data de partida: sem isto, uma
+  // série do dia 31 sem `dayOfMonth` ficava presa no 28 depois de fevereiro.
+  const targetDay = seriesTargetDay({
+    nextRunDate: args.nextRunDate,
+    dayOfMonth: args.dayOfMonth,
+  });
+
   // Guarda contra séries sem fim: um ano de mensalidades é 12; o limite é folgado.
   for (let guard = 0; guard <= limit; guard += 1) {
     if (cursor > args.today) {
@@ -137,7 +165,7 @@ export function dueOccurrences(args: {
       from: cursor,
       frequency: args.frequency,
       interval: args.interval,
-      dayOfMonth: args.dayOfMonth,
+      dayOfMonth: targetDay,
     });
 
     // Uma série que não avança seria um ciclo infinito a criar o mesmo dia.

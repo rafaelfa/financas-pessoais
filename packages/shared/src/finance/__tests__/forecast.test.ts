@@ -257,3 +257,186 @@ describe('previsão de saldo', () => {
     expect(forecast.endingBalanceInCents).toBe(170_000);
   });
 });
+
+/**
+ * O que vence **hoje** também é futuro.
+ *
+ * A previsão tratava as recorrências vencidas como obrigações de hoje, mas
+ * descartava (`date <= from`) as faturas e os lançamentos por liquidar do próprio
+ * dia. No mesmo ecrã, o bloco dos «próximos 7 dias» mostrava-os e a previsão não
+ * os contava: o saldo projetado ficava 120,00 € acima do real, medido pela
+ * verificação adversarial das Fases 5 e 6. As três fontes passam a ter o mesmo
+ * critério — o que já venceu conta como sendo de hoje.
+ */
+describe('previsão de saldo — obrigações do próprio dia', () => {
+  it('conta a fatura que vence hoje, e não só as de amanhã', () => {
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(50_000, '2026-10-01')],
+      recurrences: [],
+      unpaidInvoices: [
+        {
+          id: 'inv-hoje',
+          cardName: 'ActivoBank',
+          dueDate: '2026-10-11',
+          outstandingInCents: 7_000,
+        },
+        {
+          id: 'inv-amanha',
+          cardName: 'ActivoBank',
+          dueDate: '2026-10-12',
+          outstandingInCents: 2_000,
+        },
+      ],
+      from: '2026-10-11',
+      days: 10,
+    });
+
+    expect(forecast.days[0]?.date).toBe('2026-10-11');
+    expect(forecast.days[0]?.outflowInCents).toBe(7_000);
+    expect(forecast.days[0]?.balanceInCents).toBe(43_000);
+    expect(forecast.days[1]?.outflowInCents).toBe(2_000);
+    expect(forecast.totalOutflowInCents).toBe(9_000);
+  });
+
+  it('conta o lançamento por liquidar com data de hoje', () => {
+    const billToday: FinanceTransaction = {
+      id: 't-hoje',
+      kind: 'expense',
+      status: 'confirmed',
+      amountInCents: -5_000,
+      date: '2026-10-11',
+      description: 'Conta da luz',
+      accountId: ACCOUNT.id,
+      settled: false,
+    };
+
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(100_000, '2026-10-01'), billToday],
+      recurrences: [],
+      unpaidInvoices: [],
+      from: '2026-10-11',
+      days: 5,
+    });
+
+    expect(forecast.days[0]?.outflowInCents).toBe(5_000);
+    expect(forecast.days[0]?.balanceInCents).toBe(95_000);
+    expect(forecast.days[0]?.items[0]?.source).toBe('pending');
+  });
+
+  it('não perde os 120,00 € de saídas de hoje medidos na verificação', () => {
+    // O cenário exato do relatório T5.6 §B9: fatura de 70,00 € a vencer hoje e
+    // uma obrigação de 50,00 € por liquidar também hoje.
+    const billToday: FinanceTransaction = {
+      id: 't-obrigacao-hoje',
+      kind: 'expense',
+      status: 'confirmed',
+      amountInCents: -5_000,
+      date: '2026-10-11',
+      description: 'Obrigação de hoje',
+      accountId: ACCOUNT.id,
+      settled: false,
+    };
+
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(100_000, '2026-10-01'), billToday],
+      recurrences: [],
+      unpaidInvoices: [
+        {
+          id: 'inv-hoje',
+          cardName: 'ActivoBank',
+          dueDate: '2026-10-11',
+          outstandingInCents: 7_000,
+        },
+      ],
+      from: '2026-10-11',
+      days: 5,
+    });
+
+    expect(forecast.days[0]?.outflowInCents).toBe(12_000);
+    expect(forecast.endingBalanceInCents).toBe(88_000);
+  });
+
+  it('conta como de hoje o que já venceu, tal como uma recorrência vencida', () => {
+    const overdueBill: FinanceTransaction = {
+      id: 't-atrasado',
+      kind: 'expense',
+      status: 'confirmed',
+      amountInCents: -3_000,
+      date: '2026-10-01',
+      description: 'Conta atrasada',
+      accountId: ACCOUNT.id,
+      settled: false,
+    };
+
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(100_000, '2026-10-01'), overdueBill],
+      recurrences: [],
+      unpaidInvoices: [
+        {
+          id: 'inv-atrasada',
+          cardName: 'ActivoBank',
+          dueDate: '2026-10-02',
+          outstandingInCents: 4_000,
+        },
+      ],
+      from: '2026-10-11',
+      days: 5,
+    });
+
+    // Nada é contado no passado: as duas obrigações vencidas caem ambas em hoje.
+    expect(forecast.days[0]?.outflowInCents).toBe(7_000);
+    expect(forecast.days.filter((day) => day.outflowInCents > 0)).toHaveLength(1);
+  });
+
+  it('continua a ignorar o que vence depois do horizonte', () => {
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(100_000, '2026-10-01')],
+      recurrences: [],
+      unpaidInvoices: [
+        {
+          id: 'inv-longe',
+          cardName: 'ActivoBank',
+          dueDate: '2026-12-01',
+          outstandingInCents: 9_000,
+        },
+      ],
+      from: '2026-10-11',
+      days: 5,
+    });
+
+    expect(forecast.totalOutflowInCents).toBe(0);
+    expect(forecast.endingBalanceInCents).toBe(100_000);
+  });
+
+  it('sem dayOfMonth, a série mensal não deriva do dia 31', () => {
+    /*
+     * Com a coluna `dayOfMonth` nula, o dia alvo era lido da data **já ajustada**:
+     * 31/01 → 28/02 → 28/03 para sempre. A previsão tem de usar o dia da data
+     * original, como o gerador (`dueOccurrences`).
+     */
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(500_000, '2026-01-01')],
+      recurrences: [
+        recurrence({
+          dayOfMonth: undefined,
+          amountInCents: -10_000,
+          nextRunDate: '2026-01-31',
+        }),
+      ],
+      unpaidInvoices: [],
+      from: '2026-03-01',
+      days: 40,
+    });
+
+    const debits = forecast.days.filter((day) => day.outflowInCents > 0).map((day) => day.date);
+
+    // As duas ocorrências em atraso caem em hoje; a série volta ao dia 31 em março.
+    expect(debits).toEqual(['2026-03-01', '2026-03-31']);
+  });
+});

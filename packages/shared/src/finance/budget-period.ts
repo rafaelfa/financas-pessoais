@@ -1,4 +1,5 @@
 import { addMonths } from './period';
+import type { FinancePeriod } from './types';
 
 /**
  * O período de um mês de competência.
@@ -135,4 +136,41 @@ export function periodByKey(args: {
   }
 
   return null;
+}
+
+/**
+ * Intervalo de datas de um período, na convenção que as consultas usam:
+ * `[from, untilExclusive[`.
+ *
+ * Existe porque o fim **exclusivo** do motor já foi entregue a um `lte` e a um
+ * `<=`: isso incluiu o primeiro dia do mês seguinte no fecho de mês e somou um
+ * dia à contagem de lançamentos do relatório. Nomear a convenção num sítio só é
+ * o que impede a repetição do erro.
+ */
+export function periodDateBounds(period: FinancePeriod): {
+  readonly from: string;
+  readonly untilExclusive: string;
+} {
+  return { from: period.start, untilExclusive: period.end };
+}
+
+/** Âmbito de um orçamento, como o esquema o guarda. */
+export type BudgetScopeValue = 'single_month' | 'monthly_default';
+
+/**
+ * Período efetivo de um orçamento.
+ *
+ * Um orçamento `single_month` pertence ao mês em que foi criado — medido contra
+ * o mês em curso aparece com consumo que não é dele (foi assim que o fecho de
+ * outubro mostrou 170,00 € de um orçamento de setembro). Um `monthly_default`
+ * vale para todos os meses e é medido no mês em curso.
+ */
+export function budgetPeriodFor(args: {
+  readonly budget: { readonly scope: BudgetScopeValue; readonly periodStart: string };
+  readonly user: { readonly monthStartDay: number };
+  readonly today: string;
+}): BudgetPeriod {
+  return args.budget.scope === 'monthly_default'
+    ? monthPeriodFor({ user: args.user, today: args.today })
+    : singleMonthPeriod(args.budget.periodStart);
 }

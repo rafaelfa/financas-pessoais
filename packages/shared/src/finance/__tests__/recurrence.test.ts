@@ -173,6 +173,38 @@ describe('ocorrências em atraso', () => {
       '2026-05-31',
     ]);
   });
+
+  it('sem dayOfMonth, o dia alvo vem da data original e não da já ajustada', () => {
+    /*
+     * A coluna `dayOfMonth` é nullable e o caminho por omissão era o defeituoso:
+     * o dia alvo era lido do cursor, e o cursor já vinha ajustado de fevereiro.
+     * A série ficava presa no 28 para sempre (31/01 → 28/02 → **28/03**).
+     * O dia alvo tem de ser resolvido uma vez, a partir da data de partida.
+     */
+    const result = dueOccurrences({
+      nextRunDate: '2026-01-31',
+      frequency: 'monthly',
+      today: '2026-05-31',
+    });
+
+    expect(result.dates).toEqual([
+      '2026-01-31',
+      '2026-02-28',
+      '2026-03-31',
+      '2026-04-30',
+      '2026-05-31',
+    ]);
+  });
+
+  it('sem dayOfMonth, um trimestre também não deriva do dia 31', () => {
+    const result = dueOccurrences({
+      nextRunDate: '2026-01-31',
+      frequency: 'quarterly',
+      today: '2026-10-31',
+    });
+
+    expect(result.dates).toEqual(['2026-01-31', '2026-04-30', '2026-07-31', '2026-10-31']);
+  });
 });
 
 describe('frequência por extenso', () => {

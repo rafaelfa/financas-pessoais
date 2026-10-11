@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { periodOf } from '../period';
+import { monthPeriodFor } from '../budget-period';
 import {
   countsInResult,
   expenseByCategory,
@@ -8,6 +9,7 @@ import {
   monthlyResult,
   resultOfDate,
   resultSeries,
+  resultSeriesForPeriod,
 } from '../result';
 import type { FinanceCategory, FinanceTransaction } from '../types';
 
@@ -193,6 +195,34 @@ describe('resultado por data e em série', () => {
 
     expect(next.period.key).toBe('2026-10');
     expect(next.expenseInCents).toBe(1_000);
+  });
+
+  /**
+   * A série de um período tem de ter exatamente os meses do período.
+   *
+   * `resultSeries` recebe as duas pontas **incluídas**; o `end` do motor é
+   * **exclusivo**. Passá-lo tal e qual somava um mês inteiro: o relatório de
+   * outubro mostrava uma barra de novembro (300,00 € de soma contra 220,00 € de
+   * total), medido pela verificação adversarial das Fases 5 e 6.
+   */
+  it('a série de um período não soma o mês seguinte', () => {
+    const period = periodOf('2026-10-15');
+    const series = resultSeriesForPeriod(TRANSACTIONS, period, { categories: CATEGORIES });
+
+    expect(period.end).toBe('2026-11-01');
+    expect(series.map((item) => item.period.key)).toEqual(['2026-10']);
+    expect(series[0]?.netInCents).toBe(195_000);
+  });
+
+  it('a série de um período com início ao dia 5 não soma o mês seguinte', () => {
+    const period = monthPeriodFor({ user: { monthStartDay: 5 }, today: '2026-10-11' });
+    const series = resultSeriesForPeriod(TRANSACTIONS, period, {
+      categories: CATEGORIES,
+      monthStartDay: 5,
+    });
+
+    expect(period.end).toBe('2026-11-05');
+    expect(series.map((item) => item.period.key)).toEqual(['2026-10']);
   });
 });
 

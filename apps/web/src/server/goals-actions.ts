@@ -60,7 +60,6 @@ export async function createGoal(input: unknown): Promise<ActionResult<{ id: str
         isPreset: value.isPreset,
         targetAmountInCents: value.targetAmountInCents,
         initialReservedInCents: value.initialReservedInCents,
-        accumulatedInCents: value.initialReservedInCents,
         targetDate: asDate(value.targetDate),
         contributionFrequency: FREQUENCY_BY_INPUT[value.contributionFrequency],
         state: 'ACTIVE',

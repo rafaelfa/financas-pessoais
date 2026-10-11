@@ -11,7 +11,7 @@ import {
 import { revalidatePath } from 'next/cache';
 
 import { failFromWriteError } from './errors';
-import { currentPeriod, monthPeriodFor } from './budget-period';
+import { currentPeriod } from './budget-period';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
 import { todayInLisbon } from '@/lib/today';
@@ -234,16 +234,4 @@ export async function removeBudgetLimit(input: unknown): Promise<ActionResult<{ 
   revalidateBudgetViews();
 
   return ok({ id: limit.id });
-}
-
-/** O período em que um orçamento se aplica agora, para o cabeçalho do ecrã. */
-export async function budgetPeriodFor(scope: 'monthly_default' | 'single_month'): Promise<{
-  start: string;
-  end: string;
-}> {
-  const user = await requireUser();
-
-  void scope;
-
-  return monthPeriodFor({ user, today: todayInLisbon() });
 }

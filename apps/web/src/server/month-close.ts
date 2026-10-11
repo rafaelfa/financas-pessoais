@@ -1,5 +1,5 @@
 import { prisma } from '@repo/db/client';
-import { budgetStatusList, periodOf } from '@repo/shared';
+import { exceededLimits, periodDateBounds, periodOf } from '@repo/shared';
 
 import { todayInLisbon } from '@/lib/today';
 
@@ -100,8 +100,15 @@ export async function getMonthClose(): Promise<MonthCloseView> {
   const period = periodOf(today, user.monthStartDay);
   const start = period.start;
   const end = period.end;
-  const from = new Date(`${start}T00:00:00.000Z`);
-  const to = new Date(`${end}T23:59:59.999Z`);
+  /*
+   * `period.end` é **exclusivo**. O `to` anterior era `end` a `T23:59:59.999Z`
+   * com um `lte`, o que metia o primeiro dia do mês seguinte no fecho: com o mês
+   * a começar ao dia 1, um pendente de 1 de novembro bloqueava o fecho de
+   * outubro. `periodDateBounds` dá a convenção certa, num sítio só.
+   */
+  const bounds = periodDateBounds(period);
+  const from = new Date(`${bounds.from}T00:00:00.000Z`);
+  const untilExclusive = new Date(`${bounds.untilExclusive}T00:00:00.000Z`);
 
   const [
     pending,
@@ -116,7 +123,7 @@ export async function getMonthClose(): Promise<MonthCloseView> {
     close,
   ] = await Promise.all([
     prisma.transaction.count({
-      where: { userId: user.id, status: 'PENDING', date: { gte: from, lte: to } },
+      where: { userId: user.id, status: 'PENDING', date: { gte: from, lt: untilExclusive } },
     }),
     prisma.transaction.findMany({
       where: {
@@ -127,7 +134,7 @@ export async function getMonthClose(): Promise<MonthCloseView> {
         cardId: null,
         kind: { in: ['EXPENSE', 'INCOME'] },
         status: { not: 'IGNORED' },
-        date: { gte: from, lte: to },
+        date: { gte: from, lt: untilExclusive },
       },
       select: { amountInCents: true },
     }),
@@ -137,12 +144,12 @@ export async function getMonthClose(): Promise<MonthCloseView> {
         categoryId: null,
         status: { not: 'IGNORED' },
         kind: { in: ['EXPENSE', 'INCOME'] },
-        date: { gte: from, lte: to },
+        date: { gte: from, lt: untilExclusive },
       },
     }),
     prisma.financialAccount.count({ where: { userId: user.id, archivedAt: null } }),
     prisma.lockedBalance.count({
-      where: { userId: user.id, referenceDate: { gte: from, lte: to } },
+      where: { userId: user.id, referenceDate: { gte: from, lt: untilExclusive } },
     }),
     prisma.budget.findMany({
       where: { userId: user.id },
@@ -164,28 +171,32 @@ export async function getMonthClose(): Promise<MonthCloseView> {
 
   /*
    * Orçamentos excedidos: medidos pelo motor, em competência, exatamente como em
-   * /orcamento. Uma conta paralela aqui seria a forma mais rápida de o assistente
-   * de fecho dizer uma coisa e o ecrã do orçamento outra.
+   * /orcamento — e **cada orçamento contra o seu próprio período**. Avaliar todos
+   * contra o mês em curso punha um orçamento de setembro com o consumo de
+   * outubro (170,00 € onde o ecrã do orçamento mostrava 0) e bloqueava o fecho
+   * por um motivo que não existia. A resolução do período vive agora no domínio
+   * (`budgetPeriodFor`), que é também o que `/orcamento` usa: uma conta paralela
+   * aqui era a forma mais rápida de o assistente de fecho dizer uma coisa e o
+   * ecrã do orçamento outra.
    */
-  let exceeded = 0;
-
-  for (const budget of budgets) {
-    const statuses = budgetStatusList({
+  const exceeded = exceededLimits({
+    budgets: budgets.map((budget) => ({
+      id: budget.id,
+      scope: budget.scope === 'MONTHLY_DEFAULT' ? 'monthly_default' : 'single_month',
+      periodStart: budget.periodStart.toISOString().slice(0, 10),
       limits: budget.limits.map((limit) => ({
         id: limit.id,
         categoryId: limit.categoryId,
         amountInCents: limit.amountInCents,
       })),
-      transactions: financeTransactions,
-      period,
-      referenceDate: today,
-      // As categorias internas (fatura, ajuste, objetivo) nunca contam para o
-      // orçamento — é o motor que o decide, desde que as conheça.
-      resultOptions: { categories: financeCategories, monthStartDay: user.monthStartDay },
-    });
-
-    exceeded += statuses.filter((status) => status.state === 'exceeded').length;
-  }
+    })),
+    transactions: financeTransactions,
+    user,
+    today,
+    // As categorias internas (fatura, ajuste, objetivo) nunca contam para o
+    // orçamento — é o motor que o decide, desde que as conheça.
+    categories: financeCategories,
+  });
 
   // `blocking` é acrescentado no fim, a partir de `BLOCKING_STEPS`: assim a lista
   // de bloqueios existe num sítio só, e não repetida em seis objetos.

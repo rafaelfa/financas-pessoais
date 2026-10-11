@@ -1,4 +1,4 @@
-import { periodOf, periodRange } from './period';
+import { addDays, periodOf, periodRange } from './period';
 import type { AccountingBasis, FinanceCategory, FinancePeriod, FinanceTransaction } from './types';
 
 /**
@@ -155,6 +155,24 @@ export function resultSeries(
   return periodRange(from, to, options.monthStartDay).map((period) =>
     monthlyResult(transactions, period, options),
   );
+}
+
+/**
+ * Série mensal que cobre **exatamente** um período do motor.
+ *
+ * `FinancePeriod.end` é exclusivo, mas `resultSeries` recebe um intervalo com as
+ * duas pontas incluídas (`periodRange`). Passar-lhe `period.end` sem o recuar
+ * acrescenta um mês inteiro à série — foi o que fez o gráfico do relatório
+ * mostrar uma barra de novembro num relatório de outubro. Esta função existe
+ * para as duas convenções não voltarem a ser misturadas: o único sítio onde a
+ * conversão acontece é aqui.
+ */
+export function resultSeriesForPeriod(
+  transactions: readonly FinanceTransaction[],
+  period: FinancePeriod,
+  options: ResultOptions = {},
+): MonthlyResult[] {
+  return resultSeries(transactions, period.start, addDays(period.end, -1), options);
 }
 
 /**
