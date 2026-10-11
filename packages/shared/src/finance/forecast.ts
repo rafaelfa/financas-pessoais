@@ -1,6 +1,11 @@
 import { totalBalanceInCents } from './balance';
 import { nextOccurrence } from './recurrence';
-import type { FinanceAccount, FinanceTransaction, RecurrenceFrequency, TransactionKind } from './types';
+import type {
+  FinanceAccount,
+  FinanceTransaction,
+  RecurrenceFrequency,
+  TransactionKind,
+} from './types';
 
 /**
  * Previsão de saldo.
@@ -166,7 +171,11 @@ export function cashFlowForecast(input: {
   }
 
   for (const invoice of input.unpaidInvoices) {
-    if (invoice.outstandingInCents <= 0 || invoice.dueDate <= input.from || invoice.dueDate > horizonEnd) {
+    if (
+      invoice.outstandingInCents <= 0 ||
+      invoice.dueDate <= input.from ||
+      invoice.dueDate > horizonEnd
+    ) {
       continue;
     }
 

@@ -31,9 +31,7 @@ function revalidateMonthCloseViews(): void {
 }
 
 /** Marca o mês como conferido. */
-export async function closeMonth(
-  input: unknown,
-): Promise<ActionResult<{ closedAt: string }>> {
+export async function closeMonth(input: unknown): Promise<ActionResult<{ closedAt: string }>> {
   const user = await requireUser();
   const parsed = periodSchema.safeParse(input);
 
@@ -63,9 +61,7 @@ export async function closeMonth(
 }
 
 /** Reabre o mês, apagando o marco de fecho. */
-export async function reopenMonth(
-  input: unknown,
-): Promise<ActionResult<{ periodKey: string }>> {
+export async function reopenMonth(input: unknown): Promise<ActionResult<{ periodKey: string }>> {
   const user = await requireUser();
   const parsed = periodSchema.safeParse(input);
 

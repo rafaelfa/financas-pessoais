@@ -6,12 +6,16 @@ import { Amount } from '@/components/amount';
 import { CashflowChart, type CashflowPoint } from '@/components/cashflow-chart';
 import { CategoryDonut, type DonutSlice } from '@/components/category-donut';
 import { ChartCard } from '@/components/chart-card';
+import { DashboardForecast } from '@/components/dashboard-forecast';
+import { DashboardForecastAlert } from '@/components/dashboard-forecast-alert';
 import { EmptyState } from '@/components/empty-state';
 import { KpiCard } from '@/components/kpi-card';
+import { MonthCloseChecklist } from '@/components/month-close-checklist';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDashboard } from '@/server/dashboard';
+import { getMonthClose } from '@/server/month-close';
 
 export const metadata: Metadata = { title: 'Painel' };
 
@@ -24,10 +28,39 @@ function shortMonth(key: string): string {
   );
 }
 
+/**
+ * Data de calendário em formato português, sem deslocação de fuso.
+ *
+ * O domínio usa datas `YYYY-MM-DD` sem hora; formatá-las com o fuso de Lisboa
+ * mostraria o dia anterior às 23h. O `UTC` explícito evita isso.
+ */
+function formatDay(date: string): string {
+  return new Intl.DateTimeFormat('pt-PT', { timeZone: 'UTC', dateStyle: 'short' }).format(
+    new Date(`${date}T00:00:00Z`),
+  );
+}
+
 const euro = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
 
+/**
+ * Painel.
+ *
+ * A ordem dos blocos é uma decisão de produto, não de estética: **primeiro o que
+ * pode correr mal**. Se a previsão diz que o saldo fica negativo antes do próximo
+ * ordenado, esse aviso é a primeira coisa que o utilizador vê — com a data e o
+ * valor. A seguir vem o presente (património, entradas e saídas do mês), depois o
+ * que aí vem (previsão de saldo e próximos dias) e, no fim, o fecho do mês.
+ */
 export default async function PainelPage() {
-  const data = await getDashboard();
+  /*
+   * As duas consultas arrancam juntas e só depois se espera por elas, pela ordem
+   * em que são usadas: o painel não paga duas idas à base de dados em série.
+   */
+  const dashboardPromise = getDashboard();
+  const monthClosePromise = getMonthClose();
+
+  const data = await dashboardPromise;
+  const monthClose = await monthClosePromise;
 
   const cashflow: CashflowPoint[] = data.series.map((item) => ({
     mes: shortMonth(item.key),
@@ -50,7 +83,7 @@ export default async function PainelPage() {
         <EmptyState
           icon={CalendarClock}
           title="Ainda não há nada para mostrar"
-          description="Começa por criar uma conta e registar os primeiros movimentos. A partir daí este painel mostra o teu património, o que entrou e saiu no mês, e os dias que aí vêm."
+          description="Começa por criar uma conta e registar os primeiros movimentos. A partir daí este painel mostra o teu património, o que entrou e saiu no mês, a previsão de saldo e o que falta conferir para fechar o mês."
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button asChild size="sm">
@@ -78,6 +111,9 @@ export default async function PainelPage() {
         }
       />
 
+      {/* Primeiro o que pode correr mal: o saldo a ficar negativo. */}
+      <DashboardForecastAlert forecast={data.forecast} />
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Património líquido" hint="Saldos das contas ativas">
           <Amount amountInCents={data.patrimonyInCents} />
@@ -97,6 +133,14 @@ export default async function PainelPage() {
         <KpiCard label="Sobra do mês" hint="Entradas menos saídas, em visão de caixa">
           <Amount amountInCents={data.cash.netInCents} withSign />
         </KpiCard>
+      </section>
+
+      <section className="mt-6 grid gap-4 xl:grid-cols-5">
+        <DashboardForecast forecast={data.forecast} className="xl:col-span-3" />
+
+        <div className="xl:col-span-2">
+          <MonthCloseChecklist monthClose={monthClose} />
+        </div>
       </section>
 
       <section className="mt-6 grid gap-4 lg:grid-cols-5">
@@ -131,7 +175,7 @@ export default async function PainelPage() {
               <EmptyState
                 icon={CalendarClock}
                 title="Nada por pagar nos próximos 7 dias"
-                description="Os lançamentos por liquidar com data próxima aparecem aqui, para não haver surpresas."
+                description="Os lançamentos por liquidar com data próxima aparecem aqui, para não haver surpresas. É o detalhe do que a previsão de saldo conta por dia."
               />
             ) : (
               <ul className="divide-y">
@@ -143,7 +187,7 @@ export default async function PainelPage() {
                     <span className="flex flex-col">
                       <span className="font-medium">{item.description}</span>
                       <span className="text-xs text-muted-foreground">
-                        {item.date}
+                        {formatDay(item.date)}
                         {item.categoryName !== null ? ` · ${item.categoryName}` : ''}
                       </span>
                     </span>

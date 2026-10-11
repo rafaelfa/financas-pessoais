@@ -2,6 +2,7 @@ import { prisma } from '@repo/db/client';
 import {
   addDays,
   addMonths,
+  cashFlowForecast,
   expenseByCategory,
   monthlyResult,
   netWorth,
@@ -12,6 +13,7 @@ import {
 import { todayInLisbon } from '@/lib/today';
 
 import { TRANSACTION_SELECT } from './accounts';
+import { loadInvoiceContext } from './invoice-context';
 import { toFinanceAccount, toFinanceCategory, toFinanceTransaction } from './mapping';
 import { requireUser } from './session';
 
@@ -55,6 +57,26 @@ export interface DashboardData {
   }>;
   readonly lastTransactionDate: string | null;
   readonly hasData: boolean;
+  /**
+   * Previsão de saldo para os próximos 45 dias.
+   *
+   * Inclui os **itens** de cada dia (recorrências e faturas), para a interface
+   * poder dizer *o que* muda o saldo — «Renda · −800,00 €» — e não apenas quanto.
+   * `firstNegativeDate` é a data em que fica negativo, que pode não ser a do
+   * ponto mais baixo: o que interessa avisar é o primeiro dia em que não há
+   * dinheiro suficiente, não o pior dia.
+   */
+  readonly forecast: {
+    readonly days: ReadonlyArray<{
+      readonly date: string;
+      readonly balanceInCents: number;
+      readonly items: ReadonlyArray<{ label: string; amountInCents: number }>;
+    }>;
+    readonly lowestBalanceInCents: number;
+    readonly lowestDate: string | null;
+    readonly goesNegative: boolean;
+    readonly firstNegativeDate: string | null;
+  };
 }
 
 /** Reúne tudo o que o painel mostra, num único passo. */
@@ -63,19 +85,22 @@ export async function getDashboard(): Promise<DashboardData> {
   const today = todayInLisbon();
   const period = periodOf(today, user.monthStartDay);
 
-  const [accounts, transactions, categories, lastTransaction] = await Promise.all([
-    prisma.financialAccount.findMany({ where: { userId: user.id } }),
-    prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
-    prisma.category.findMany({
-      where: { userId: user.id, archivedAt: null },
-      select: { id: true, name: true, kind: true, parentId: true, isInternal: true },
-    }),
-    prisma.transaction.findFirst({
-      where: { userId: user.id },
-      orderBy: { date: 'desc' },
-      select: { date: true },
-    }),
-  ]);
+  const [accounts, transactions, categories, lastTransaction, recurrences, invoiceContext] =
+    await Promise.all([
+      prisma.financialAccount.findMany({ where: { userId: user.id } }),
+      prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
+      prisma.category.findMany({
+        where: { userId: user.id, archivedAt: null },
+        select: { id: true, name: true, kind: true, parentId: true, isInternal: true },
+      }),
+      prisma.transaction.findFirst({
+        where: { userId: user.id },
+        orderBy: { date: 'desc' },
+        select: { date: true },
+      }),
+      prisma.recurrence.findMany({ where: { userId: user.id, isActive: true } }),
+      loadInvoiceContext(user.id, today),
+    ]);
 
   const financeAccounts = accounts.map(toFinanceAccount);
   const financeTransactions = transactions.map(toFinanceTransaction);
@@ -88,6 +113,45 @@ export async function getDashboard(): Promise<DashboardData> {
     accounts: financeAccounts,
     transactions: financeTransactions,
     upTo: today,
+  });
+
+  /*
+   * Previsão de saldo: o painel mostrava o presente e não avisava do futuro.
+   * Entra só o que já está contratado — as ocorrências futuras das recorrências
+   * ativas (pelas mesmas datas que o gerador vai usar) e as faturas por pagar no
+   * dia do vencimento. Gastos variáveis não se preveem.
+   */
+  const forecast = cashFlowForecast({
+    accounts: financeAccounts,
+    transactions: financeTransactions,
+    recurrences: recurrences.map((recurrence) => ({
+      id: recurrence.id,
+      name: recurrence.name,
+      kind: recurrence.kind === 'INCOME' ? ('income' as const) : ('expense' as const),
+      amountInCents: recurrence.amountInCents,
+      frequency:
+        recurrence.frequency === 'WEEKLY'
+          ? ('weekly' as const)
+          : recurrence.frequency === 'QUARTERLY'
+            ? ('quarterly' as const)
+            : ('monthly' as const),
+      interval: recurrence.interval,
+      dayOfMonth: recurrence.dayOfMonth ?? undefined,
+      nextRunDate: recurrence.nextRunDate.toISOString().slice(0, 10),
+      endDate:
+        recurrence.endDate === null ? undefined : recurrence.endDate.toISOString().slice(0, 10),
+      isActive: recurrence.isActive,
+    })),
+    unpaidInvoices: invoiceContext.summaries
+      .filter((invoice) => invoice.outstandingInCents > 0)
+      .map((invoice) => ({
+        id: invoice.id,
+        cardName: invoice.cardName,
+        dueDate: invoice.dueDate,
+        outstandingInCents: invoice.outstandingInCents,
+      })),
+    from: today,
+    days: 45,
   });
   const series = resultSeries(financeTransactions, addMonths(period.start, -5), today, {
     ...options,
@@ -143,6 +207,20 @@ export async function getDashboard(): Promise<DashboardData> {
     })),
     expensesByCategory,
     upcoming,
+    forecast: {
+      days: forecast.days.map((day) => ({
+        date: day.date,
+        balanceInCents: day.balanceInCents,
+        items: day.items.map((item) => ({
+          label: item.label,
+          amountInCents: item.amountInCents,
+        })),
+      })),
+      lowestBalanceInCents: forecast.lowestBalanceInCents,
+      lowestDate: forecast.lowestDate,
+      goesNegative: forecast.goesNegative,
+      firstNegativeDate: forecast.firstNegativeDate,
+    },
     lastTransactionDate: lastTransaction?.date.toISOString().slice(0, 10) ?? null,
     hasData: transactions.length > 0,
   };

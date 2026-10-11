@@ -30,12 +30,7 @@ import { requireUser } from './session';
  */
 
 export type MonthCloseStepId =
-  | 'pending'
-  | 'unsettled'
-  | 'invoices'
-  | 'balances'
-  | 'budget'
-  | 'uncategorized';
+  'pending' | 'unsettled' | 'invoices' | 'balances' | 'budget' | 'uncategorized';
 
 export interface MonthCloseStep {
   readonly id: MonthCloseStepId;
@@ -45,6 +40,16 @@ export interface MonthCloseStep {
   readonly count: number;
   readonly amountInCents: number | null;
   readonly href: string;
+  /**
+   * `true` quando este passo impede fechar o mês.
+   *
+   * Existe para a interface poder marcar a diferença sem inventar texto: passar o
+   * saldo é uma **recomendação** (confirma-o contra o banco), não uma condição.
+   * Sem este campo, quem mostra a lista tem de explicar por palavras porque é que
+   * há passos por resolver e o botão continua ativo — e acaba a escrever uma
+   * frase que o servidor não sabe garantir.
+   */
+  readonly blocking: boolean;
 }
 
 export interface MonthCloseView {
@@ -74,7 +79,7 @@ const MONTH_NAMES = [
 function labelFor(start: string): string {
   const [year, month] = start.split('-');
   const index = Number(month) - 1;
-  const name = MONTH_NAMES[index] ?? (month ?? '');
+  const name = MONTH_NAMES[index] ?? month ?? '';
 
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year ?? ''}`.trim();
 }
@@ -98,49 +103,59 @@ export async function getMonthClose(): Promise<MonthCloseView> {
   const from = new Date(`${start}T00:00:00.000Z`);
   const to = new Date(`${end}T23:59:59.999Z`);
 
-  const [pending, unsettled, uncategorized, accounts, locked, budgets, transactions, categories, context, close] =
-    await Promise.all([
-      prisma.transaction.count({
-        where: { userId: user.id, status: 'PENDING', date: { gte: from, lte: to } },
-      }),
-      prisma.transaction.findMany({
-        where: {
-          userId: user.id,
-          settled: false,
-          // As compras de cartão liquidam-se com a fatura: quem as trata é o passo
-          // das faturas, senão este passo nunca ficaria concluído.
-          cardId: null,
-          kind: { in: ['EXPENSE', 'INCOME'] },
-          status: { not: 'IGNORED' },
-          date: { gte: from, lte: to },
-        },
-        select: { amountInCents: true },
-      }),
-      prisma.transaction.count({
-        where: {
-          userId: user.id,
-          categoryId: null,
-          status: { not: 'IGNORED' },
-          kind: { in: ['EXPENSE', 'INCOME'] },
-          date: { gte: from, lte: to },
-        },
-      }),
-      prisma.financialAccount.count({ where: { userId: user.id, archivedAt: null } }),
-      prisma.lockedBalance.count({
-        where: { userId: user.id, referenceDate: { gte: from, lte: to } },
-      }),
-      prisma.budget.findMany({
-        where: { userId: user.id },
-        include: { limits: { select: { id: true, categoryId: true, amountInCents: true } } },
-      }),
-      prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
-      prisma.category.findMany({ where: { userId: user.id } }),
-      loadInvoiceContext(user.id, today),
-      prisma.monthClose.findUnique({
-        where: { userId_periodStart: { userId: user.id, periodStart: from } },
-        select: { closedAt: true },
-      }),
-    ]);
+  const [
+    pending,
+    unsettled,
+    uncategorized,
+    accounts,
+    locked,
+    budgets,
+    transactions,
+    categories,
+    context,
+    close,
+  ] = await Promise.all([
+    prisma.transaction.count({
+      where: { userId: user.id, status: 'PENDING', date: { gte: from, lte: to } },
+    }),
+    prisma.transaction.findMany({
+      where: {
+        userId: user.id,
+        settled: false,
+        // As compras de cartão liquidam-se com a fatura: quem as trata é o passo
+        // das faturas, senão este passo nunca ficaria concluído.
+        cardId: null,
+        kind: { in: ['EXPENSE', 'INCOME'] },
+        status: { not: 'IGNORED' },
+        date: { gte: from, lte: to },
+      },
+      select: { amountInCents: true },
+    }),
+    prisma.transaction.count({
+      where: {
+        userId: user.id,
+        categoryId: null,
+        status: { not: 'IGNORED' },
+        kind: { in: ['EXPENSE', 'INCOME'] },
+        date: { gte: from, lte: to },
+      },
+    }),
+    prisma.financialAccount.count({ where: { userId: user.id, archivedAt: null } }),
+    prisma.lockedBalance.count({
+      where: { userId: user.id, referenceDate: { gte: from, lte: to } },
+    }),
+    prisma.budget.findMany({
+      where: { userId: user.id },
+      include: { limits: { select: { id: true, categoryId: true, amountInCents: true } } },
+    }),
+    prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
+    prisma.category.findMany({ where: { userId: user.id } }),
+    loadInvoiceContext(user.id, today),
+    prisma.monthClose.findUnique({
+      where: { userId_periodStart: { userId: user.id, periodStart: from } },
+      select: { closedAt: true },
+    }),
+  ]);
 
   const unpaid = context.summaries.filter((invoice) => invoice.outstandingInCents > 0);
   const unpaidTotal = unpaid.reduce((total, invoice) => total + invoice.outstandingInCents, 0);
@@ -172,7 +187,9 @@ export async function getMonthClose(): Promise<MonthCloseView> {
     exceeded += statuses.filter((status) => status.state === 'exceeded').length;
   }
 
-  const steps: MonthCloseStep[] = [
+  // `blocking` é acrescentado no fim, a partir de `BLOCKING_STEPS`: assim a lista
+  // de bloqueios existe num sítio só, e não repetida em seis objetos.
+  const steps: Omit<MonthCloseStep, 'blocking'>[] = [
     {
       id: 'pending',
       title: 'Lançamentos por confirmar',
@@ -238,12 +255,11 @@ export async function getMonthClose(): Promise<MonthCloseView> {
 
   return {
     period: { key: period.key, start, end, label: labelFor(start) },
-    steps,
+    steps: steps.map((step) => ({ ...step, blocking: BLOCKING_STEPS.includes(step.id) })),
     completedCount,
     totalCount: steps.length,
     readyToClose: blocking.every((step) => step.done),
-    closedAt:
-      close === null ? null : close.closedAt.toISOString().slice(0, 10),
+    closedAt: close === null ? null : close.closedAt.toISOString().slice(0, 10),
   };
 }
 

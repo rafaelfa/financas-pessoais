@@ -598,9 +598,7 @@ function RecurrenceForm({
           </Select>
           <FieldError id="recorrencia-conta-erro">
             {errorFor('accountId') ??
-              (accountId === ''
-                ? 'Escolhe a conta onde o lançamento entra ou sai.'
-                : undefined)}
+              (accountId === '' ? 'Escolhe a conta onde o lançamento entra ou sai.' : undefined)}
           </FieldError>
         </div>
 

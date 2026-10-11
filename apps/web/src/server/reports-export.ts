@@ -76,7 +76,12 @@ export async function exportReportCsv(
 
   for (const month of report.byMonth) {
     lines.push(
-      [cell(month.label), cents(month.incomeInCents), cents(month.expenseInCents), cents(month.netInCents)].join(';'),
+      [
+        cell(month.label),
+        cents(month.incomeInCents),
+        cents(month.expenseInCents),
+        cents(month.netInCents),
+      ].join(';'),
     );
   }
 

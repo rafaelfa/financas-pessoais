@@ -1,49 +1,90 @@
+import { ChartColumn } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { ChartCard } from '@/components/chart-card';
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
+import { basisFromParam } from '@/components/report-basis';
+import { ReportCategoryBreakdown } from '@/components/report-category-breakdown';
+import { ReportComparison } from '@/components/report-comparison';
+import { ReportExportButton } from '@/components/report-export-button';
+import { ReportFilters } from '@/components/report-filters';
+import { ReportMonthlyEvolution } from '@/components/report-monthly-evolution';
+import { ReportSummary } from '@/components/report-summary';
+import { comparePeriods, getReport, listPeriods } from '@/server/reports';
 
 export const metadata: Metadata = { title: 'Relatórios' };
 
-export default function RelatoriosPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+/** Quantos meses o seletor oferece. */
+const PERIODS_TO_OFFER = 12;
+
+/**
+ * Relatórios.
+ *
+ * O período e o regime vivem no URL. Isso não é só uma preferência de estilo: é
+ * o que garante que a **exportação** usa exatamente os dois parâmetros que
+ * produziram os números no ecrã. O botão de exportar recebe os valores já
+ * resolvidos, nunca o texto cru do URL.
+ *
+ * O período pedido é validado contra a lista: um `?periodo=` antigo cai no mês
+ * mais recente em vez de rebentar, e o que se exporta continua a ser o que está
+ * à vista.
+ */
+export default async function RelatoriosPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const periods = await listPeriods(PERIODS_TO_OFFER);
+
+  const requested = typeof params.periodo === 'string' ? params.periodo : undefined;
+  const selected = periods.find((period) => period.key === requested) ?? periods[0];
+  const basis = basisFromParam(typeof params.regime === 'string' ? params.regime : undefined);
+
+  if (selected === undefined) {
+    return (
+      <>
+        <PageHeader
+          title="Relatórios"
+          description="O mês em caixa e em competência, com a evolução recente e a comparação com o mês anterior."
+        />
+
+        <EmptyState
+          icon={ChartColumn}
+          title="Ainda não há períodos para relatar"
+          description="Um relatório precisa de meses com movimentos. Regista alguns lançamentos e volta aqui: o mês aparece assim que tiver dados para somar."
+        />
+      </>
+    );
+  }
+
+  const [report, comparison] = await Promise.all([
+    getReport({ periodKey: selected.key, basis }),
+    comparePeriods({ periodKey: selected.key, basis }),
+  ]);
+
   return (
     <>
       <PageHeader
         title="Relatórios"
-        description="Extrato filtrado, evolução mês a mês e comparações entre períodos."
+        description="O mesmo mês em dois regimes: caixa (quando o dinheiro se moveu) e competência (quando gastaste). A exportação leva exatamente o que está à vista."
         actions={
-          <Button size="sm" variant="outline">
-            Exportar
-          </Button>
+          <ReportExportButton periodKey={selected.key} periodLabel={selected.label} basis={basis} />
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard
-          title="Evolução do património"
-          description="Ativos menos passivos, mês a mês."
-          isEmpty
-          emptyMessage="Assim que houver alguns meses de movimentos, a evolução aparece aqui."
-        />
-        <ChartCard
-          title="Poupança por mês"
-          description="Quanto sobra ao fim de cada mês."
-          isEmpty
-          emptyMessage="Sem movimentos registados ainda não há poupança para medir."
-        />
-        <ChartCard
-          title="Média por categoria"
-          description="Comparação entre os últimos 3, 6 e 12 meses."
-          isEmpty
-          emptyMessage="As médias precisam de histórico. Aparecem depois do primeiro mês completo."
-        />
-        <ChartCard
-          title="Projeção de saldo"
-          description="Onde o saldo estará nos próximos meses, com as recorrências contadas."
-          isEmpty
-          emptyMessage="A projeção usa as recorrências e as faturas por pagar. Ainda não há nenhumas."
-        />
+      <div className="space-y-8">
+        <ReportFilters periods={periods} periodKey={selected.key} basis={basis} />
+
+        <ReportSummary report={report} />
+
+        <ReportMonthlyEvolution byMonth={report.byMonth} />
+
+        <ReportCategoryBreakdown report={report} />
+
+        <ReportComparison comparison={comparison} />
       </div>
     </>
   );

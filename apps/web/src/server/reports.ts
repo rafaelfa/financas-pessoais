@@ -144,10 +144,7 @@ export async function listPeriods(months = 12): Promise<PeriodOption[]> {
   const from = `${today.slice(0, 4)}-01-01`;
   const periods = periodRange(from, today, user.monthStartDay);
 
-  return periods
-    .slice(-Math.max(1, months))
-    .map(toPeriodOption)
-    .reverse();
+  return periods.slice(-Math.max(1, months)).map(toPeriodOption).reverse();
 }
 
 /** Contexto de leitura partilhado por todos os relatórios. */

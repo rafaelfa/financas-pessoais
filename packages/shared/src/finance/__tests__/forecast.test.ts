@@ -165,7 +165,12 @@ describe('previsão de saldo', () => {
       accounts: [ACCOUNT],
       transactions: [settledIncome(100_000, '2026-10-01')],
       recurrences: [
-        recurrence({ id: 'rec-rent', name: 'Renda', amountInCents: -80_000, nextRunDate: '2026-11-08' }),
+        recurrence({
+          id: 'rec-rent',
+          name: 'Renda',
+          amountInCents: -80_000,
+          nextRunDate: '2026-11-08',
+        }),
         recurrence({
           id: 'rec-salary',
           name: 'Ordenado',
