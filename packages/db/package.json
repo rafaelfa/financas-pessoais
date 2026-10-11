@@ -16,7 +16,7 @@
     "db:validate": "prisma validate",
     "db:seed": "tsx prisma/seed.ts",
     "lint": "eslint .",
-    "typecheck": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "clean": "rimraf .turbo node_modules src/generated"
   },
   "dependencies": {

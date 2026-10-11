@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, Wallet } from 'lucide-react';
+import { ArrowLeftRight, CreditCard, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
@@ -21,9 +21,11 @@ import {
 } from '@/components/ui/select';
 import { createTransaction, createTransfer } from '@/server/transactions-actions';
 import type { AccountView } from '@/server/accounts';
+import type { CardView } from '@/server/cards';
 import type { CategoryView } from '@/server/categories';
 import { toFieldErrors } from '@/server/result';
 import { createTransactionSchema, createTransferSchema } from '@repo/shared/schemas/domain';
+import { addMonths, formatCurrency, invoiceDatesFor, splitInstallments } from '@repo/shared';
 import { cn } from '@/lib/utils';
 
 /**
@@ -33,9 +35,13 @@ import { cn } from '@/lib/utils';
  * supermercado. Por isso:
  * - o valor aceita contas escritas no campo e é confirmado com `Enter`;
  * - `Enter` em qualquer campo (menos nos seletores) lança o movimento;
- * - a conta, a data e a natureza ficam preenchidas depois de guardar, para o
- *   lançamento seguinte ser só escrever o valor;
+ * - a conta, a data, a forma de pagamento e o cartão ficam preenchidos depois de
+ *   guardar, para o lançamento seguinte ser só escrever o valor;
  * - o sinal é do formulário, não do utilizador: um gasto é sempre subtraído.
+ *
+ * Compras a crédito: o cartão decide em que fatura a compra entra, e o formulário
+ * diz qual é **antes** de guardar. Um parcelamento gera um lançamento por fatura,
+ * com a soma exata do valor.
  */
 
 type QuickMode = 'expense' | 'income' | 'transfer';
@@ -48,13 +54,18 @@ const TOUCH = 'min-h-11 sm:min-h-8';
 
 export function TransactionQuickAdd({
   accounts,
+  cards,
   categories,
   today,
+  initialCardId,
 }: {
   readonly accounts: readonly AccountView[];
+  readonly cards: readonly CardView[];
   readonly categories: readonly CategoryView[];
   /** Data de hoje em Portugal, como `YYYY-MM-DD`. */
   readonly today: string;
+  /** Cartão pré-escolhido, quando se chega do ecrã dos cartões. */
+  readonly initialCardId?: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -62,8 +73,16 @@ export function TransactionQuickAdd({
   const descriptionFieldId = useId();
   const dateFieldId = useId();
 
+  const activeCards = cards.filter((card) => !card.archived);
+
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<QuickMode>('expense');
+  const [paymentMethod, setPaymentMethod] = useState<'debit' | 'credit'>(
+    initialCardId === undefined ? 'debit' : 'credit',
+  );
+  const [cardId, setCardId] = useState(() => initialCardId ?? activeCards[0]?.id ?? '');
+  const [installmentMode, setInstallmentMode] = useState<'single' | 'installment'>('single');
+  const [installmentCount, setInstallmentCount] = useState('12');
   const [amountInCents, setAmountInCents] = useState<number | null>(null);
   const [amountResetKey, setAmountResetKey] = useState(0);
   const [accountId, setAccountId] = useState(() => defaultAccountId(accounts));
@@ -79,6 +98,38 @@ export function TransactionQuickAdd({
 
   const activeAccounts = accounts.filter((account) => !account.archived);
   const needsTwoAccounts = mode === 'transfer' && activeAccounts.length < 2;
+
+  const selectedCard = activeCards.find((card) => card.id === cardId) ?? null;
+  const isTransfer = mode === 'transfer';
+  /**
+   * Compras a crédito existem em gastos e ganhos (um estorno no cartão também
+   * acontece). Transferências entre contas não passam por cartão.
+   */
+  const usesCredit = !isTransfer && paymentMethod === 'credit';
+  const usesInstallments = usesCredit && mode === 'expense' && installmentMode === 'installment';
+  const installmentCountNumber = Number(installmentCount);
+  const installmentPreview =
+    usesInstallments &&
+    amountInCents !== null &&
+    Number.isInteger(installmentCountNumber) &&
+    installmentCountNumber >= 2
+      ? splitInstallments(amountInCents, installmentCountNumber)
+      : null;
+  const creditNeedsCard = usesCredit && selectedCard === null;
+
+  /**
+   * Onde é que a compra cai. Calculado com `invoiceDatesFor`, a **mesma** função
+   * que o servidor usa para criar a fatura: uma conta paralela no cliente
+   * acabaria a divergir da regra.
+   */
+  const invoicePreview =
+    usesCredit && selectedCard !== null
+      ? invoiceDatesFor({
+          purchaseDate: date,
+          closingDay: selectedCard.closingDay,
+          dueDay: selectedCard.dueDay,
+        })
+      : null;
 
   /**
    * O `Enter` no campo do valor confirma primeiro a expressão lá dentro (pode
@@ -151,6 +202,10 @@ export function TransactionQuickAdd({
       description: trimmedDescription === '' ? undefined : trimmedDescription,
       accountId,
       categoryId: categoryId === '' ? null : categoryId,
+      paymentMethod: usesCredit ? 'credit' : 'debit',
+      cardId: usesCredit ? cardId : null,
+      paymentCondition: usesInstallments ? 'installment' : 'single',
+      installmentCount: usesInstallments ? installmentCountNumber : undefined,
     });
 
     if (!parsed.success) {
@@ -168,7 +223,13 @@ export function TransactionQuickAdd({
         return;
       }
 
-      toast.success(mode === 'income' ? 'Ganho registado.' : 'Gasto registado.');
+      toast.success(
+        usesInstallments
+          ? `Compra registada em ${installmentCountNumber} parcelas.`
+          : mode === 'income'
+            ? 'Ganho registado.'
+            : 'Gasto registado.',
+      );
       resetAfterSuccess();
     });
   }
@@ -272,6 +333,61 @@ export function TransactionQuickAdd({
             </div>
           </div>
 
+          {isTransfer ? null : (
+            <div className="space-y-1">
+              <span id="lancamento-pagamento" className="text-sm font-medium">
+                Forma de pagamento
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="lancamento-pagamento"
+                className="flex flex-wrap gap-2"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'debit'}
+                  onClick={() => setPaymentMethod('debit')}
+                  className={cn(
+                    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
+                    paymentMethod === 'debit'
+                      ? 'border-transparent bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:bg-muted',
+                  )}
+                >
+                  <Wallet className="size-4" aria-hidden />
+                  Conta
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === 'credit'}
+                  disabled={activeCards.length === 0}
+                  onClick={() => setPaymentMethod('credit')}
+                  className={cn(
+                    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
+                    paymentMethod === 'credit'
+                      ? 'border-transparent bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:bg-muted',
+                    activeCards.length === 0 ? 'cursor-not-allowed opacity-50' : '',
+                  )}
+                >
+                  <CreditCard className="size-4" aria-hidden />
+                  Cartão de crédito
+                </button>
+              </div>
+              {activeCards.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Ainda não tens cartões.{' '}
+                  <Link href="/cartoes" className="underline underline-offset-2">
+                    Cria um cartão
+                  </Link>{' '}
+                  para registar compras a crédito.
+                </p>
+              ) : null}
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Field data-invalid={errorFor('amountInCents') !== undefined}>
               <FieldLabel htmlFor={amountFieldId}>Valor</FieldLabel>
@@ -318,9 +434,45 @@ export function TransactionQuickAdd({
               <FieldError id="lancamento-data-erro">{errorFor('date')}</FieldError>
             </Field>
 
+            {usesCredit ? (
+              <div className="space-y-1">
+                <FieldLabel htmlFor="lancamento-cartao">Cartão</FieldLabel>
+                <Select
+                  value={cardId}
+                  onValueChange={(next) => {
+                    setCardId(next);
+
+                    // A fatura é paga pela conta do cartão: poupa uma escolha.
+                    const chosen = activeCards.find((card) => card.id === next);
+
+                    if (chosen?.paymentAccountId != null) {
+                      setAccountId(chosen.paymentAccountId);
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    id="lancamento-cartao"
+                    aria-required
+                    className={`w-full ${TOUCH}`}
+                    aria-invalid={errorFor('cardId') !== undefined || creditNeedsCard}
+                  >
+                    <SelectValue placeholder="Escolhe o cartão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeCards.map((card) => (
+                      <SelectItem key={card.id} value={card.id}>
+                        {card.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError>{errorFor('cardId')}</FieldError>
+              </div>
+            ) : null}
+
             <div className="space-y-1">
               <FieldLabel htmlFor="lancamento-conta">
-                {mode === 'transfer' ? 'Da conta' : 'Conta'}
+                {isTransfer ? 'Da conta' : usesCredit ? 'Conta de pagamento' : 'Conta'}
               </FieldLabel>
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger
@@ -396,6 +548,107 @@ export function TransactionQuickAdd({
               </div>
             )}
 
+            {usesCredit && invoicePreview !== null ? (
+              <div className="rounded-lg border bg-muted/40 p-3 text-sm sm:col-span-2">
+                <p>
+                  {usesInstallments && installmentPreview !== null
+                    ? `${installmentCountNumber} parcelas de ${formatCurrency(installmentPreview[0] ?? 0)} — a primeira entra na fatura que fecha a `
+                    : 'Entra na fatura que fecha a '}
+                  <strong>{formatIsoDate(invoicePreview.closingDate)}</strong> e vence a{' '}
+                  <strong>{formatIsoDate(invoicePreview.dueDate)}</strong>.
+                </p>
+                {usesInstallments && installmentPreview !== null ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    A última parcela cai na fatura que fecha a{' '}
+                    {formatIsoDate(
+                      invoiceDatesFor({
+                        purchaseDate: addMonths(date, installmentCountNumber - 1),
+                        closingDay: selectedCard?.closingDay ?? 1,
+                        dueDay: selectedCard?.dueDay ?? 1,
+                      }).closingDate,
+                    )}
+                    . A soma das parcelas é exatamente o valor da compra.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    A compra não sai da conta agora: só quando a fatura for paga.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
+            {usesCredit && mode === 'expense' ? (
+              <div className="space-y-1 sm:col-span-2">
+                <span id="lancamento-condicao" className="text-sm font-medium">
+                  Como pagas
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="lancamento-condicao"
+                  className="flex flex-wrap gap-2"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={installmentMode === 'single'}
+                    onClick={() => setInstallmentMode('single')}
+                    className={cn(
+                      'inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
+                      installmentMode === 'single'
+                        ? 'border-transparent bg-primary text-primary-foreground'
+                        : 'border-border bg-background hover:bg-muted',
+                    )}
+                  >
+                    À vista
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={installmentMode === 'installment'}
+                    onClick={() => setInstallmentMode('installment')}
+                    className={cn(
+                      'inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
+                      installmentMode === 'installment'
+                        ? 'border-transparent bg-primary text-primary-foreground'
+                        : 'border-border bg-background hover:bg-muted',
+                    )}
+                  >
+                    Em parcelas
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {usesInstallments ? (
+              <Field data-invalid={errorFor('installmentCount') !== undefined}>
+                <FieldLabel htmlFor="lancamento-parcelas">Número de parcelas</FieldLabel>
+                <Input
+                  id="lancamento-parcelas"
+                  type="number"
+                  inputMode="numeric"
+                  min={2}
+                  max={72}
+                  value={installmentCount}
+                  className={TOUCH}
+                  aria-invalid={errorFor('installmentCount') !== undefined}
+                  aria-describedby={
+                    errorFor('installmentCount') === undefined
+                      ? undefined
+                      : 'lancamento-parcelas-erro'
+                  }
+                  onChange={(event) => setInstallmentCount(event.target.value)}
+                />
+                <FieldDescription>
+                  {installmentPreview === null
+                    ? 'Entre 2 e 72 parcelas.'
+                    : `${installmentCountNumber} × ${formatCurrency(installmentPreview[0] ?? 0)} (as primeiras podem ter um cêntimo a mais).`}
+                </FieldDescription>
+                <FieldError id="lancamento-parcelas-erro">
+                  {errorFor('installmentCount')}
+                </FieldError>
+              </Field>
+            ) : null}
+
             <Field className="sm:col-span-2" data-invalid={errorFor('description') !== undefined}>
               <FieldLabel htmlFor={descriptionFieldId}>Descrição</FieldLabel>
               <Input
@@ -430,9 +683,15 @@ export function TransactionQuickAdd({
             <Button
               type="submit"
               className={`w-full sm:w-auto ${TOUCH}`}
-              disabled={pending || needsTwoAccounts || amountInCents === null}
+              disabled={pending || needsTwoAccounts || amountInCents === null || creditNeedsCard}
             >
-              {pending ? 'A lançar…' : mode === 'transfer' ? 'Transferir' : 'Lançar'}
+              {pending
+                ? 'A lançar…'
+                : isTransfer
+                  ? 'Transferir'
+                  : usesInstallments
+                    ? `Lançar em ${installmentCountNumber} parcelas`
+                    : 'Lançar'}
             </Button>
           </div>
         </form>
@@ -452,6 +711,15 @@ function defaultAccountId(accounts: readonly AccountView[]): string {
   const active = accounts.filter((account) => !account.archived);
 
   return (active.find((account) => account.isPrimary) ?? active[0])?.id ?? '';
+}
+
+/** Data de calendário (`YYYY-MM-DD`) para o formato português (`DD/MM/AAAA`). */
+function formatIsoDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+
+  return year === undefined || month === undefined || day === undefined
+    ? isoDate
+    : `${day}/${month}/${year}`;
 }
 
 /**

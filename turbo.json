@@ -30,12 +30,12 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^typecheck", "^db:generate"],
+      "dependsOn": ["^typecheck", "^db:generate", "db:generate"],
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^db:generate"],
+      "dependsOn": ["^db:generate", "db:generate"],
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": []
     },

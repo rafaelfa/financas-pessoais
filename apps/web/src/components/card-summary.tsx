@@ -7,7 +7,9 @@ import {
   EllipsisVertical,
   Pencil,
   Receipt,
+  ShoppingCart,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -224,6 +226,12 @@ export function CardSummary({
       </CardContent>
 
       <div className="flex flex-wrap gap-2 px-(--card-spacing)">
+        <Button asChild size="sm" className={TOUCH} disabled={card.archived}>
+          <Link href={`/transacoes?cartao=${card.id}`}>
+            <ShoppingCart className="size-3.5" aria-hidden />
+            Registar compra
+          </Link>
+        </Button>
         <Button
           type="button"
           variant="outline"

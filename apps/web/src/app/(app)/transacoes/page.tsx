@@ -13,6 +13,7 @@ import { TransactionTable } from '@/components/transaction-table';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/transaction-pagination';
 import { todayInLisbon } from '@/lib/today';
 import { listAccounts } from '@/server/accounts';
+import { listCards } from '@/server/cards';
 import { listCategories } from '@/server/categories';
 import {
   listTransactions,
@@ -117,11 +118,21 @@ export default async function TransacoesPage({
   const limit = readLimit(params);
   const page = readPage(params);
 
-  const [accounts, categories, firstAttempt] = await Promise.all([
+  const [accounts, cards, categories, firstAttempt] = await Promise.all([
     listAccounts(),
+    listCards(),
     listCategories(),
     listTransactions({ ...filters, limit, offset: (page - 1) * limit }),
   ]);
+
+  /*
+   * Vindo de /cartoes com `?cartao=<id>`, a compra aparece já como crédito no
+   * cartão certo — é o caminho de quem está a olhar para a fatura. O
+   * identificador é validado contra os cartões que existem: um URL antigo não
+   * pode pré-selecionar um cartão arquivado.
+   */
+  const requestedCard = readText(params, 'cartao');
+  const initialCardId = cards.some((card) => card.id === requestedCard) ? requestedCard : undefined;
 
   /*
    * Um favorito antigo com `?page=7` num extrato que entretanto encolheu para
@@ -149,7 +160,13 @@ export default async function TransacoesPage({
       />
 
       <div className="space-y-6">
-        <TransactionQuickAdd accounts={accounts} categories={categories} today={today} />
+        <TransactionQuickAdd
+          accounts={accounts}
+          cards={cards}
+          categories={categories}
+          today={today}
+          initialCardId={initialCardId}
+        />
 
         <TransactionFilters
           values={{ ...filters, limit }}
