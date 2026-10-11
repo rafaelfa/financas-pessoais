@@ -34,14 +34,78 @@ function stringParam(value: string | string[] | undefined): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
-/** Rótulo curto de um mês a partir de `YYYY-MM`. */
-function shortMonth(key: string): string {
-  const [year, month] = key.split('-').map(Number) as [number, number];
+/** Título do painel, muda conforme o âmbito ativo. */
+  function pageTitle(): string {
+    if (hasScope && scopeName) {
+      return `Painel — ${scopeName}`;
+    }
+    return 'Painel';
+  }
 
-  return new Intl.DateTimeFormat('pt-PT', { month: 'short' }).format(
-    new Date(Date.UTC(year, month - 1, 15)),
-  );
-}
+  /** Área de KPIs principais — sempre visível, com rótulo adaptativo. */
+  function KpiSection() {
+    return (
+      <section
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6"
+        aria-label="Indicadores principais"
+      >
+        <KpiCard label={firstKpiLabel()} hint={firstKpiHint()}>
+          {isCardScope ? (
+            <Amount amountInCents={card?.outstandingInCents ?? 0} tone="expense" />
+          ) : data.balanceInCents !== null ? (
+            <Amount amountInCents={data.balanceInCents} />
+          ) : (
+            <Amount amountInCents={data.patrimonyInCents} />
+          )}
+        </KpiCard>
+
+        <KpiCard
+          label={accrualFirst ? 'Compras do mês' : 'Entradas do mês'}
+          hint={
+            accrualFirst
+              ? 'Por competência: contam na data da compra, e não quando a fatura é paga.'
+              : `Por competência: ${euro.format(data.accrual.incomeInCents / 100)}`
+          }
+        >
+          {accrualFirst ? (
+            <Amount amountInCents={data.accrual.expenseInCents} tone="expense" />
+          ) : (
+            <Amount amountInCents={data.cash.incomeInCents} tone="income" />
+          )}
+        </KpiCard>
+
+        <KpiCard
+          label={accrualFirst ? 'Já liquidado' : 'Saídas do mês'}
+          hint={
+            accrualFirst
+              ? 'Só o que foi marcado como pago; uma compra a crédito liquida-se quando pagas a fatura.'
+              : `Por competência: ${euro.format(data.accrual.expenseInCents / 100)}`
+          }
+        >
+          <Amount amountInCents={data.cash.expenseInCents} tone="expense" />
+        </KpiCard>
+
+        <KpiCard label="Sobra do mês" hint={accrualFirst ? 'Visão de competência' : 'Entradas menos saídas, em caixa'}>
+          <Amount
+            amountInCents={accrualFirst ? data.accrual.netInCents : data.cash.netInCents}
+            withSign
+          />
+        </KpiCard>
+      </section>
+    );
+  }
+
+  /** Texto de contexto que explica qual o âmbito ativo. */
+  function scopeContext(): string | null {
+    if (!hasScope) return null;
+    if (isCardScope) {
+      return `Apreensivo ao cartão ${scopedLabel ?? ''}: o que foi comprado com ele e a fatura em aberto. O resto da carteira não entra nestas contas.`;
+    }
+    if (isAccountScope) {
+      return `Apreensivo à conta ${scopedLabel ?? ''}: o saldo dela e só o que por lá passou. O resto da carteira não entra nestas contas.`;
+    }
+    return null;
+  }
 
 /**
  * Data de calendário em formato português, sem deslocação de fuso.
