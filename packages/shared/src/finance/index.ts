@@ -15,6 +15,7 @@ export * from './catalog';
 export * from './rows';
 export * from './period';
 export * from './recurrence';
+export * from './forecast';
 export * from './balance';
 export * from './result';
 export * from './budget';
