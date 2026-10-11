@@ -118,6 +118,7 @@ model User {
   recurrences       Recurrence[]
   budgets           Budget[]
   budgetLimits      BudgetLimit[]
+  monthCloses       MonthClose[]
   goals             Goal[]
   goalMovements     GoalMovement[]
   assets            Asset[]
@@ -983,4 +984,27 @@ model Liability {
   @@index([userId, archivedAt])
   @@index([userId, endDate])
   @@map("liability")
+}
+
+/// Fecho de um mês de competência.
+///
+/// Não bloqueia nada: é um marco. O utilizador confirma que conferiu o mês, e o
+/// registo fica com a data em que o fez — a alternativa (uma flag na sessão ou
+/// nada) perdia a informação de quando o mês foi dado por conferido.
+model MonthClose {
+  id     String @id @default(uuid())
+  userId String
+  /// Primeiro dia do mês de competência fechado (data de calendário).
+  periodStart DateTime @db.Date
+  closedAt    DateTime @default(now())
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Um fecho por utilizador e por mês.
+  @@unique([userId, periodStart])
+  @@index([userId, periodStart])
+  @@map("month_close")
 }
