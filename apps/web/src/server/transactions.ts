@@ -123,7 +123,10 @@ export async function listTransactions(filters: TransactionFilters = {}): Promis
     items: rows.map((row) => ({
       id: row.id,
       kind: row.kind,
-      status: row.status,
+      // Prisma devolve o enum em maiúsculas (CONFIRMED, PENDING, IGNORED). A UI
+      // e os esquemas usam minúsculas; normaliza aqui para não ter que converter
+      // em cada componente.
+      status: row.status.toLowerCase(),
       amountInCents: row.amountInCents,
       date: toIsoDate(row.date),
       description: row.description,
