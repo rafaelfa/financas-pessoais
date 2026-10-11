@@ -1,10 +1,12 @@
 'use server';
 
 import { prisma } from '@repo/db/client';
-import { periodOf } from '@repo/shared';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { todayInLisbon } from '@/lib/today';
+
+import { periodByKey } from './budget-period';
 import { failFromWriteError } from './errors';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
@@ -39,7 +41,24 @@ export async function closeMonth(input: unknown): Promise<ActionResult<{ closedA
     return fromZodError(parsed.error);
   }
 
-  const period = periodOf(`${parsed.data.periodKey}-01`, user.monthStartDay);
+  /*
+   * O período resolve-se pela **chave**, e não a partir do dia 1.
+   *
+   * `periodOf('2026-10-01')` com o mês a começar ao dia 5 devolve **setembro** —
+   * o dia 1 pertence ao mês de competência anterior. Era assim que fechar outubro
+   * gravava setembro e o mês nunca aparecia como fechado, por mais vezes que se
+   * clicasse. Com o início ao dia 1 funcionava, e foi por isso que escapou à
+   * verificação. Encontrado pela verificação adversarial das Fases 5 e 6.
+   */
+  const period = periodByKey({
+    key: parsed.data.periodKey,
+    user,
+    today: todayInLisbon(),
+  });
+
+  if (period === null) {
+    return fail('Esse mês não está entre os últimos três anos.');
+  }
   const periodStart = new Date(`${period.start}T00:00:00.000Z`);
 
   try {
@@ -69,7 +88,24 @@ export async function reopenMonth(input: unknown): Promise<ActionResult<{ period
     return fromZodError(parsed.error);
   }
 
-  const period = periodOf(`${parsed.data.periodKey}-01`, user.monthStartDay);
+  /*
+   * O período resolve-se pela **chave**, e não a partir do dia 1.
+   *
+   * `periodOf('2026-10-01')` com o mês a começar ao dia 5 devolve **setembro** —
+   * o dia 1 pertence ao mês de competência anterior. Era assim que fechar outubro
+   * gravava setembro e o mês nunca aparecia como fechado, por mais vezes que se
+   * clicasse. Com o início ao dia 1 funcionava, e foi por isso que escapou à
+   * verificação. Encontrado pela verificação adversarial das Fases 5 e 6.
+   */
+  const period = periodByKey({
+    key: parsed.data.periodKey,
+    user,
+    today: todayInLisbon(),
+  });
+
+  if (period === null) {
+    return fail('Esse mês não está entre os últimos três anos.');
+  }
 
   const existing = await prisma.monthClose.findUnique({
     where: {

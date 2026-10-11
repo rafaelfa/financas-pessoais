@@ -63,7 +63,7 @@ describe('gate G6 — o período é o mesmo nas três superfícies', () => {
     // A fronteira do motor: `start` incluído, `end` excluído.
     const totals = expenseByCategory(transactions, period, { categories: [CATEGORY] });
     const limits = budgetStatusList({
-      limits: [{ id: 'l1', categoryId: CATEGORY.id, amountInCents: 200_000 }],
+      limits: [{ categoryId: CATEGORY.id, amountInCents: 200_000 }],
       transactions,
       period,
       resultOptions: { categories: [CATEGORY] },
@@ -82,7 +82,7 @@ describe('gate G6 — o período é o mesmo nas três superfícies', () => {
     ];
 
     const limits = budgetStatusList({
-      limits: [{ id: 'l1', categoryId: CATEGORY.id, amountInCents: 200_000 }],
+      limits: [{ categoryId: CATEGORY.id, amountInCents: 200_000 }],
       transactions,
       period,
       resultOptions: { categories: [CATEGORY] },
@@ -102,7 +102,7 @@ describe('gate G6 — o período é o mesmo nas três superfícies', () => {
 
     const byCategory = expenseByCategory(transactions, period, { categories: [CATEGORY] });
     const viaBudget = budgetStatusList({
-      limits: [{ id: 'l1', categoryId: CATEGORY.id, amountInCents: 1_000_000 }],
+      limits: [{ categoryId: CATEGORY.id, amountInCents: 1_000_000 }],
       transactions,
       period,
       resultOptions: { categories: [CATEGORY] },

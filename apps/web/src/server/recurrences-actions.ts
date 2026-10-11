@@ -311,7 +311,28 @@ export async function generateDueRecurrences(): Promise<
     truncated = truncated || result.truncated;
 
     try {
-      await prisma.$transaction(async (tx) => {
+      const claimed = await prisma.$transaction(async (tx) => {
+        /*
+         * Reserva a série **antes** de criar nada.
+         *
+         * A leitura das séries em atraso acontece fora da transação, por isso duas
+         * gerações em paralelo (dois separadores, um duplo clique, o painel e o
+         * botão ao mesmo tempo) viam as duas a mesma `nextRunDate` e criavam as
+         * mesmas ocorrências: a verificação adversarial mediu **18 lançamentos em
+         * vez de 10**. Um avanço condicional na data que foi lida resolve-o sem
+         * esquema novo — a segunda transação avança zero linhas e desiste sem
+         * escrever. Sem esta condição, o comentário do motor ("gerar nunca pode
+         * duplicar") era verdade sequencial e falso concorrente.
+         */
+        const claimed = await tx.recurrence.updateMany({
+          where: { id: recurrence.id, nextRunDate: recurrence.nextRunDate },
+          data: { nextRunDate: asDate(result.nextRunDate) },
+        });
+
+        if (claimed.count !== 1) {
+          return false;
+        }
+
         for (const date of result.dates) {
           await tx.transaction.create({
             data: {
@@ -335,13 +356,14 @@ export async function generateDueRecurrences(): Promise<
           });
         }
 
-        // O avanço de `nextRunDate` vive na mesma transação: se a criação
-        // falhar, a data não avança e a próxima corrida volta a tentar.
-        await tx.recurrence.update({
-          where: { id: recurrence.id },
-          data: { nextRunDate: asDate(result.nextRunDate) },
-        });
+        return true;
       });
+
+      // Não reclamada: outra geração chegou primeiro. Não é um erro, e não se
+      // conta nada — quem perdeu a corrida não criou lançamento nenhum.
+      if (!claimed) {
+        continue;
+      }
 
       created += result.dates.length;
       details.push({ recurrenceName: recurrence.name, dates: result.dates });
