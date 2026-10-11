@@ -63,28 +63,29 @@ export function MonthCloseChecklist({ monthClose }: { readonly monthClose: Month
   const [reopenOpen, setReopenOpen] = useState(false);
 
   const openSteps = monthClose.steps.filter((step) => !step.done);
+  const blockingOpen = openSteps.filter((step) => step.blocking);
   const isClosed = monthClose.closedAt !== null;
   const { period } = monthClose;
 
   /*
-   * `readyToClose` só olha para os passos que **bloqueiam**: «Saldos por travar» é
-   * uma recomendação e não impede fechar. Por isso a frase não pode dizer que
-   * todos os passos por resolver bloqueiam — quando o servidor diz que está pronto
-   * a fechar, o que sobra são recomendações, e é isso que fica escrito.
+   * O servidor distingue passos que **bloqueiam** o fecho de recomendações
+   * («Saldos por travar» é recomendação: um mês pode estar conferido sem ninguém
+   * ter travado saldo). A frase usa essa distinção, senão diria que faltam passos
+   * para poder fechar enquanto o botão está ativo.
    */
   const reason = isClosed
     ? 'O mês está fechado. Reabre-o se encontrares algo para corrigir — nenhum movimento é apagado.'
     : monthClose.steps.length === 0
       ? 'Não há passos a conferir neste mês: podes fechá-lo já.'
-      : monthClose.readyToClose
-        ? openSteps.length === 0
+      : blockingOpen.length > 0
+        ? `Ainda não podes fechar enquanto estes passos estiverem por resolver: ${listStepTitles(
+            blockingOpen.map((step) => step.title),
+          )}. Trata ${blockingOpen.length === 1 ? 'dele' : 'deles'} nos links acima e o botão ativa-se.`
+        : openSteps.length === 0
           ? 'Nada bloqueia o fecho: os passos estão todos concluídos.'
           : `Nada bloqueia o fecho. O que falta — ${listStepTitles(
               openSteps.map((step) => step.title),
-            )} — é recomendação, não impede fechar o mês.`
-        : `Ainda não podes fechar: há passos por resolver — ${listStepTitles(
-            openSteps.map((step) => step.title),
-          )}. Trata ${openSteps.length === 1 ? 'dele' : 'deles'} nos links acima e o botão ativa-se.`;
+            )} — é recomendação, não impede fechar o mês.`;
 
   function confirmClose() {
     startTransition(async () => {
@@ -154,9 +155,13 @@ export function MonthCloseChecklist({ monthClose }: { readonly monthClose: Month
               <span className="text-muted-foreground">
                 {openSteps.length === 0
                   ? 'Tudo conferido'
-                  : openSteps.length === 1
-                    ? 'Falta 1 passo'
-                    : `Faltam ${openSteps.length} passos`}
+                  : blockingOpen.length > 0
+                    ? openSteps.length === 1
+                      ? 'Falta 1 passo'
+                      : `Faltam ${openSteps.length} passos`
+                    : openSteps.length === 1
+                      ? 'Falta 1 recomendação'
+                      : `Faltam ${openSteps.length} recomendações`}
               </span>
             </div>
 
@@ -176,14 +181,21 @@ export function MonthCloseChecklist({ monthClose }: { readonly monthClose: Month
               <li key={step.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
                 {step.done ? (
                   <CircleCheck className="size-4 shrink-0 text-income" aria-hidden />
-                ) : (
+                ) : step.blocking ? (
                   <CircleDashed className="size-4 shrink-0 text-warning-foreground" aria-hidden />
+                ) : (
+                  <CircleDashed className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 )}
 
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{step.title}</span>
                   <span className="block text-xs text-muted-foreground">{step.description}</span>
-                  {step.done ? null : (
+                  {/*
+                   * A contagem só aparece quando existe: em «Saldos por travar» o
+                   * número é o de saldos já travados, e um «0 por resolver» não
+                   * diria nada a ninguém.
+                   */}
+                  {step.done || step.count === 0 ? null : (
                     <span className="mt-0.5 block text-xs">
                       {step.count} por resolver
                       {step.amountInCents === null ? null : (
@@ -196,8 +208,11 @@ export function MonthCloseChecklist({ monthClose }: { readonly monthClose: Month
                   )}
                 </span>
 
-                <Badge variant={step.done ? 'secondary' : 'outline'} className="font-normal">
-                  {step.done ? 'Concluído' : 'Por resolver'}
+                <Badge
+                  variant={step.done ? 'secondary' : step.blocking ? 'outline' : 'ghost'}
+                  className="font-normal"
+                >
+                  {step.done ? 'Concluído' : step.blocking ? 'Por resolver' : 'Recomendado'}
                 </Badge>
 
                 {/* Com o passo concluído o link desaparece: não há nada a resolver,

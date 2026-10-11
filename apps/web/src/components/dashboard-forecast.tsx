@@ -42,6 +42,12 @@ export interface DashboardForecastData {
   readonly lowestBalanceInCents: number;
   readonly lowestDate: string | null;
   readonly goesNegative: boolean;
+  /**
+   * Opcional: primeiro dia em que o saldo fica negativo, já calculado pelo
+   * servidor. Sem ele, a data é derivada da série — os dois coincidem, mas o
+   * valor do servidor é o autoritativo.
+   */
+  readonly firstNegativeDate?: string | null;
 }
 
 /** Um dia em que o saldo previsto muda, com o que muda. */
@@ -62,16 +68,25 @@ export function DashboardForecast({
   readonly forecast: DashboardForecastData;
   readonly className?: string;
 }) {
-  const horizon = forecast.days.length;
   const start = forecast.days[0] ?? null;
   const last = forecast.days[forecast.days.length - 1] ?? null;
   const changes = balanceChanges(forecast.days);
   const listed = changes.slice(0, MAX_LISTED_CHANGES);
   const remaining = changes.length - listed.length;
   /*
-   * O primeiro dia negativo é calculado a partir da série, e não assumido igual ao
-   * ponto mais baixo: o saldo pode ficar negativo no dia 5 e só atingir o mínimo
-   * no dia 8, e um aviso que aponta o dia errado é pior do que não avisar.
+   * A série nunca vem vazia (o primeiro dia é hoje), por isso o estado vazio não
+   * se pode medir pelo comprimento: mede-se por **haver ou não o que prever** —
+   * saldo diferente de zero ou algo agendado. Sem isso, um utilizador sem contas
+   * via um gráfico plano a zero em vez de uma explicação.
+   */
+  const hasAnythingToForecast = forecast.days.some(
+    (day) => day.balanceInCents !== 0 || (day.items?.length ?? 0) > 0,
+  );
+  /*
+   * O primeiro dia negativo não é assumido igual ao ponto mais baixo: o saldo
+   * pode ficar negativo no dia 5 e só atingir o mínimo no dia 8, e um aviso que
+   * aponta o dia errado é pior do que não avisar. Vem do servidor quando ele o
+   * envia e, sem isso, é derivado da série.
    */
   const negativeSince = firstNegativeDay(forecast);
 
@@ -86,10 +101,10 @@ export function DashboardForecast({
       description={
         last === null
           ? undefined
-          : `Previsão para ${horizon} dias, até ${formatDayLong(last.date)}. Inclui as recorrências ativas e as faturas por pagar nas respetivas datas de vencimento.`
+          : `De hoje até ${formatDayLong(last.date)}: o saldo previsto conta com as recorrências ativas e as faturas por pagar nas respetivas datas de vencimento.`
       }
-      isEmpty={horizon === 0}
-      emptyMessage="Sem uma conta ativa não há saldo para prever. Cria uma conta e regista os primeiros movimentos."
+      isEmpty={!hasAnythingToForecast}
+      emptyMessage="Ainda não há saldo nem movimentos agendados para prever. Assim que houver uma conta com movimentos, uma recorrência ativa ou uma fatura por pagar, a previsão aparece aqui."
       className={className}
     >
       <div className="space-y-4">
@@ -162,7 +177,7 @@ export function DashboardForecast({
                     key={change.date}
                     className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm"
                   >
-                    <span className="flex min-w-0 flex-col">
+                    <div className="flex min-w-0 flex-col">
                       <span className="font-medium">{formatDayLong(change.date)}</span>
                       {change.items.length === 0 ? (
                         <span className="text-xs text-muted-foreground">
@@ -184,14 +199,14 @@ export function DashboardForecast({
                           Saldo negativo
                         </Badge>
                       ) : null}
-                    </span>
+                    </div>
 
-                    <span className="text-right">
+                    <div className="text-right">
                       <Amount amountInCents={change.deltaInCents} withSign />
                       <span className="block text-xs text-muted-foreground">
                         fica em <Amount amountInCents={change.balanceInCents} tone="neutral" />
                       </span>
-                    </span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -269,12 +284,16 @@ function axisLabel(date: string): string {
 /**
  * Primeiro dia em que o saldo previsto fica negativo.
  *
- * Sai da própria série (`days`), não do ponto mais baixo: são datas diferentes
- * quando o saldo continua a descer depois de passar o zero. O `lowestDate` do
- * servidor é o mínimo, não o primeiro dia negativo — e um aviso que aponta o dia
- * errado é pior do que não avisar.
+ * Não é o ponto mais baixo: são datas diferentes quando o saldo continua a
+ * descer depois de passar o zero, e o `lowestDate` do servidor é o mínimo, não o
+ * primeiro dia negativo. Usa o valor do servidor quando existe e, sem ele,
+ * deriva-o da série — nunca devolve `null` enquanto houver um dia negativo.
  */
 export function firstNegativeDay(forecast: DashboardForecastData): string | null {
+  if (forecast.firstNegativeDate !== undefined && forecast.firstNegativeDate !== null) {
+    return forecast.firstNegativeDate;
+  }
+
   const day = forecast.days.find((candidate) => candidate.balanceInCents < 0);
 
   return day?.date ?? null;

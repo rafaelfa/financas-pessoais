@@ -160,6 +160,73 @@ describe('previsão de saldo', () => {
     expect(forecast.days.filter((day) => day.outflowInCents > 0)).toHaveLength(1);
   });
 
+  it('agenda as obrigações já registadas mas por liquidar', () => {
+    /*
+     * Uma conta de luz lançada hoje e por pagar para a semana é uma obrigação
+     * conhecida. Sem isto, a previsão dizia que estava tudo bem enquanto havia
+     * dinheiro para sair nos próximos dias — e o aviso de saldo negativo, que é o
+     * ponto da funcionalidade, não disparava.
+     */
+    const pendingBill: FinanceTransaction = {
+      id: 't-luz',
+      kind: 'expense',
+      status: 'confirmed',
+      amountInCents: -6_000,
+      date: '2026-10-15',
+      description: 'Conta da luz',
+      accountId: ACCOUNT.id,
+      settled: false,
+    };
+
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(5_000, '2026-10-01'), pendingBill],
+      recurrences: [],
+      unpaidInvoices: [],
+      from: '2026-10-11',
+      days: 10,
+    });
+
+    const onDueDate = forecast.days.find((day) => day.date === '2026-10-15');
+
+    expect(onDueDate?.outflowInCents).toBe(6_000);
+    expect(onDueDate?.balanceInCents).toBe(-1_000);
+    expect(forecast.goesNegative).toBe(true);
+    expect(onDueDate?.items[0]?.source).toBe('pending');
+    expect(onDueDate?.items[0]?.label).toBe('Conta da luz');
+  });
+
+  it('não conta duas vezes uma compra de cartão por liquidar', () => {
+    // A dívida do cartão entra pela fatura; o lançamento da compra tem de ficar
+    // de fora, senão a previsão descontava-a duas vezes.
+    const cardPurchase: FinanceTransaction = {
+      id: 't-cartao',
+      kind: 'expense',
+      status: 'confirmed',
+      amountInCents: -5_000,
+      date: '2026-10-15',
+      description: 'Compra no cartão',
+      accountId: ACCOUNT.id,
+      invoiceId: 'inv-1',
+      settled: false,
+    };
+
+    const forecast = cashFlowForecast({
+      accounts: [ACCOUNT],
+      transactions: [settledIncome(100_000, '2026-10-01'), cardPurchase],
+      recurrences: [],
+      unpaidInvoices: [
+        { id: 'inv-1', cardName: 'ActivoBank', dueDate: '2026-10-20', outstandingInCents: 5_000 },
+      ],
+      from: '2026-10-11',
+      days: 15,
+    });
+
+    expect(forecast.totalOutflowInCents).toBe(5_000);
+    expect(forecast.days.find((day) => day.date === '2026-10-15')?.outflowInCents).toBe(0);
+    expect(forecast.days.find((day) => day.date === '2026-10-20')?.outflowInCents).toBe(5_000);
+  });
+
   it('soma entradas e saídas e devolve o saldo final', () => {
     const forecast = cashFlowForecast({
       accounts: [ACCOUNT],

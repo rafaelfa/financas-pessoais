@@ -50,7 +50,7 @@ export interface ForecastInvoice {
 export interface ForecastItem {
   readonly label: string;
   readonly amountInCents: number;
-  readonly source: 'recurrence' | 'invoice';
+  readonly source: 'recurrence' | 'invoice' | 'pending';
 }
 
 export interface ForecastDay {
@@ -184,6 +184,38 @@ export function cashFlowForecast(input: {
       // Pagar uma fatura tira dinheiro da conta.
       amountInCents: -invoice.outstandingInCents,
       source: 'invoice',
+    });
+  }
+
+  /*
+   * Obrigações **já registadas** mas por liquidar, com data dentro do horizonte.
+   *
+   * Uma conta de luz de 60 € lançada hoje e por pagar para a semana é uma
+   * obrigação conhecida, não uma adivinhação — e sem isto a previsão dizia que
+   * estava tudo bem enquanto havia 60 € para sair nos próximos dias. O buraco foi
+   * encontrado pelo programador da interface, ao comparar a previsão com o bloco
+   * dos próximos 7 dias.
+   *
+   * As compras de cartão ficam de fora (`invoiceId` preenchido): a dívida delas
+   * entra pelo passo das faturas, e contá-las aqui seria contá-la duas vezes.
+   */
+  for (const transaction of input.transactions) {
+    if (
+      transaction.settled ||
+      transaction.status === 'ignored' ||
+      transaction.invoiceId !== undefined
+    ) {
+      continue;
+    }
+
+    if (transaction.date <= input.from || transaction.date > horizonEnd) {
+      continue;
+    }
+
+    schedule(transaction.date, {
+      label: transaction.description ?? 'Lançamento por liquidar',
+      amountInCents: transaction.amountInCents,
+      source: 'pending',
     });
   }
 
