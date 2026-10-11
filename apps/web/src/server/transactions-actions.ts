@@ -455,11 +455,35 @@ export async function updateTransaction(input: unknown): Promise<ActionResult<{ 
   const value = parsed.data;
   const existing = await prisma.transaction.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true, kind: true, counterpartTransactionId: true, date: true },
+    select: {
+      id: true,
+      kind: true,
+      counterpartTransactionId: true,
+      date: true,
+      installmentPlanId: true,
+    },
   });
 
   if (!existing) {
     return fail('Lançamento não encontrado.');
+  }
+
+  /*
+   * Uma parcela não se edita sozinha.
+   *
+   * As parcelas dividem um valor contratado: mudar o valor ou a data de uma só
+   * faz a soma das parcelas deixar de corresponder ao que foi comprado, e o
+   * parcelamento passa a mentir sem que nada avise. Quem quer alterar edita o
+   * plano inteiro, em Cartões, onde o novo plano é calculado e pré-visualizado.
+   * Descrição e categoria continuam a poder corrigir-se aqui: não afetam a soma.
+   */
+  if (
+    existing.installmentPlanId !== null &&
+    (value.amountInCents !== undefined || value.date !== undefined)
+  ) {
+    return fail(
+      'Esta é uma parcela de um parcelamento. O valor e a data alteram-se no plano, em Cartões — editar só esta parcela desalinharia a soma do que compraste.',
+    );
   }
 
   if (value.accountId !== undefined && !(await ownsAccount(user.id, value.accountId))) {
