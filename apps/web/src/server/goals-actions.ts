@@ -274,3 +274,54 @@ export async function addGoalMovement(
 
   return ok({ id: goal.id, createdTransaction: account !== null });
 }
+
+/**
+ * Apaga um movimento de objetivo.
+ *
+ * É a correção honesta de um depósito errado. A alternativa — criar um
+ * levantamento do mesmo valor — deixaria dois movimentos no histórico para
+ * representar algo que nunca aconteceu, e quem o lê depois não tem como saber
+ * qual dos dois foi o engano.
+ *
+ * Se o movimento tiver gerado um lançamento, o lançamento vai atrás: deixá-lo
+ * faria o saldo da conta continuar a refletir o depósito que foi apagado.
+ */
+export async function deleteGoalMovement(
+  input: unknown,
+): Promise<ActionResult<{ id: string; removedTransaction: boolean }>> {
+  const user = await requireUser();
+  const parsed = deleteByIdSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fromZodError(parsed.error);
+  }
+
+  const movement = await prisma.goalMovement.findFirst({
+    where: { id: parsed.data.id, userId: user.id },
+    select: { id: true, transactionId: true },
+  });
+
+  if (!movement) {
+    return fail('Movimento não encontrado.');
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.goalMovement.delete({ where: { id: movement.id } });
+
+      if (movement.transactionId !== null) {
+        await tx.transaction.deleteMany({
+          where: { id: movement.transactionId, userId: user.id },
+        });
+      }
+    });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui apagar o movimento. Nada foi alterado.',
+    });
+  }
+
+  revalidateGoalViews();
+
+  return ok({ id: movement.id, removedTransaction: movement.transactionId !== null });
+}

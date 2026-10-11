@@ -44,6 +44,11 @@ export interface BudgetLimitView {
 export interface BudgetView {
   readonly id: string;
   readonly name: string;
+  /**
+   * Âmbito do orçamento. Existe no view para a interface não ter de adivinhar:
+   * um orçamento mensal padrão guarda uma data sentinela, e uma heurística sobre
+   * essa data acabaria por mostrar 1970 em algum ecrã.
+   */
   readonly scope: 'single_month' | 'monthly_default';
   readonly periodStart: string;
   readonly periodEnd: string;

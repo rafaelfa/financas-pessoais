@@ -43,6 +43,7 @@ export interface GoalView {
   readonly progressPct: number;
   readonly targetDate: string;
   readonly contributionFrequency: RecurrenceFrequency;
+  readonly initialReservedInCents: number;
   readonly periodsLeft: number;
   readonly requiredContributionInCents: number | null;
   readonly projectedCompletionDate: string | null;
@@ -106,6 +107,12 @@ export async function listGoals(): Promise<GoalView[]> {
       isPreset: goal.isPreset,
       targetAmountInCents: progress.targetInCents,
       accumulatedInCents: progress.accumulatedInCents,
+      /**
+       * O valor já reservado à criação. A interface precisa dele para o
+       * formulário de edição não aparecer vazio: um campo vazio significa "não
+       * mexer", mas um zero apagaria o ponto de partida do progresso.
+       */
+      initialReservedInCents: goal.initialReservedInCents,
       remainingInCents: progress.remainingInCents,
       progressPct: progress.progressPct,
       targetDate: toIsoDate(goal.targetDate),
