@@ -70,6 +70,15 @@ pnpm --filter @repo/db db:seed                  # dados de demonstração (opcio
 pnpm dev                                        # http://localhost:3000
 ```
 
+As migrações usam a **`DIRECT_URL`**, não a `DATABASE_URL`: o *pooler* do Neon não
+corre `prisma migrate`. Sem ela, o comando de migração falha com uma mensagem que
+não diz isto — está no `.env.example` por essa razão.
+
+Com o seed de demonstração, a aplicação arranca com dados para explorar:
+**`demo@financas-pessoais.pt` / `Demo-financas-2026`** (3 meses de lançamentos, um
+orçamento com alerta, um objetivo com aportes, um cartão com fatura fechada por
+pagar e duas recorrências). O seed é idempotente: correr outra vez cria 0 linhas.
+
 Sem uma base Neon à mão, o `docker-compose.yml` serve uma alternativa local:
 `docker compose up -d`, e a `DATABASE_URL` do `.env` passa a apontar para
 `localhost:5432` (a linha está comentada no `.env.example`). A via primária é o

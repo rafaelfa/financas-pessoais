@@ -8,90 +8,97 @@ olhar primeiro.
 ## 1. Onde estamos
 
 - Repositório: `https://github.com/rafaelfa/financas-pessoais` (privado), ramo `main`.
-- Último commit conhecido no momento em que isto foi escrito: `b3762b5` — importação
-  de extratos, exportação e as correções médias das Fases 5 e 6.
-- **Há trabalho por commitar** (ver §3): a árvore de trabalho está à frente do último
-  commit e **não está verde**.
-- Deploy: Vercel, com Neon como base de dados. O URL de produção está nas variáveis
-  do projeto.
+- **Estado: a árvore está verde, tudo commitado e publicado.** Fases 0 a 7 fechadas
+  e a Fase 8 (endurecimento, testes, CI e entrega) implementada; o que falta dela
+  está no §6 e são decisões ou lacunas que não fecham por código sozinho.
+- Últimos commits: `213058c` (Fase 8: CI, migrações, seed demo, segurança,
+  acessibilidade e e2e) e `c43eaa7` (verificação da importação, I1–I10, reversão,
+  PWA, exportação).
+- Deploy: Vercel, com Neon. Produção:
+  `https://financas-pessoais-psi-lac.vercel.app`. O runbook está em
+  `docs/plano/DEPLOY.md` (e diz explicitamente o que não foi possível verificar).
 
-Fases concluídas e publicadas: **F0 a F6** e, da Fase 7, a importação/exportação
-(F7.1), o ecrã de importação (F7.2), a PWA (F7.3), a remoção da frequência anual e a
-gravação do dia da série (T7.4) e a reversão de uma importação (T7.6).
-
-## 2. O que fazer a seguir, por ordem
-
-1. **Fechar a task-26 no quadro de tarefas** (`team_task_list`): é a correção dos
-   dez achados da verificação adversarial da importação, a cargo do `dev-dados`.
-   Enquanto não fechar, **a árvore está vermelha** e nada deve ser publicado.
-2. **Correr o gate completo** (ver §4) e só publicar se estiver verde.
-3. **Correr o fumo em produção**: `node packages/db/smoke.mjs <url>`.
-4. **Commit e push** de tudo o que estiver por commitar.
-5. **Fase 8** (endurecimento, testes ponta a ponta, CI e entrega) — ver
-   `docs/plano/PLANO-EXECUCAO.md`, secção 13.
-
-## 3. Estado exato da árvore (vermelha, e porque)
-
-Quatro problemas, **todos do mesmo autor** e todos do refactor a meio da task-26:
-
-| Onde | O que é |
-|---|---|
-| `apps/web/src/server/import-actions.ts:229` | O tipo da transação passada às funções puras não corresponde a `ConfirmTx` |
-| `apps/web/src/components/import-revert.tsx:21` | `ImportedTransactionRef` **não está exportado** de `import-actions.ts` — falta um `export` numa linha, e sem ele o ecrã da reversão não compila |
-| `packages/shared/src/import/__tests__/preview.test.ts` | 2 testes falham na **impressão digital** (`fingerprintOf` e «movimento repetido dentro do próprio ficheiro») |
-| — | O resto está limpo: `lint` 4/4 e **500 testes passam**, incluindo os 19 da reversão |
-
-Estes factos foram verificados com o gate corrido pelo Lead, não relatados por
-terceiros. Se ao retomar já estiverem resolvidos, melhor: confirma com o gate antes
-de assumir.
-
-## 4. Comandos: o gate e as armadilhas do ambiente
+## 2. O gate, e como se corre
 
 ```powershell
 pnpm format          # escreve a formatação
+pnpm format:check
 pnpm lint            # 4 tasks
 pnpm typecheck       # 4 tasks
-pnpm test            # 26-27 ficheiros, ~500 testes
-pnpm build           # o gate que mais apanha; exige .next limpo e permissões
+pnpm test            # 522 testes, 28 ficheiros
+pnpm build           # o gate que mais apanha; exige .next limpo
+pnpm test:e2e        # 20 percursos (Playwright), contra a Neon do .env
 node packages/db/smoke.mjs https://<url-de-producao>   # fumo autenticado
 ```
 
-Armadilhas já conhecidas nesta máquina (todas documentadas por terem custado tempo):
+Resultado da última passagem completa (2026-10-11): tudo verde — 522 testes,
+`build` 2/2, `test:e2e` **20/20**, fumo em produção **12/12** páginas a 200, e
+`db:seed` idempotente.
 
-- **`spawn EPERM`** em `next build` e em `vitest`: a sandbox bloqueia processos filhos
-  com stdio em pipe. O `build` e os testes exigem
-  `sandbox_permissions: "danger-full-access"`. Os membros da equipa não têm essa
-  escalada — **estes dois gates são sempre do Lead**.
+**Armadilhas do ambiente (já custaram tempo a vários):**
+
+- **`spawn EPERM`** em `next build`, `next dev`, `vitest`, `tsx` e no arranque dos
+  browsers: a sandbox bloqueia processos filhos com *stdio* em pipe. Estes comandos
+  exigem `sandbox_permissions: "danger-full-access"`. **Os membros da equipa não têm
+  essa escalada** — build, testes, e2e e fumo são sempre do Lead.
 - **`.next` sujo** provoca `EPERM: unlink` numa junção do Turbopack. Apagar
   `apps/web/.next` resolve; é saída gerada.
-- **pnpm com store fora do workspace**: usar
-  `--store-dir "C:\Users\VENOM\AppData\Local\pnpm\store\v10"` e `$env:CI='true'`.
-- **Prisma**: `prisma db push --accept-data-loss` quando se remove uma coluna;
-  regenerar o cliente (`prisma generate`) antes de concluir que um campo novo não
-  existe.
-- **`tsx`** falha com `spawn EPERM`; os membros resolveram-no com um carregador de
-  TypeScript do Node (método descrito no §5 de `docs/spec/T3.3-verificacao-camada-dados.md`).
+- **pnpm com store fora do workspace**: `--store-dir` e `$env:CI='true'`, ou
+  escalada — sem ela, `pnpm install` falha com `ERR_PNPM_EPERM`.
+- **`prisma generate`** deixa de funcionar se o `node_modules` ficar a meio: um
+  `pnpm install --force` interrompido desliga os *links* e o erro que aparece é
+  `proper-lockfile`/`signal-exit`. A reparação é `pnpm install --no-frozen-lockfile`
+  com escalada, não mexer no esquema.
+- **Quedas de energia corrompem ficheiros em silêncio.** Aconteceu duas vezes nesta
+  sessão: `packages/db/prisma/seed.ts` ficou com 48 077 bytes NULOS e os binários do
+  Chromium ficaram «danificados e ilegíveis» (`spawn UNKNOWN` no Playwright). Se algo
+  falhar de forma estranha e sem relação com o diff, **medir o ficheiro antes de
+  duvidar do código** (`(Get-Item x).Length`, executar o binário diretamente).
+
+## 3. O que a Fase 8 deixou pronto
+
+- **CI**: `.github/workflows/ci.yml` (gate completo, com PostgreSQL em serviço e
+  `--frozen-lockfile`) e `smoke.yml` (fumo em produção, à mão).
+- **Migrações versionadas**: `packages/db/prisma/migrations/` com a linha de base,
+  marcada como aplicada contra a Neon. O `prisma.config.ts` usa a `DIRECT_URL` e
+  declara `migrations.seed`.
+- **Seed de demonstração**: `pnpm --filter @repo/db db:seed` → utilizador
+  `demo@financas-pessoais.pt` (idempotente: 97 linhas na 1.ª passagem, 0 na 2.ª).
+- **Segurança**: rate limit no `better-auth`, posse do `cardId` confirmada, e
+  `docs/spec/T8.2-auditoria-autorizacao.md` com as 193 chamadas inventariadas.
+- **Acessibilidade**: `docs/spec/T8.3-acessibilidade.md`, com o que foi corrigido e
+  o que ficou declarado.
+- **Ponta a ponta e desempenho**: `e2e/` (20 percursos: registo, autenticação e
+  logout, transações, orçamento, objetivos, importar e desfazer, exportar e
+  reimportar, axe e desempenho) e `docs/spec/T8.4-e2e-e-desempenho.md`.
+- **Documentação**: `README.md` reescrito (estava factualmente errado: dizia que não
+  existia código) e `docs/plano/DEPLOY.md`.
+
+## 4. O quadro de tarefas
+
+`team_task_list` tem as tarefas da Fase 8 (task-1 a task-4). O quadro **não
+sobrevive a uma sessão nova**: as tarefas desta sessão foram criadas neste
+processo. Se o quadro aparecer vazio, o estado real está nos commits e nos
+relatórios `docs/spec/T8.*` — este documento é o índice.
 
 ## 5. Convenções do projeto (não são preferências, são regras)
 
 1. **Dinheiro é sempre cêntimos inteiros** (`Int`). Nunca vírgula flutuante, nunca
    `Float`/`Decimal`. Datas de calendário em `@db.Date` e como `YYYY-MM-DD`.
 2. **A lógica pura vive em `packages/shared`** e é lá que é testada. A camada de
-   `apps/web/src/server` é fina: consulta, validação, transação. Foi por isso que a
-   construção do período do orçamento mudou para o domínio — o defeito do gate G6
-   estava lá e nenhum teste alcançava a camada de servidor.
+   `apps/web/src/server` é fina: consulta, validação, transação.
 3. **Cada correção com um teste que fique vermelho antes.** O modelo a seguir é
    `packages/shared/src/finance/__tests__/gate-g6.test.ts`.
 4. **Não se alteram testes existentes para os fazer passar.** Se um teste contradiz
    uma correção, diz-se qual e porquê.
 5. **Toda a consulta e escrita filtra por `userId` da sessão**, e todo o
    identificador vindo do cliente é confirmado como sendo do utilizador antes de ser
-   usado. A verificação T3.3 mostrou o que acontece sem isto.
+   usado.
 6. **Cada fase fecha com gate verde + fumo em produção + verificação adversarial.**
-   As quatro verificações adversárias feitas até hoje encontraram, em todas as
-   ocasiões, defeitos reais que os testes verdes não viam — incluindo um erro 500 que
-   bloqueou o utilizador durante uma fase inteira e um orçamento que media um dia a
-   menos por mês.
+   As cinco verificações adversárias feitas até hoje encontraram defeitos reais que
+   os testes verdes não viam — incluindo um erro 500 que bloqueou o utilizador
+   durante uma fase inteira, um orçamento que media um dia a menos por mês, e o
+   ciclo exportar → reimportar a duplicar movimentos iguais.
 7. **Os documentos não são decoração.** O contrato de cálculo está em
    `docs/spec/F1-regras-financeiras.md`; os relatórios de verificação em
    `docs/spec/T*.md`; o plano em `docs/plano/PLANO-EXECUCAO.md`.
@@ -99,31 +106,63 @@ Armadilhas já conhecidas nesta máquina (todas documentadas por terem custado t
    pt-PT ("parcela" e não "prestação" para compras parceladas, "fatura" com fecho e
    vencimento, "travar saldo"). A microcopy usa "tu".
 9. **Escrita por âmbito disjunto.** Cada tarefa declara os ficheiros que pode
-   escrever; dois membros nunca escrevem no mesmo ficheiro ao mesmo tempo. A única
-   vez que isso aconteceu nesta sessão, apareceu uma gralha que nenhum teste apanhava
-   (um schema que exigia texto enquanto o browser enviava um hash).
+   escrever; dois membros nunca escrevem no mesmo ficheiro ao mesmo tempo.
+10. **Versões exatas, nunca `@latest`**, e os números de um ambiente não se
+    inventam: mede-se e escreve-se o valor.
 
-## 6. Decisões abertas que são do utilizador
+## 6. Decisões abertas — são do utilizador, não minhas
 
-1. **Fase 8** — endurecimento, testes ponta a ponta (Playwright) e CI. É o que falta
-   para o projeto estar "entregue" em vez de "a funcionar".
+1. **Contraste de `--border`/`--input`** (`apps/web/src/app/globals.css:94-95`,
+   `:154-155`): medido a **1,31:1** (claro) e 1,46–1,57:1 (escuro) contra o fundo;
+   o mínimo WCAG para limites de controlo (1.4.11) é 3:1. Não corrigi de propósito:
+   estes tokens também desenham separadores de tabelas e cartões, e escurecê-los
+   muda o carácter visual da aplicação. Mínimos medidos que resolvem, mantendo croma
+   e matiz: claro `L≈0,66` (`#8C9497`), escuro `L≈0,49` (`#5B626A`).
 2. **Validar a importação com um extrato real de um banco português.** É a única
-   lacuna que nenhuma verificação minha fecha: as amostras são sintéticas. Vale
-   sobretudo para o dialecto OFX **sem nenhuma tag de fecho**.
-3. **`GoalMovementType` admite `yield`** no motor sem coluna correspondente na base —
-   o mesmo padrão que a frequência anual tinha, e que foi removida. Fica registado
-   como suspeito; alguém deve verificar se é alcançável.
+   lacuna que nenhuma verificação fecha: as amostras são sintéticas. Vale sobretudo
+   para o dialecto OFX **sem nenhuma tag de fecho**.
+3. **`CRON_SECRET` não tem quem a use.** Está declarada no `.env.example` e no
+   `turbo.json`, mas não existe rota de cron (as únicas rotas de API são
+   `/api/health` e `/api/auth/[...all]`). Ou se cria a rota que gera as recorrências
+   vencidas e se acrescenta a entrada `crons`, ou se retira a variável — manter uma
+   variável que promete uma tarefa agendada inexistente é um documento que mente.
 4. **Bens e dívidas (património) não têm ecrã.** O património líquido contabiliza-os,
    mas não há forma de os registar.
-5. **A interface de importação pode colar o extrato** (textarea): o schema aceita, a
-   interface não oferece. São cerca de 15 linhas.
+5. **`GoalMovementType` admite `yield`** no motor e na base, mas nenhum caminho o
+   cria (nem interface nem importação). Fica registado como código morto: ou ganha
+   uso, ou desaparece — o padrão é o da frequência anual, que foi removida.
+6. **A regra morta do `cardId`**: o schema de regras aceita `cardId` como condição, a
+   interface oferece-o e mostra-o, e o motor ignora-o em silêncio (a regra aparece
+   como inválida, e a ação e a interface discordam). A proposta está no §3.3 de
+   `docs/spec/T8.2-auditoria-autorizacao.md` e recomenda dar a condição ao motor, não
+   apagá-la da interface. São 8 pontos, 5 deles em `packages/shared`.
 
-## 7. Onde está o resto do estado
+## 7. O que ainda não está coberto nos testes
 
-- **Quadro de tarefas partilhado**: `team_task_list` — cada tarefa tem o dono, o
-  âmbito de escrita, os entregáveis e o critério de aceitação.
-- **Histórico de decisões**: as mensagens de commit contam o *porquê*, não só o *quê*.
-  Ler `git log` é a forma mais rápida de recuperar contexto.
+Declarado em `docs/spec/T8.4-e2e-e-desempenho.md` §7, e não é uma lista de desculpas
+— é o que alguém deve atacar a seguir:
+
+- **Telemóvel e WebKit**: os e2e correm só em Chromium, a 1280 px. A aplicação é
+  responsiva (360 px a 1440 px+) e há componentes que só aparecem em telemóvel (a
+  navegação inferior, o botão de saída do cabeçalho).
+- **Tema escuro**: o axe correu só no tema claro.
+- **Concorrência**: dois pedidos em paralelo não são exercitados pela interface
+  (a classe de falha que a T5.6 e a T7.5 encontraram por medição direta).
+- **Ecrãs sem percurso**: categorias, regras, cartões, recorrências e definições só
+  são visitados pelo fumo (que confirma que respondem, não que escrevem bem).
+- **Limitador de entrada por HTTP**: não foi exercitado (está desligado em
+  desenvolvimento, de propósito, para não partir os e2e). A receita está no §5 do
+  T8.2: 11 POST seguidos a `/api/auth/sign-in/email` em produção, e o 11.º deve
+  devolver 429.
+
+## 8. Onde está o resto do estado
+
+- **Histórico de decisões**: as mensagens de commit contam o *porquê*, não só o
+  *quê*. Ler `git log` é a forma mais rápida de recuperar contexto.
 - **Relatórios de verificação**: `docs/spec/T3.3-*` (camada de dados), `T5.6-*`
-  (Fases 5 e 6), `T7.5-*` (importação e exportação). Cada um tem os achados com
-  ficheiro:linha, o cenário concreto e o valor medido.
+  (Fases 5 e 6), `T7.5-*` (importação e exportação) e `T8.2-*`/`T8.3-*`/`T8.4-*`
+  (Fase 8). Cada um tem os achados com `ficheiro:linha`, o cenário concreto e o
+  valor medido.
+- **Ficheiros que se perderam**: existiu um `packages/verificacao-t75/` (arnês de
+  verificação da importação, commitado) e scripts de medição pontuais que foram
+  apagados depois de cumprirem a função — não são dívida, são ferramentas.
