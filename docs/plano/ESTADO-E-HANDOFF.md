@@ -8,12 +8,16 @@ olhar primeiro.
 ## 1. Onde estamos
 
 - Repositório: `https://github.com/rafaelfa/financas-pessoais` (privado), ramo `main`.
-- **Estado: a árvore está verde, tudo commitado e publicado.** Fases 0 a 7 fechadas
-  e a Fase 8 (endurecimento, testes, CI e entrega) implementada; o que falta dela
-  está no §6 e são decisões ou lacunas que não fecham por código sozinho.
-- Últimos commits: `213058c` (Fase 8: CI, migrações, seed demo, segurança,
-  acessibilidade e e2e) e `c43eaa7` (verificação da importação, I1–I10, reversão,
-  PWA, exportação).
+- **Estado: a árvore está verde, tudo commitado, o CI passa em `main` e o que está
+  publicado funciona.** Fases 0 a 8 fechadas; o que falta são decisões e lacunas que
+  não fecham por código sozinho (§6) e cobertura que se sabe em falta (§7).
+- Últimos commits: `3df0ed2` (fuso dos testes + relatório T8.4), `f9cfe9c` (handoff
+  e README), `213058c` (Fase 8: CI, migrações, seed demo, segurança, acessibilidade
+  e e2e) e `c43eaa7` (verificação da importação, I1–I10, reversão, PWA, exportação).
+- **Integração contínua verde em `main`** (`.github/workflows/ci.yml`, 2m48s no
+  runner de Ubuntu): instalar com `--frozen-lockfile`, validar o esquema Prisma,
+  format, lint, tipos, testes e build. O fumo em produção é um workflow à mão
+  (`smoke.yml`) porque escreve numa base real.
 - Deploy: Vercel, com Neon. Produção:
   `https://financas-pessoais-psi-lac.vercel.app`. O runbook está em
   `docs/plano/DEPLOY.md` (e diz explicitamente o que não foi possível verificar).
@@ -32,8 +36,14 @@ node packages/db/smoke.mjs https://<url-de-producao>   # fumo autenticado
 ```
 
 Resultado da última passagem completa (2026-10-11): tudo verde — 522 testes,
-`build` 2/2, `test:e2e` **20/20**, fumo em produção **12/12** páginas a 200, e
-`db:seed` idempotente.
+`build` 2/2, `test:e2e` **20/20**, fumo em produção **12/12** páginas a 200,
+`db:seed` idempotente e o CI verde em `main`.
+
+**A CI já pagou o que custou.** Na primeira corrida apanhou um defeito que nenhum
+gate local apanhava: o teste de formatação de datas dependia do fuso da máquina
+(`13:00` em `Europe/Lisbon`, `12:00` em UTC), porque o `Intl` sem `timeZone`
+explícito usa o fuso do sistema. A correção fixa `TZ=Europe/Lisbon` na
+configuração do Vitest — não se afrouxou a asserção.
 
 **Armadilhas do ambiente (já custaram tempo a vários):**
 
