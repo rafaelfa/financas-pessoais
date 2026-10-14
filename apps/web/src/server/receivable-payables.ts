@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@repo/db/client';
+import { requireUser } from './session';
 
 /**
  * Consultas de contas a pagar/receber.
@@ -8,14 +9,13 @@ import { prisma } from '@repo/db/client';
 
 /** Lista todas as contas a pagar/receber do usuário. */
 export async function listReceivablePayables() {
-  const userId = 'user-id-placeholder'; // Substituir com requireUser() quando integrar
+  const user = await requireUser();
 
   const items = await prisma.receivablePayable.findMany({
-    where: { userId },
+    where: { userId: user.id },
     include: {
       category: true,
       financialAccount: true,
-      payments: true,
     },
     orderBy: { dueDate: 'asc' },
   });
@@ -25,11 +25,11 @@ export async function listReceivablePayables() {
 
 /** Lista contas a pagar pendentes. */
 export async function listPendingPayables() {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const items = await prisma.receivablePayable.findMany({
     where: {
-      userId,
+      userId: user.id,
       type: 'PAYABLE',
       status: 'OPEN',
     },
@@ -45,11 +45,11 @@ export async function listPendingPayables() {
 
 /** Lista contas a receber pendentes. */
 export async function listPendingReceivables() {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const items = await prisma.receivablePayable.findMany({
     where: {
-      userId,
+      userId: user.id,
       type: 'RECEIVABLE',
       status: 'OPEN',
     },
@@ -65,14 +65,13 @@ export async function listPendingReceivables() {
 
 /** Obtem uma conta específica pelo ID. */
 export async function getReceivablePayableById(id: string) {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const item = await prisma.receivablePayable.findFirst({
-    where: { id, userId },
+    where: { id, userId: user.id },
     include: {
       category: true,
       financialAccount: true,
-      payments: true,
     },
   });
 
@@ -81,11 +80,11 @@ export async function getReceivablePayableById(id: string) {
 
 /** Obtem o total de contas pendentes por tipo. */
 export async function getReceivablePayableSummary() {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const summary = await prisma.receivablePayable.groupBy({
     by: ['type', 'status'],
-    where: { userId },
+    where: { userId: user.id },
     _sum: { amountInCents: true },
   });
 

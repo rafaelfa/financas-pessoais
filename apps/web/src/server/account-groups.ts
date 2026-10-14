@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@repo/db/client';
+import { requireUser } from './session';
 
 /**
  * Consultas de consolidação de contas (Account Groups).
@@ -8,10 +9,10 @@ import { prisma } from '@repo/db/client';
 
 /** Lista todos os grupos de contas do usuário. */
 export async function listAccountGroups() {
-  const userId = 'user-id-placeholder'; // Substituir com requireUser() quando integrar
+  const user = await requireUser();
 
   const groups = await prisma.accountGroup.findMany({
-    where: { userId },
+    where: { userId: user.id },
     include: {
       accountGroupItems: {
         include: {
@@ -27,10 +28,10 @@ export async function listAccountGroups() {
 
 /** Obtem um grupo específico pelo ID. */
 export async function getAccountGroupById(id: string) {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const group = await prisma.accountGroup.findFirst({
-    where: { id, userId },
+    where: { id, userId: user.id },
     include: {
       accountGroupItems: {
         include: {
@@ -45,10 +46,10 @@ export async function getAccountGroupById(id: string) {
 
 /** Lista todos os grupos com resumo de saldos. */
 export async function listAccountGroupsWithSummary() {
-  const userId = 'user-id-placeholder';
+  const user = await requireUser();
 
   const groups = await prisma.accountGroup.findMany({
-    where: { userId },
+    where: { userId: user.id },
     include: {
       accountGroupItems: {
         include: {
