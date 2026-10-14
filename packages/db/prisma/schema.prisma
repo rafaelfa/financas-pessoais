@@ -123,6 +123,11 @@ model User {
   goalMovements     GoalMovement[]
   assets            Asset[]
   liabilities       Liability[]
+  // Novas coleções para Contas a Pagar/Receber e Consolidação de Contas
+  receivablePayables ReceivablePayable[]
+  accountGroups     AccountGroup[]
+  // Relação inversa para ReceivablePayablePayment
+  receivablePayablePayments ReceivablePayablePayment[]
 
   @@map("user")
 }
@@ -244,11 +249,15 @@ model FinancialAccount {
 
   user User @relation("UserFinancialAccounts", fields: [userId], references: [id], onDelete: Cascade)
 
-  lockedBalances  LockedBalance[]
-  creditCards     CreditCard[]
-  transactions    Transaction[]
-  invoicePayments InvoicePayment[]
-  recurrences     Recurrence[]
+  lockedBalances       LockedBalance[]
+  creditCards          CreditCard[]
+  transactions         Transaction[]
+  invoicePayments      InvoicePayment[]
+  recurrences          Recurrence[]
+  receivablePayables   ReceivablePayable[]
+  accountGroupItems    AccountGroupItem[]
+  // Relação inversa para ReceivablePayablePayment
+  receivablePayablePayments ReceivablePayablePayment[]
 
   @@unique([userId, name])
   @@index([userId, archivedAt])
@@ -463,10 +472,11 @@ model Category {
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryTree")
 
-  transactions Transaction[]
-  budgetLimits BudgetLimit[]
-  targetRules  TransactionRule[]
-  recurrences  Recurrence[]
+  transactions       Transaction[]
+  budgetLimits       BudgetLimit[]
+  targetRules        TransactionRule[]
+  recurrences        Recurrence[]
+  receivablePayables ReceivablePayable[]
 
   /// Sem `parentId` no índice único: é nullable, e no SQL isso torna a
   /// unicidade inútil para as categorias de topo (NULLs são distintos).
@@ -1007,4 +1017,110 @@ model MonthClose {
   @@unique([userId, periodStart])
   @@index([userId, periodStart])
   @@map("month_close")
+}
+
+// =============================================================================
+// 11. CONTAS A PAGAR / CONTAS A RECEBER
+// =============================================================================
+
+/// Status de uma conta a pagar ou receber.
+enum ReceivablePayableStatus {
+  OPEN     // Aberta - aguardando pagamento/recebimento
+  PAID     // Paga - já foi paga/recebida
+  OVERDUE  // Vencida - passou do vencimento e não foi paga
+  CANCELLED // Cancelada - não será mais paga/recebida
+}
+
+/// Tipo de conta: Pagar (despesa) ou Receber (receita).
+enum ReceivablePayableType {
+  PAYABLE   // Conta a pagar (despesa)
+  RECEIVABLE // Conta a receber (receita)
+}
+
+model ReceivablePayable {
+  id             String               @id @default(uuid())
+  userId         String
+  type           ReceivablePayableType
+  description    String
+  amountInCents  Int
+  dueDate        DateTime             @db.Date
+  paidAt         DateTime?
+  categoryId     String?
+  financialAccountId String?
+  tags           String[]
+  note           String?
+  status         ReceivablePayableStatus @default(OPEN)
+  paidAmountInCents Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+
+  receivablePayablePayments ReceivablePayablePayment[]
+
+  @@index([userId, status, dueDate])
+  @@index([userId, categoryId])
+  @@index([financialAccountId])
+  @@map("receivable_payable")
+}
+
+/// Histórico de pagamentos de uma conta a pagar/receber.
+model ReceivablePayablePayment {
+  id                String                  @id @default(uuid())
+  userId            String
+  receivablePayableId String
+  financialAccountId String?
+  amountInCents     Int
+  paymentDate       DateTime                @db.Date
+  note              String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  receivablePayable ReceivablePayable @relation(fields: [receivablePayableId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, paymentDate])
+  @@index([receivablePayableId, paymentDate])
+  @@index([financialAccountId])
+  @@map("receivable_payable_payment")
+}
+
+// =============================================================================
+// 12. CONSOLIDAÇÃO DE CONTAS
+// =============================================================================
+
+model AccountGroup {
+  id     String        @id @default(uuid())
+  userId String
+  name   String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountGroupItems AccountGroupItem[]
+
+  @@index([userId])
+  @@map("account_group")
+}
+
+model AccountGroupItem {
+  id                  String        @id @default(uuid())
+  accountGroupId      String
+  financialAccountId  String
+
+  createdAt DateTime @default(now())
+
+  accountGroup AccountGroup @relation(fields: [accountGroupId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountGroupId, financialAccountId])
+  @@index([financialAccountId])
+  @@map("account_group_item")
 }
