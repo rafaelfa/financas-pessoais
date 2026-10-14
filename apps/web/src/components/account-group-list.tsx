@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Amount } from './amount';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Amount } from '@/components/amount';
 import { MoreHorizontal } from 'lucide-react';
 
 export type AccountGroupRow = {

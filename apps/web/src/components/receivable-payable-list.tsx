@@ -1,9 +1,9 @@
-import { Amount } from './amount';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Checkbox } from './ui/checkbox';
-import { Separator } from './ui/separator';
+import { Amount } from '@/components/amount';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
