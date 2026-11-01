@@ -197,7 +197,7 @@ export function AccountGroupDialog({
               <FormItem>
                 <div className="max-h-40 overflow-y-auto rounded-md border p-4">
                   <p className="mb-2 text-sm text-muted-foreground">
-                    Selecione as contas que deseja incluir neste grupo:
+                    Escolhe as contas que queres incluir neste grupo:
                   </p>
                   <div className="space-y-2">
                     {accounts.map((account) => {

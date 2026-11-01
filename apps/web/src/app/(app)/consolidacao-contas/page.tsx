@@ -19,7 +19,7 @@ export default async function AccountGroupPage() {
     <>
       <PageHeader
         title="Consolidação de Contas"
-        description="Agrupe suas contas para visualizar saldos consolidados por finalidade (ex: Contas Principais, Contas de Emergência, etc)."
+        description="Agrupa as tuas contas para ver saldos consolidados por finalidade (ex.: Contas Principais, Contas de Emergência)."
         actions={
           <AccountGroupDialog
             mode="create"
@@ -77,7 +77,7 @@ export default async function AccountGroupPage() {
           <EmptyState
             icon={Plus}
             title="Ainda não há grupos"
-            description="Crie grupos para consolidar suas contas por finalidade e visualizar saldos agrupados."
+            description="Cria grupos para consolidar as tuas contas por finalidade e ver saldos agrupados."
             action={
               <AccountGroupDialog
                 mode="create"
@@ -98,11 +98,11 @@ export default async function AccountGroupPage() {
           <h3 className="mb-2 font-medium">Como usar os grupos?</h3>
           <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
             <li>
-              Crie grupos por finalidade (ex: &quot;Contas Principais&quot;, &quot;Emergência&quot;,
-              &quot;Investimentos&quot;)
+              Cria grupos por finalidade (ex.: &quot;Contas Principais&quot;,
+              &quot;Emergência&quot;, &quot;Investimentos&quot;)
             </li>
-            <li>Adicione contas aos grupos para visualizar o saldo consolidado</li>
-            <li>Use grupos para ter uma visão geral de áreas específicas da sua finança</li>
+            <li>Adiciona contas aos grupos para ver o saldo consolidado</li>
+            <li>Usa grupos para ter uma visão geral de áreas específicas das tuas finanças</li>
           </ul>
         </div>
       </div>

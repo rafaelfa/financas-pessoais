@@ -29,7 +29,7 @@ export default async function ReceivablePayablePage() {
     <>
       <PageHeader
         title="Contas a Pagar / Receber"
-        description="Gerencie suas despesas e receitas recorrentes. Contas pendentes aparecem aqui."
+        description="Gere as tuas despesas e receitas recorrentes. Contas pendentes aparecem aqui."
         actions={
           <ReceivablePayableDialog
             mode="create"
@@ -101,7 +101,7 @@ export default async function ReceivablePayablePage() {
           <EmptyState
             icon={Plus}
             title="Ainda não há contas"
-            description="Registre suas primeiras contas a pagar ou receber para começar a controlar suas despesas e receitas."
+            description="Regista as tuas primeiras contas a pagar ou receber para começares a controlar as tuas despesas e receitas."
             action={
               <ReceivablePayableDialog
                 mode="create"

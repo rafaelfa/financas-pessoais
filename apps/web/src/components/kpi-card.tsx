@@ -15,12 +15,15 @@ export function KpiCard({
   children,
   hint,
   icon: Icon,
+  prominent = false,
   className,
 }: {
   readonly label: string;
   readonly children: React.ReactNode;
   readonly hint?: string;
   readonly icon?: ComponentType<{ className?: string }>;
+  /** O valor é o herói do ecrã: um degrau acima dos restantes indicadores. */
+  readonly prominent?: boolean;
   readonly className?: string;
 }) {
   return (
@@ -32,7 +35,12 @@ export function KpiCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
-        <p className="text-2xl font-semibold tracking-tight tabular-nums sm:text-[1.75rem]">
+        <p
+          className={cn(
+            'font-semibold tracking-tight tabular-nums',
+            prominent ? 'text-4xl' : 'text-2xl sm:text-[1.75rem]',
+          )}
+        >
           {children}
         </p>
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

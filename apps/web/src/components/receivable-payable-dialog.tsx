@@ -53,7 +53,7 @@ type ReceivablePayableFormValues = {
 
 const receivablePayableSchema = z.object({
   type: z.enum(['PAYABLE', 'RECEIVABLE'], {
-    error: 'Selecione o tipo de conta',
+    error: 'Escolhe o tipo de conta',
   }),
   description: z.string().min(1, 'A descrição é obrigatória').max(255, 'A descrição é muito longa'),
   amountInCents: z.number().min(1, 'O valor deve ser maior que zero'),
@@ -160,7 +160,7 @@ export function ReceivablePayableDialog({
   const title = mode === 'create' ? 'Nova Conta a Pagar/Receber' : 'Editar Conta';
   const description =
     mode === 'create'
-      ? 'Registre uma conta que você precisa pagar ou que espera receber.'
+      ? 'Regista uma conta que tens de pagar ou que esperas receber.'
       : 'Atualize os dados da conta.';
   const submitLabel = mode === 'create' ? 'Criar Conta' : 'Salvar Alterações';
 
@@ -185,9 +185,7 @@ export function ReceivablePayableDialog({
                   </FormControl>
                   <div className="space-y-1">
                     <div className="font-medium">Conta a Pagar</div>
-                    <div className="text-sm text-muted-foreground">
-                      Despesa que você precisa pagar
-                    </div>
+                    <div className="text-sm text-muted-foreground">Despesa que tens de pagar</div>
                   </div>
                 </FormItem>
               )}
@@ -210,9 +208,7 @@ export function ReceivablePayableDialog({
                   </FormControl>
                   <div className="space-y-1">
                     <div className="font-medium">Conta a Receber</div>
-                    <div className="text-sm text-muted-foreground">
-                      Receita que você espera receber
-                    </div>
+                    <div className="text-sm text-muted-foreground">Receita que esperas receber</div>
                   </div>
                 </FormItem>
               )}
@@ -301,7 +297,7 @@ export function ReceivablePayableDialog({
                   {...field}
                   value={field.value ?? ''}
                 >
-                  <option value="">Selecione uma conta</option>
+                  <option value="">Escolhe uma conta</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
                       {account.name}
@@ -327,7 +323,7 @@ export function ReceivablePayableDialog({
                   {...field}
                   value={field.value ?? ''}
                 >
-                  <option value="">Selecione uma categoria</option>
+                  <option value="">Escolhe uma categoria</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}

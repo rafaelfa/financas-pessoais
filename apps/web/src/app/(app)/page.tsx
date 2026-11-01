@@ -264,7 +264,7 @@ export default async function PainelPage({
         className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         aria-label="Indicadores principais"
       >
-        <KpiCard label={firstKpiLabel()} hint={firstKpiHint()}>
+        <KpiCard label={firstKpiLabel()} hint={firstKpiHint()} prominent>
           {isCardScope ? (
             <Amount amountInCents={card?.outstandingInCents ?? 0} tone="expense" />
           ) : data.balanceInCents !== null ? (

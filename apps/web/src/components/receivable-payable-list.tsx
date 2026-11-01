@@ -131,7 +131,7 @@ export function ReceivablePayableList({
         <div className="rounded-xl border border-dashed p-8 text-center">
           <h3 className="text-lg font-medium">Nenhuma conta encontrada</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Comece adicionando suas primeiras contas a pagar ou receber.
+            Começa por adicionar as tuas primeiras contas a pagar ou receber.
           </p>
         </div>
       ) : (
