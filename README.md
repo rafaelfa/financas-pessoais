@@ -2,16 +2,17 @@
 
 Aplicação web de finanças pessoais — uma nova versão, com interface atualizada, das funcionalidades do [Minhas Economias](https://wwws.minhaseconomias.com.br/).
 
-> **Estado: funcional e publicado.** Fases 0 a 7 concluídas
-> (autenticação, motor financeiro, contas, lançamentos, categorias, orçamento,
-> objetivos, cartões e faturas, recorrências, regras, relatórios, fecho de mês,
-> importação/exportação de extratos e PWA). A Fase 8 — endurecimento, testes
-> ponta a ponta, integração contínua e entrega — está em curso.
+> **Estado em 2026-11-01: o código está verde, a produção está atrasada.**
+> O gate passa por inteiro nesta árvore de trabalho — `format:check`, `lint`,
+> `typecheck`, `test` (522 testes, 28 ficheiros) e `build` — e
+> `pnpm install --frozen-lockfile` também. **Nada disto está em produção**: o que
+> está publicado é o commit `e4366ee`, e os 8 deploys seguintes falharam todos.
+> Em produção, `/contas-pagar-receber` e `/consolidacao-contas` respondem `404`.
 > Produção: <https://financas-pessoais-psi-lac.vercel.app>
 
 ## O que é
 
-Uma aplicação para controlar as finanças pessoais do dia a dia, sem depender de integração bancária: contas e carteiras, lançamentos, categorias, orçamento mensal, objetivos, cartões e faturas, recorrências, relatórios e património líquido. Tudo introduzido manualmente ou importado de ficheiros OFX/CSV.
+Uma aplicação para controlar as finanças pessoais do dia a dia, sem depender de integração bancária: contas e carteiras, lançamentos, categorias, orçamento mensal, objetivos, cartões e faturas, recorrências, contas a pagar e a receber, grupos de contas com saldo consolidado, relatórios e património líquido. Tudo introduzido manualmente ou importado de ficheiros OFX/CSV.
 
 A funcionalidade inspira-se no Minhas Economias, mas corrige limitações conhecidas do original:
 
@@ -23,7 +24,12 @@ A funcionalidade inspira-se no Minhas Economias, mas corrige limitações conhec
 
 ## Âmbito
 
-**Dentro:** contas manuais, transações (gasto, ganho, transferência), categorias e subcategorias, orçamentos com alertas, objetivos, cartões e faturas, recorrências, regras de categorização automática, bens e património líquido, relatórios, importação OFX/CSV, exportação CSV/XLSX/PDF, PWA instalável.
+**Dentro:** contas manuais, transações (gasto, ganho, transferência), categorias e
+subcategorias, orçamentos com alertas, objetivos, cartões e faturas, recorrências,
+contas a pagar e a receber (com pagamento que gera movimento na conta), grupos de
+contas e consolidação de saldos, regras de categorização automática, bens e
+património líquido, relatórios, importação OFX/CSV, exportação CSV/XLSX/PDF, PWA
+instalável.
 
 **Fora:** integração bancária e Open Finance, multiusuário e partilha familiar, aplicações nativas iOS/Android, login social, assinaturas.
 
@@ -33,7 +39,7 @@ A funcionalidade inspira-se no Minhas Economias, mas corrige limitações conhec
 |---|---|
 | Monorepo | pnpm workspaces + Turborepo |
 | Aplicação | Next.js 16 (App Router) · React 19 · TypeScript 5.9 (estrito) |
-| Interface | Tailwind CSS 4 · shadcn/ui · Radix · Recharts · TanStack Table |
+| Interface | Tailwind CSS 4 · shadcn/ui · Radix · Recharts |
 | Dados | PostgreSQL (Neon) · Prisma 7 |
 | Validação | Zod |
 | Autenticação | better-auth (utilizador único, e-mail e palavra-passe) |
@@ -90,7 +96,7 @@ Neon — o Docker é alternativa, não requisito.
 pnpm format:check    # formatação (pnpm format escreve-a)
 pnpm lint
 pnpm typecheck
-pnpm test            # testes unitários, ~520
+pnpm test            # testes unitários: 522 testes em 28 ficheiros
 pnpm build           # o gate que mais apanha; exige .next limpo
 pnpm test:e2e        # ponta a ponta (Playwright) — exige .env e base acessível
 ```
@@ -106,6 +112,11 @@ O mesmo gate corre em cada `push` e em cada *pull request* pelo GitHub Actions
 (`.github/workflows/ci.yml`). O fumo é um workflow separado, à mão, porque escreve
 numa base real.
 
+**O CI está vermelho em `main` desde 2026-10-14 19:30**: 8 execuções falhadas, a
+última em `b980ed0` (2026-10-18), que nem passa do `--frozen-lockfile`. A árvore de
+trabalho atual passa o mesmo gate localmente, mas ainda não foi empurrada — o CI
+ainda não a viu.
+
 ### Duas armadilhas do ambiente de desenvolvimento (Windows)
 
 1. **`spawn EPERM`** em `next build` e em `vitest`: a sandbox bloqueia processos
@@ -116,6 +127,8 @@ numa base real.
 
 ## Documentação
 
+- [Mapa e diagnóstico](docs/gestao/MAPA.md) — o que foi medido neste repositório e onde dói.
+- [Tarefas](docs/gestao/TASKS.md) e [decisões](docs/gestao/DECISOES.md) — o quadro de trabalho e o que espera pelo utilizador.
 - [Plano de execução](docs/plano/PLANO-EXECUCAO.md) — as fases, com critérios de aceitação e riscos.
 - [Estado do projeto e handoff](docs/plano/ESTADO-E-HANDOFF.md) — onde o projeto está e o que falta.
 - [Deploy em produção](docs/plano/DEPLOY.md) — Vercel, Neon, variáveis e migrações.

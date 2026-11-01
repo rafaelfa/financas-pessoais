@@ -238,3 +238,225 @@ export async function contarTransacoes(email: string, nomeDaConta?: string): Pro
     return Number(result.rows[0]?.total ?? 0);
   });
 }
+
+/* ------------------------------------------------------------------------- *
+ * Contas a pagar/receber e grupos de contas (T3)
+ *
+ * Leitura e limpeza para os percursos de `45-contas-pagar-receber` e
+ * `55-consolidacao-contas`. Como no resto deste ficheiro, a base só é usada para
+ * **confirmar** o que a interface fez e para limpar o que o spec criou — nunca
+ * para preparar o caminho medido.
+ * ------------------------------------------------------------------------- */
+
+/** Uma conta a pagar/receber lida da base. */
+export interface ContaAPagarMedida {
+  readonly id: string;
+  readonly amountInCents: number;
+  readonly status: string;
+  readonly paidAmountInCents: number;
+  readonly financialAccountId: string | null;
+}
+
+/** A conta a pagar/receber do utilizador com esta descrição exata. */
+export async function lerContaAPagar(
+  email: string,
+  descricao: string,
+): Promise<ContaAPagarMedida | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT r.id,
+              r."amountInCents" AS amount,
+              r.status::text AS status,
+              r."paidAmountInCents" AS paid,
+              r."financialAccountId" AS conta
+         FROM receivable_payable r
+         JOIN "user" u ON u.id = r."userId"
+        WHERE u.email = $1 AND r.description = $2
+        ORDER BY r."createdAt" DESC
+        LIMIT 1`,
+      [email, descricao],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return {
+      id: String(row.id),
+      amountInCents: Number(row.amount),
+      status: String(row.status),
+      paidAmountInCents: Number(row.paid),
+      financialAccountId: typeof row.conta === 'string' ? row.conta : null,
+    };
+  });
+}
+
+/** Quantas contas a pagar/receber do utilizador começam por este prefixo. */
+export async function contarContasAPagar(email: string, prefixo: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT count(*)::int AS total
+         FROM receivable_payable r
+         JOIN "user" u ON u.id = r."userId"
+        WHERE u.email = $1 AND r.description LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
+/** Quantas linhas tem o grupo com este nome (0 se o grupo não existir). */
+export async function contarItensDoGrupo(email: string, nome: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT count(i.id)::int AS total
+         FROM account_group g
+         JOIN "user" u ON u.id = g."userId"
+         LEFT JOIN account_group_item i ON i."accountGroupId" = g.id
+        WHERE u.email = $1 AND g.name = $2
+        GROUP BY g.id`,
+      [email, nome],
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
+/**
+ * Limpeza de um spec: apaga movimentos, contas a pagar/receber, grupos e contas
+ * financeiras do utilizador cujo nome/descrição comece pelo prefixo.
+ *
+ * Os **movimentos** entram na limpeza de propósito: o `globalTeardown` apaga o
+ * utilizador e a cascata leva-os, mas isso só acontece se a corrida chegar ao
+ * fim. Um spec que rebente a meio deixaria movimentos órfãos no utilizador
+ * partilhado; apagá-los aqui faz o resíduo deixar de depender da cascata. O que
+ * ficar por apagar (outras tabelas do utilizador de teste) continua a ser
+ * apanhado pela cascata do teardown — é a rede, não a via principal.
+ *
+ * A ordem importa: movimentos antes das contas financeiras (a FK aponta para
+ * elas), grupos antes das contas (as linhas do grupo caem por cascata) e contas a
+ * pagar antes das contas financeiras.
+ */
+export async function limparDadosDoSpec(
+  email: string,
+  prefixo: string,
+): Promise<{
+  movimentos: number;
+  contasAPagar: number;
+  grupos: number;
+  contasFinanceiras: number;
+}> {
+  return withClient(async (client) => {
+    const movimentos = await client.query(
+      `DELETE FROM "transaction"
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+          AND (
+            description LIKE $2
+            OR "financialAccountId" IN (
+              SELECT id FROM financial_account
+               WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+                 AND name LIKE $2
+            )
+          )`,
+      [email, `${prefixo}%`],
+    );
+    const contasAPagar = await client.query(
+      `DELETE FROM receivable_payable
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+          AND description LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+    const grupos = await client.query(
+      `DELETE FROM account_group
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+          AND name LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+    const contasFinanceiras = await client.query(
+      `DELETE FROM financial_account
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+          AND name LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+
+    return {
+      movimentos: movimentos.rowCount ?? 0,
+      contasAPagar: contasAPagar.rowCount ?? 0,
+      grupos: grupos.rowCount ?? 0,
+      contasFinanceiras: contasFinanceiras.rowCount ?? 0,
+    };
+  });
+}
+
+/** O `id` de uma conta financeira do utilizador, pelo nome exato. */
+export async function idDaConta(email: string, nome: string): Promise<string | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT a.id
+         FROM financial_account a
+         JOIN "user" u ON u.id = a."userId"
+        WHERE u.email = $1 AND a.name = $2
+        LIMIT 1`,
+      [email, nome],
+    );
+
+    const id = result.rows[0]?.id;
+
+    return typeof id === 'string' ? id : undefined;
+  });
+}
+
+/** O movimento criado pelo pagamento de uma conta a pagar/receber. */
+export interface MovimentoDoPagamento {
+  readonly id: string;
+  readonly amountInCents: number;
+  readonly kind: string;
+  readonly status: string;
+  readonly settled: boolean;
+  readonly financialAccountId: string | null;
+}
+
+/**
+ * Lê o movimento com a descrição da conta paga (o pagamento cria-o com a mesma
+ * descrição). Serve para conferir o **montante**, o `kind` e a conta — o que o
+ * spec contava mas não media.
+ */
+export async function lerMovimentoDoPagamento(
+  email: string,
+  descricao: string,
+): Promise<MovimentoDoPagamento | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT t.id,
+              t."amountInCents" AS amount,
+              t.kind::text AS kind,
+              t.status::text AS status,
+              t.settled,
+              t."financialAccountId" AS conta
+         FROM "transaction" t
+         JOIN "user" u ON u.id = t."userId"
+        WHERE u.email = $1 AND t.description = $2
+        ORDER BY t."createdAt" DESC
+        LIMIT 1`,
+      [email, descricao],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return {
+      id: String(row.id),
+      amountInCents: Number(row.amount),
+      kind: String(row.kind),
+      status: String(row.status),
+      settled: Boolean(row.settled),
+      financialAccountId: typeof row.conta === 'string' ? row.conta : null,
+    };
+  });
+}

@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { ReceivablePayableDialog } from '@/components/receivable-payable-dialog';
 import { ReceivablePayableList } from '@/components/receivable-payable-list';
@@ -20,18 +19,11 @@ export default async function ReceivablePayablePage() {
     listReceivablePayables(),
   ]);
 
+  // Uma conta arquivada não serve para lançamentos novos: não se oferece na criação.
+  const activeAccounts = accounts.filter((account) => !account.archived);
+
   const unpaidItems = items.filter((item) => item.status !== 'PAID');
   const paidItems = items.filter((item) => item.status === 'PAID');
-
-  const handlePay = async (id: string) => {
-    // Esta função será implementada quando adicionarmos o modal de pagamento
-    console.log('Pagar conta:', id);
-  };
-
-  const handleDelete = async (id: string) => {
-    // Esta função será implementada quando adicionarmos o modal de confirmação
-    console.log('Apagar conta:', id);
-  };
 
   return (
     <>
@@ -41,7 +33,7 @@ export default async function ReceivablePayablePage() {
         actions={
           <ReceivablePayableDialog
             mode="create"
-            accounts={accounts}
+            accounts={activeAccounts}
             categories={categories}
             trigger={
               <Button size="sm">
@@ -88,9 +80,6 @@ export default async function ReceivablePayablePage() {
               items={unpaidItems}
               accounts={accounts}
               categories={categories}
-              onPay={handlePay}
-              onDelete={handleDelete}
-              onEdit={(item) => console.log('Editar:', item)}
             />
           </section>
         )}
@@ -103,14 +92,7 @@ export default async function ReceivablePayablePage() {
                 Contas Pagas
               </h2>
             </div>
-            <ReceivablePayableList
-              items={paidItems}
-              accounts={accounts}
-              categories={categories}
-              onPay={() => {}}
-              onDelete={handleDelete}
-              onEdit={(item) => console.log('Editar:', item)}
-            />
+            <ReceivablePayableList items={paidItems} accounts={accounts} categories={categories} />
           </section>
         )}
 
@@ -123,7 +105,7 @@ export default async function ReceivablePayablePage() {
             action={
               <ReceivablePayableDialog
                 mode="create"
-                accounts={accounts}
+                accounts={activeAccounts}
                 categories={categories}
                 trigger={
                   <Button size="sm">

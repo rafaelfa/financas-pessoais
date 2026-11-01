@@ -64,7 +64,7 @@ export async function listAccountGroupsWithSummary() {
   const groupsWithSummary = groups.map((group) => {
     const totalBalance = group.accountGroupItems.reduce(
       (sum, item) => sum + (item.financialAccount.balanceInCents || 0),
-      0
+      0,
     );
     return {
       ...group,

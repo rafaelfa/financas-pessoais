@@ -1,5 +1,15 @@
-import { createReceivablePayable, deleteReceivablePayable, payReceivablePayable, updateReceivablePayable, updateReceivablePayableStatus } from '@/server/receivable-payable-actions';
-import { fail, type ActionResult } from '@/server/result';
+import {
+  createReceivablePayable,
+  deleteReceivablePayable,
+  payReceivablePayable,
+  updateReceivablePayable,
+  updateReceivablePayableStatus,
+} from '@/server/receivable-payable-actions';
+
+/*
+ * Superfície HTTP das ações de consolidação de contas. A interface usa as
+ * server actions; esta rota existe para integrações e para os testes de autorização.
+ */
 
 /**
  * Rota para criar uma nova conta a pagar/receber.
@@ -64,7 +74,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    
+
     if (body.action === 'delete') {
       const result = await deleteReceivablePayable(body);
       if (!result.ok) {

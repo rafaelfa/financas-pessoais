@@ -27,6 +27,26 @@ function revalidateAccountGroupViews() {
   revalidatePath('/');
 }
 
+/**
+ * Confirma que todas as contas são do utilizador.
+ *
+ * Corre antes de qualquer escrita: apagar os itens e só depois descobrir que
+ * uma conta é alheia deixaria o grupo mutilado.
+ */
+async function allAccountsOwned(userId: string, accountIds: string[]): Promise<boolean> {
+  if (accountIds.length === 0) {
+    return true;
+  }
+
+  const owned = await prisma.financialAccount.findMany({
+    where: { id: { in: accountIds }, userId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((account) => account.id));
+
+  return accountIds.every((accountId) => ownedIds.has(accountId));
+}
+
 /** Cria um grupo de contas. */
 export async function createAccountGroup(input: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
@@ -48,6 +68,19 @@ export async function createAccountGroup(input: unknown): Promise<ActionResult<{
     });
   }
 
+  /*
+   * O identificador vem do cliente: uma conta que não seja deste utilizador não
+   * entra no grupo. Falha antes da transação, para não deixar grupo vazio.
+   */
+  // O cliente pode repetir o mesmo id; repetido não é um grupo diferente.
+  const accountIds = [...new Set(value.accountIds ?? [])];
+
+  if (!(await allAccountsOwned(user.id, accountIds))) {
+    return fail('Uma ou mais contas não foram encontradas.', {
+      accountIds: ['Uma ou mais contas não foram encontradas.'],
+    });
+  }
+
   let created: { id: string } | undefined;
 
   try {
@@ -62,15 +95,13 @@ export async function createAccountGroup(input: unknown): Promise<ActionResult<{
       });
 
       // Adiciona as contas ao grupo se fornecidas
-      if (value.accountIds && value.accountIds.length > 0) {
-        for (const accountId of value.accountIds) {
-          await tx.accountGroupItem.create({
-            data: {
-              accountGroupId: group.id,
-              financialAccountId: accountId,
-            },
-          });
-        }
+      if (accountIds.length > 0) {
+        await tx.accountGroupItem.createMany({
+          data: accountIds.map((accountId) => ({
+            accountGroupId: group.id,
+            financialAccountId: accountId,
+          })),
+        });
       }
 
       return group;
@@ -123,15 +154,42 @@ export async function updateAccountGroup(input: unknown): Promise<ActionResult<{
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.accountGroup.update({
-      where: { id: value.id },
-      data: {
-        ...(value.name !== undefined ? { name: value.name } : {}),
-        ...(value.description !== undefined ? { description: value.description } : {}),
-      },
+  const accountIds = value.accountIds;
+
+  if (accountIds !== undefined && !(await allAccountsOwned(user.id, accountIds))) {
+    return fail('Uma ou mais contas não foram encontradas.', {
+      accountIds: ['Uma ou mais contas não foram encontradas.'],
     });
-  });
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.accountGroup.update({
+        where: { id: value.id },
+        data: {
+          ...(value.name !== undefined ? { name: value.name } : {}),
+          ...(value.description !== undefined ? { description: value.description } : {}),
+        },
+      });
+
+      // Só se mexem nos itens quando o cliente os manda: `undefined` é "não tocar".
+      if (accountIds !== undefined) {
+        const unique = [...new Set(accountIds)];
+
+        await tx.accountGroupItem.deleteMany({ where: { accountGroupId: value.id } });
+        await tx.accountGroupItem.createMany({
+          data: unique.map((accountId) => ({
+            accountGroupId: value.id,
+            financialAccountId: accountId,
+          })),
+        });
+      }
+    });
+  } catch (error) {
+    return failFromWriteError(error, {
+      fallback: 'Não consegui alterar o grupo de contas. Tenta outra vez.',
+    });
+  }
 
   revalidateAccountGroupViews();
 

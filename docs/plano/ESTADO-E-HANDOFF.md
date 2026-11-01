@@ -1,11 +1,50 @@
 # Estado do projeto e handoff
 
+> **Revisão de 2026-11-01 — ler esta secção primeiro.** Tudo o que vem depois foi
+> escrito em 2026-10-11 e descreve o estado dessa altura. Fica como histórico — é
+> útil precisamente por contar o que aconteceu —, mas já não é verdade em vários
+> pontos: a árvore não estava verde (tinha 80 erros de tipo e 51 de lint), o CI não
+> passava em `main` e a produção ficou atrás do trabalho de outubro.
+
+## 0. Estado real — 2026-11-01
+
+- **Gate local verde** nesta árvore: `pnpm format:check`, `pnpm lint`,
+  `pnpm typecheck`, `pnpm test` (**522 testes**, 28 ficheiros) e `pnpm build`, todos
+  com código de saída 0. O `pnpm install --frozen-lockfile` também passa.
+- **Nada disto está commitado.** O trabalho de outubro vive na árvore de trabalho;
+  a decisão D4 é só commitar e fazer push com autorização do utilizador.
+- **Produção atrasada.** O que está publicado é o commit `e4366ee`. Em
+  `https://financas-pessoais-psi-lac.vercel.app`, `/api/health` responde `200`,
+  `/` responde `307` para `/entrar`, e **`/contas-pagar-receber` e
+  `/consolidacao-contas` respondem `404`** — a funcionalidade nova não está lá.
+  Os 8 deploys seguintes ao `e4366ee` falharam todos (detalhe em `MAPA.md`).
+- **CI vermelho desde 2026-10-14 19:30**: 8 execuções falhadas, a última em
+  `b980ed0` (2026-10-18), que nem passa do `--frozen-lockfile`. A árvore atual passa
+  o mesmo gate localmente, mas não foi empurrada — o CI ainda não a viu.
+- **Tarefas fechadas**: T1, T2, T3, T7, T11, T12, T13 e T16. A T8 foi absorvida na
+  T7. Na T16 falta a re-execução do QA (o código e a prova do Dev estão fechados:
+  12/12, um sucesso em dois pedidos simultâneos).
+- **Tarefas abertas**: T9, T10, T14, T15, T17 e T18 — e ainda T6 (visual) e T5
+  (deploy, bloqueada à espera de autorização explícita do utilizador).
+- **Decisões à espera do utilizador** (`DECISOES.md`): **A2, A3, A4, A5 e A7**.
+  A A1 está decidida: a funcionalidade do `b980ed0` fica.
+- **Testes ponta a ponta**: 33 testes, 30 verdes; as 3 falhas são as pré-existentes
+  de `35-estado-transacoes` (T10), alheias ao trabalho de outubro. Prova em
+  `relatorios/T3.md`.
+- **Base de dados**: Neon. A `DATABASE_URL` desta máquina aponta para o ramo de
+  teste, não para produção — os relatórios do QA foram medidos lá.
+- **Onde olhar**: `docs/gestao/MAPA.md` (o que foi medido, com números),
+  `docs/gestao/TASKS.md` (o quadro), `docs/gestao/DECISOES.md` e
+  `relatorios/T*.md` (as provas de cada tarefa).
+
+---
+
 Documento escrito no fim de uma sessão longa, para quem continuar. Existe porque o
 contexto de uma sessão acaba e o projeto não: **tudo o que interessa está no
 repositório, nos documentos e no quadro de tarefas**, e este ficheiro diz onde
 olhar primeiro.
 
-## 1. Onde estamos
+## 1. Onde estamos — escrito em 2026-10-11 (histórico)
 
 - Repositório: `https://github.com/rafaelfa/financas-pessoais` (privado), ramo `main`.
 - **Estado: a árvore está verde, tudo commitado, o CI passa em `main` e o que está
@@ -35,7 +74,7 @@ pnpm test:e2e        # 20 percursos (Playwright), contra a Neon do .env
 node packages/db/smoke.mjs https://<url-de-producao>   # fumo autenticado
 ```
 
-Resultado da última passagem completa (2026-10-11): tudo verde — 522 testes,
+Resultado da última passagem completa (2026-10-11, antes do trabalho de outubro): tudo verde — 522 testes,
 `build` 2/2, `test:e2e` **20/20**, fumo em produção **12/12** páginas a 200,
 `db:seed` idempotente e o CI verde em `main`.
 

@@ -56,6 +56,8 @@ const PAGINAS: readonly { readonly rota: string; readonly amostras: number }[] =
   { rota: '/orcamento', amostras: 5 },
   { rota: '/objetivos', amostras: 5 },
   { rota: '/relatorios', amostras: 5 },
+  { rota: '/contas-pagar-receber', amostras: 5 },
+  { rota: '/consolidacao-contas', amostras: 5 },
 ];
 
 /** p95 pelo posto mais próximo, sobre uma lista de números. */

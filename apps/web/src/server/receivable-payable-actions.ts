@@ -100,11 +100,20 @@ export async function updateReceivablePayable(
   const value = parsed.data;
   const existing = await prisma.receivablePayable.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true },
+    select: { id: true, type: true },
   });
 
   if (!existing) {
     return fail('Conta não encontrada.');
+  }
+
+  /*
+   * O tipo decide a direção do dinheiro. Uma conta que já tem pagamentos e
+   * movimentos não pode trocar de sentido sem corromper o histórico: recusa-se
+   * a alteração em vez de a ignorar em silêncio.
+   */
+  if (value.type !== undefined && value.type !== existing.type) {
+    return fail('O tipo de uma conta não pode ser alterado.');
   }
 
   if (value.description !== undefined) {
@@ -177,11 +186,17 @@ export async function payReceivablePayable(
     return fail('Conta de pagamento não encontrada.');
   }
 
+  let paymentId: string | undefined;
+
   try {
-    await prisma.$transaction(async (tx) => {
-      // Atualiza o status da conta
-      await tx.receivablePayable.update({
-        where: { id: value.id },
+    paymentId = await prisma.$transaction(async (tx) => {
+      /*
+       * Só marca como paga se ainda não estiver. É esta condição, avaliada dentro
+       * da transação, que fecha a corrida entre dois pagamentos simultâneos: o
+       * segundo pedido encontra a linha já paga e não escreve nada.
+       */
+      const paid = await tx.receivablePayable.updateMany({
+        where: { id: value.id, userId: user.id, status: { not: 'PAID' } },
         data: {
           status: 'PAID',
           paidAt: new Date(value.paymentDate),
@@ -189,8 +204,12 @@ export async function payReceivablePayable(
         },
       });
 
+      if (paid.count === 0) {
+        return undefined;
+      }
+
       // Registra o pagamento
-      await tx.receivablePayablePayment.create({
+      const payment = await tx.receivablePayablePayment.create({
         data: {
           userId: user.id,
           receivablePayableId: value.id,
@@ -199,14 +218,11 @@ export async function payReceivablePayable(
           paymentDate: new Date(value.paymentDate),
           note: value.note ?? null,
         },
+        select: { id: true },
       });
 
       // Se houver conta de pagamento, cria a transação correspondente
       if (value.createTransaction && value.financialAccountId) {
-        const category = await tx.category.findUnique({
-          where: { id: existing.categoryId },
-        });
-
         const kind =
           existing.type === 'PAYABLE'
             ? 'EXPENSE'
@@ -228,6 +244,8 @@ export async function payReceivablePayable(
           },
         });
       }
+
+      return payment.id;
     });
   } catch (error) {
     return failFromWriteError(error, {
@@ -235,15 +253,17 @@ export async function payReceivablePayable(
     });
   }
 
+  if (paymentId === undefined) {
+    return fail('Esta conta já está paga.');
+  }
+
   revalidateReceivablePayableViews();
 
-  return ok({ paymentId: 'payment-created' });
+  return ok({ paymentId });
 }
 
 /** Cancela ou apaga uma conta a pagar/receber. */
-export async function deleteReceivablePayable(
-  input: unknown,
-): Promise<ActionResult> {
+export async function deleteReceivablePayable(input: unknown): Promise<ActionResult> {
   const user = await requireUser();
   const parsed = deleteReceivablePayableSchema.safeParse(input);
 
@@ -254,7 +274,7 @@ export async function deleteReceivablePayable(
   const value = parsed.data;
   const existing = await prisma.receivablePayable.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!existing) {
@@ -281,9 +301,7 @@ export async function deleteReceivablePayable(
 }
 
 /** Altera o status de uma conta a pagar/receber. */
-export async function updateReceivablePayableStatus(
-  input: unknown,
-): Promise<ActionResult> {
+export async function updateReceivablePayableStatus(input: unknown): Promise<ActionResult> {
   const user = await requireUser();
   const parsed = updateReceivablePayableSchema.safeParse(input);
 
@@ -294,7 +312,7 @@ export async function updateReceivablePayableStatus(
   const value = parsed.data;
   const existing = await prisma.receivablePayable.findFirst({
     where: { id: value.id, userId: user.id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!existing) {

@@ -31,11 +31,9 @@ export const createReceivablePayableSchema = z.object({
 });
 
 /** Alteração de uma conta a pagar ou receber. */
-export const updateReceivablePayableSchema = createReceivablePayableSchema
-  .partial()
-  .extend({
-    id: entityIdSchema,
-  });
+export const updateReceivablePayableSchema = createReceivablePayableSchema.partial().extend({
+  id: entityIdSchema,
+});
 
 /** Pagamento de uma conta a pagar ou receber. */
 export const payReceivablePayableSchema = z.object({

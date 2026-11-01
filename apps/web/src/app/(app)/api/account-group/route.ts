@@ -1,5 +1,15 @@
-import { createAccountGroup, deleteAccountGroup, updateAccountGroup, addAccountToGroup, removeAccountFromGroup } from '@/server/account-group-actions';
-import { fail, type ActionResult } from '@/server/result';
+import {
+  createAccountGroup,
+  deleteAccountGroup,
+  updateAccountGroup,
+  addAccountToGroup,
+  removeAccountFromGroup,
+} from '@/server/account-group-actions';
+
+/*
+ * Superfície HTTP das ações de consolidação de contas. A interface usa as
+ * server actions; esta rota existe para integrações e para os testes de autorização.
+ */
 
 /**
  * Rota para criar um novo grupo de contas.
@@ -45,7 +55,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    
+
     if (body.action === 'delete') {
       const result = await deleteAccountGroup(body);
       if (!result.ok) {

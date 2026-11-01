@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { AccountGroupDialog } from '@/components/account-group-dialog';
 import { AccountGroupList } from '@/components/account-group-list';
@@ -14,15 +13,7 @@ import { listAccountGroups } from '@/server/account-groups';
 export const metadata: Metadata = { title: 'Consolidação de Contas' };
 
 export default async function AccountGroupPage() {
-  const [accounts, groups] = await Promise.all([
-    listAccounts(),
-    listAccountGroups(),
-  ]);
-
-  const handleDelete = async (id: string) => {
-    // Esta função será implementada quando adicionarmos o modal de confirmação
-    console.log('Apagar grupo:', id);
-  };
+  const [accounts, groups] = await Promise.all([listAccounts(), listAccountGroups()]);
 
   return (
     <>
@@ -60,17 +51,15 @@ export default async function AccountGroupPage() {
             <h3 className="text-sm font-medium text-muted-foreground">Saldo Total</h3>
             <div className="text-2xl font-bold">
               <Amount
-                amountInCents={
-                  groups.reduce((sum, group) => {
-                    return (
-                      sum +
-                      group.accountGroupItems.reduce(
-                        (innerSum, item) => innerSum + (item.financialAccount.balanceInCents || 0),
-                        0
-                      )
-                    );
-                  }, 0)
-                }
+                amountInCents={groups.reduce((sum, group) => {
+                  return (
+                    sum +
+                    group.accountGroupItems.reduce(
+                      (innerSum, item) => innerSum + (item.financialAccount.balanceInCents || 0),
+                      0,
+                    )
+                  );
+                }, 0)}
               />
             </div>
           </div>
@@ -82,11 +71,7 @@ export default async function AccountGroupPage() {
             <h2 id="grupos" className="sr-only">
               Grupos de Contas
             </h2>
-            <AccountGroupList
-              groups={groups}
-              onDelete={handleDelete}
-              onEdit={(group) => console.log('Editar:', group)}
-            />
+            <AccountGroupList groups={groups} accounts={accounts} />
           </section>
         ) : (
           <EmptyState
@@ -110,9 +95,12 @@ export default async function AccountGroupPage() {
 
         {/* Informação adicional */}
         <div className="rounded-xl border bg-muted p-4 text-sm">
-          <h3 className="font-medium mb-2">Como usar os grupos?</h3>
-          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-            <li>Crie grupos por finalidade (ex: "Contas Principais", "Emergência", "Investimentos")</li>
+          <h3 className="mb-2 font-medium">Como usar os grupos?</h3>
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            <li>
+              Crie grupos por finalidade (ex: &quot;Contas Principais&quot;, &quot;Emergência&quot;,
+              &quot;Investimentos&quot;)
+            </li>
             <li>Adicione contas aos grupos para visualizar o saldo consolidado</li>
             <li>Use grupos para ter uma visão geral de áreas específicas da sua finança</li>
           </ul>

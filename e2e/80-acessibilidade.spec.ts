@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { lerCredenciais } from './support/dados';
+import { limparDadosDoSpec } from './support/db';
 import { abrirRota } from './support/ui';
 
 /**
@@ -32,9 +34,8 @@ interface AchadoDoAxe {
   readonly nos: readonly { readonly seletor: string; readonly resumo: string }[];
 }
 
-async function analisar(page: Page, rota: string): Promise<readonly AchadoDoAxe[]> {
-  await abrirRota(page, rota);
-
+/** Analisa o estado atual da página (sem navegar) — para os diálogos abertos. */
+async function analisarEstado(page: Page): Promise<readonly AchadoDoAxe[]> {
   const resultado = await new AxeBuilder({ page }).withTags([...TAGS]).analyze();
 
   return resultado.violations.map((violacao) => ({
@@ -47,6 +48,12 @@ async function analisar(page: Page, rota: string): Promise<readonly AchadoDoAxe[
       resumo: no.failureSummary ?? '',
     })),
   }));
+}
+
+async function analisar(page: Page, rota: string): Promise<readonly AchadoDoAxe[]> {
+  await abrirRota(page, rota);
+
+  return analisarEstado(page);
 }
 
 /** Escreve o artefacto e devolve o resumo legível para o relatório. */
@@ -109,6 +116,8 @@ test.describe('Acessibilidade — ecrãs autenticados', () => {
       '/categorias',
       '/cartoes',
       '/definicoes',
+      '/contas-pagar-receber',
+      '/consolidacao-contas',
     ] as const;
 
     const porRota: Record<string, readonly AchadoDoAxe[]> = {};
@@ -119,6 +128,58 @@ test.describe('Acessibilidade — ecrãs autenticados', () => {
 
     registar('autenticado', porRota);
     exigirSemCriticas(porRota);
+  });
+});
+
+test.describe('Acessibilidade — diálogos dos ecrãs novos', () => {
+  test('criar conta, pagar e criar grupo não têm violações críticas', async ({ page }) => {
+    const descricao = `E2E T3 a11y ${Date.now().toString(36)}`;
+    const porDialogo: Record<string, readonly AchadoDoAxe[]> = {};
+
+    // Criar conta a pagar/receber: o diálogo de criação é analisado aberto e
+    // depois usado para criar a conta que o diálogo de pagamento precisa.
+    await abrirRota(page, '/contas-pagar-receber');
+    await page.getByRole('button', { name: 'Nova Conta', exact: true }).click();
+
+    const criar = page.getByRole('dialog').filter({ hasText: 'Nova Conta a Pagar/Receber' });
+
+    await expect(criar).toBeVisible();
+    porDialogo['/contas-pagar-receber · criar'] = await analisarEstado(page);
+
+    await criar.getByPlaceholder('Ex: Fatura de luz, Aluguel, Salário...').fill(descricao);
+    await criar.getByPlaceholder('0,00').fill('1,00');
+    await criar.getByRole('button', { name: 'Criar Conta', exact: true }).click();
+    await expect(criar).toBeHidden();
+
+    // Pagar: abre com a conta criada acima.
+    await page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: descricao })
+      .first()
+      .getByRole('button', { name: 'Pagar/Receber', exact: true })
+      .click();
+
+    const pagar = page.getByRole('dialog').filter({ hasText: 'Pagar «' });
+
+    await expect(pagar).toBeVisible();
+    porDialogo['/contas-pagar-receber · pagar'] = await analisarEstado(page);
+    await pagar.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(pagar).toBeHidden();
+
+    // Criar grupo.
+    await abrirRota(page, '/consolidacao-contas');
+    await page.getByRole('button', { name: 'Novo Grupo', exact: true }).click();
+
+    const grupo = page.getByRole('dialog').filter({ hasText: 'Novo Grupo de Contas' });
+
+    await expect(grupo).toBeVisible();
+    porDialogo['/consolidacao-contas · criar grupo'] = await analisarEstado(page);
+    await grupo.getByRole('button', { name: 'Cancelar', exact: true }).click();
+
+    await limparDadosDoSpec(lerCredenciais().email, 'E2E T3 a11y');
+
+    registar('dialogos', porDialogo);
+    exigirSemCriticas(porDialogo);
   });
 });
 
