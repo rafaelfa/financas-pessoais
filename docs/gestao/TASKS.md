@@ -538,7 +538,10 @@ fazer commit nem push.
   verdadeiro (`command.tsx:53` monta os filhos sem o `<Command>` da linha 22).
 - **Limite conhecido:** a paleta de comandos não foi provada na interface porque rebenta ao abrir — é a T21,
   anterior a este trabalho e independente do `nav.ts`.
-- **Pendente:** commit e deploy. Aguarda autorização do utilizador (D4).
+- **Publicado em 2026-11-01:** commit `468a138`, CI `41346236265` verde, deploy `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk`
+  `READY`. Verificado em produção com sessão: «Dia a dia» com 6 destinos, os dois ecrãs a abrir com o título certo e
+  `/api/health` `200`. O estado publicado passou a ser o `ddbdcd7` depois do commit de documentação.
+- **Fechada e publicada.**
 
 ## T20 — O README mente sobre o estado
 
@@ -579,7 +582,10 @@ autorização do utilizador, D4).
   `format:check` verde **não** é prova de que o README está formatado — só o resto. O QA confirmou-o desligando o
   ignore (`prettier --check --ignore-path /dev/null` → `[warn]` nos dois `.md`).
 - Gate final: `format:check`, `lint`, `typecheck`, `test` (28 ficheiros, 522), `build` — todos exit 0.
-- **Pendente:** commit e deploy (D4 — aguarda autorização do utilizador).
+- **Publicado em 2026-11-01:** commit `468a138`, CI `41346236265` verde, deploy `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk`
+  `READY`. Verificado em produção com sessão: «Dia a dia» com 6 destinos, os dois ecrãs a abrir com o título certo e
+  `/api/health` `200`. O estado publicado passou a ser o `ddbdcd7` depois do commit de documentação.
+- **Fechada e publicada.**
 
 ## T21 — A paleta de comandos rebenta ao abrir
 
@@ -630,7 +636,10 @@ lá quando isto estiver corrigido). Mais nada.
   (2) o pacote `cn@0.4.0` é o oficial do shadcn, sem risco; (3) um comentário do spec deixou de ser exato — corrigido nesta mesma
   tarefa.
 - Gate final: `format:check`, `lint` 4/4, `typecheck` 4/4, `test` (28 ficheiros, 522), `build` 2/2 — todos exit 0.
-- **Pendente:** commit e deploy (D4 — aguarda autorização do utilizador).
+- **Publicado em 2026-11-01:** commit `468a138`, CI `41346236265` verde, deploy `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk`
+  `READY`. Verificado em produção com sessão: «Dia a dia» com 6 destinos, os dois ecrãs a abrir com o título certo e
+  `/api/health` `200`. O estado publicado passou a ser o `ddbdcd7` depois do commit de documentação.
+- **Fechada e publicada.**
 
 ## T22 — O título escondido da paleta está sempre no DOM
 
