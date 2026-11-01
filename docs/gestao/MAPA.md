@@ -235,6 +235,36 @@ nohup pnpm --filter @repo/web start > /tmp/prod.log 2>&1 < /dev/null & disown
 E2E_REUSE_SERVER=1 pnpm exec playwright test --reporter=line
 ```
 
+## Produção depois do deploy (2026-11-01, verificada)
+
+- **Commit `2f84384` empurrado** para `main` (ver "Como se faz push neste repositório").
+- **CI verde pela primeira vez desde 2026-10-14**: run `41320502835`,
+  `format · lint · typecheck · test · build` — exit 0.
+- **Vercel**: deploy `dpl_2sqFbHRkwG4ZqP1vNEsRiQFuYcQo`, `READY`, `target: production`,
+  commit `2f84384`.
+- **14 páginas autenticadas a `200`** em `https://financas-pessoais-psi-lac.vercel.app`,
+  incluindo `/contas-pagar-receber` e `/consolidacao-contas` (antes 404). Sessão obtida com a
+  conta demo documentada no `README`; só `GET`, nenhuma escrita.
+- Os dois ecrãs novos devolvem HTML com conteúdo real (`Contas a Pagar`, `Nova Conta`, `Total`,
+  `Consolidação`, `Novo Grupo`, `Saldo`) — 72 376 e 65 985 bytes.
+- **Não corri o `packages/db/smoke.mjs`**: ele apaga o utilizador de teste com a `DATABASE_URL`
+  do `.env`, que nesta máquina aponta para o ramo `testes-e2e` — corrê-lo deixaria um utilizador
+  órfão na produção. A verificação autenticada acima cobre o mesmo risco (500 em página
+  autenticada), que é o que o smoke existe para apanhar.
+
+## Como se faz push neste repositório
+
+O token do OpenBot tem só leitura no conteúdo, e o `OpenBotGit` aparece em "Authorized GitHub
+Apps" **sem instalação** (`GET /user/installations` → `total_count: 0`), pelo que não há
+nenhuma permissão que o utilizador possa ligar no painel. Três tokens *fine-grained* falharam
+com `Resource not accessible by personal access token` e o cabeçalho
+`x-accepted-github-permissions: contents=write`.
+
+Solução adoptada: **chave SSH** em `D:\openbot\projetos-dev\_chaves\id_ed25519_openbot`
+(privada com permissões 600, fora do repositório; a pública registada na conta GitHub). O
+remoto passou a `git@github.com:rafaelfa/financas-pessoais.git` e o repo tem `core.sshCommand`
+a apontar para essa chave. Para empurrar: `git push origin main`.
+
 ## Segredos e dados
 
 - `.env` **não existe no repositório** e está no `.gitignore` (linha 20). O

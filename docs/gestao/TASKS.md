@@ -39,7 +39,7 @@ O último deploy que subiu foi o `e4366ee`; os 8 commits seguintes falharam todo
 Vercel e no CI. Consequência prática: **nada do trabalho de outubro chegou ao ar** e
 não há nada partido em produção. Detalhe em `MAPA.md` → "Produção, CI e Vercel".
 
-| T5  | Pôr a produção a par do `main`: deploy e depois fumo `smoke.mjs` nas 12 páginas (não precisa de migração — já aplicada) | Lead   | bloqueada (só com aprovação explícita do utilizador) | fumo |
+| T5  | Pôr a produção a par do `main`: deploy e verificação autenticada nas 14 páginas | Lead   | **fechada** (commit `2f84384`, CI verde, deploy `READY`, 14/14 a 200) | ver `MAPA.md` |
 
 ## T2 — Fazer o gate de tipos e lint passar
 
@@ -479,6 +479,177 @@ que o QA descrevia como «os selects e a data do diálogo de pagamento» era o d
 **Declarado e não feito:** o grupo de radios `type` não está num `fieldset`/`legend` (não é
 violação, mas o nome acessível fica verboso) e «Adicionar Contas ao Grupo» é uma legenda de
 conjunto, não um rótulo de controlo. Ambos exigiam mudar estrutura e microcopy.
+
+| T19 | **Os dois ecrãs novos não têm entrada no menu:** `/contas-pagar-receber` e `/consolidacao-contas` não estão em `lib/nav.ts`, por isso só se chegam escrevendo o endereço | Dev | **fechada** (Dev + QA + Revisor; spec 15 falha sem a correção e passa com ela, 14/14 destinos respondem) | `relatorios/T19.md` · `relatorios/T19-qa.md` |
+| T20 | `README.md` e §0 do `ESTADO-E-HANDOFF.md` a dizer que produção responde `404` e que o CI está vermelho — falso desde o deploy do `2f84384` | Dev | **fechada** (Dev + QA + Revisor; 3 ficheiros, 47/28, cada número medido) | `relatorios/T20.md` · `relatorios/T20-qa.md` |
+
+## T19 — Os dois ecrãs novos não têm entrada no menu
+
+**Porque (verificado pelo Lead em 2026-11-01, a pedido do utilizador):** a navegação da app vem
+toda de `apps/web/src/lib/nav.ts` — barra lateral (`app-sidebar.tsx:20`), barra do telemóvel
+(`mobile-nav.tsx:6`) e paleta de comandos (`command-palette.tsx` via `ALL_NAV_ITEMS`). Esse
+ficheiro declara 12 destinos e **não declara nenhum dos dois ecrãs novos**. Fora daí só existe
+`revalidatePath` nas server actions; nenhum `<Link>` nem atalho em `/contas` aponta para eles.
+
+**Prova do defeito:** `curl` a produção com `2f84384` publicado dá `307` → `/entrar` nas duas
+rotas (existem e pedem login), mas nenhum membro da equipa conseguiu chegar-lhes a clicar. O e2e
+não o apanhou porque `abrirRota()` escreve o endereço em vez de navegar pelo menu.
+
+**Ficheiros que pode escrever:** `apps/web/src/lib/nav.ts` e **um** spec novo em `e2e/`
+(nome sugerido: `e2e/15-navegacao.spec.ts`). Mais nada.
+
+**Arrumação decidida pelo utilizador (opção 1):** secção **«Dia a dia»**, por esta ordem —
+Painel, Transações, Contas, **Contas a pagar/receber**, **Consolidação**, Cartões. Rótulos
+curtos: «Contas a pagar/receber» e «Consolidação». `description` obrigatória, como os outros.
+Ícone: escolhe entre os `lucide-react` que o ficheiro já importa ou acrescenta um, sem
+dependência nova.
+
+**Critério de aceitação (verificável):**
+
+1. `pnpm typecheck` e `pnpm lint` → 0 erros; `pnpm test` → 522 testes; `pnpm build` → exit 0;
+   `pnpm format:check` → verde.
+2. No browser, na barra lateral, clicar em «Contas a pagar/receber» abre
+   `/contas-pagar-receber` com o título «Contas a Pagar / Receber», e «Consolidação» abre
+   `/consolidacao-contas` com «Consolidação de Contas».
+3. O spec novo **navega pelo menu, não por `abrirRota()`**: entra, clica o item, confere URL e
+   título, para os dois ecrãs. Tem de falhar se retirares a entrada do `nav.ts` — cola a prova de
+   que falhou antes da correção e passou depois.
+4. As duas rotas continuam a aparecer na paleta de comandos (vem de graça por `ALL_NAV_ITEMS`;
+   confirma, não reimplementes).
+5. `git diff` limitado aos dois ficheiros acima.
+
+**O que NÃO fazer:** não mexer em `MOBILE_NAV` (são 5 destinos de propósito; não passa a 7); não
+criar `redirect` nem alias de rota; não alterar as páginas, os diálogos nem as server actions; não
+tocar em `README.md` nem em `docs/` (é a T20); não correr o axe nem mexer nos specs 80/90; não
+fazer commit nem push.
+
+## Registo de fecho — T19 (2026-11-01)
+
+- **Dev:** `nav.ts` com `CONTAS_A_PAGAR_RECEBER` (`Receipt`) e `CONSOLIDACAO` (`Layers`); secção «Dia a dia»
+  com 6 itens pela ordem decidida; `ALL_NAV_ITEMS` 12 → 14. Spec novo `e2e/15-navegacao.spec.ts`, que entra
+  por `/` e clica no menu — sem `abrirRota()`. Gate verde, 522 testes.
+- **QA (prova própria):** refez o gate; percurso humano por cliques com `h1` e `aria-current`; repôs o
+  `nav.ts` de `2f84384`, **reconstruiu** e viu 3 falhas, repôs a versão nova e viu 3 passagens em 6,5 s;
+  percorreu os 14 destinos — 14/14 respondem, 0 dão `404`. Prova em `relatorios/T19-qa.md`.
+- **Revisor:** aprovada sem achados bloqueantes. `href` batem com as pastas reais; rótulos na linha dos
+  existentes; `MOBILE_NAV` intocado com 5; `isActiveRoute` não acende «Contas» com `/contas-pagar-receber`
+  (só compara prefixo com barra); o spec não passa com lista vazia (`toHaveText` de 6 rótulos), não tem
+  `waitForTimeout` nem `force`, e não depende de dados. Confirmou que o motivo escrito sobre a paleta é
+  verdadeiro (`command.tsx:53` monta os filhos sem o `<Command>` da linha 22).
+- **Limite conhecido:** a paleta de comandos não foi provada na interface porque rebenta ao abrir — é a T21,
+  anterior a este trabalho e independente do `nav.ts`.
+- **Pendente:** commit e deploy. Aguarda autorização do utilizador (D4).
+
+## T20 — O README mente sobre o estado
+
+**Porque (medido pelo Lead em 2026-11-01):** `README.md:10` («Em produção, `/contas-pagar-receber`
+e `/consolidacao-contas` respondem `404`»), o aviso do topo («Nada disto está em produção») e o
+parágrafo do CI («vermelho em `main` desde 2026-10-14 … ainda não foi empurrada») são falsos desde
+o deploy do `2f84384`. Verificado agora: as duas rotas dão `307` → `/entrar`, `/api/health` dá
+`200`, o deploy está `READY` e o CI verde é o run `41320502835`. O mesmo texto velho está em
+`docs/plano/ESTADO-E-HANDOFF.md` §0 («Nada disto está commitado»).
+
+**Ficheiros que pode escrever:** `README.md` e `docs/plano/ESTADO-E-HANDOFF.md`. Mais nada.
+
+**Critério de aceitação:** nenhuma afirmação de estado no README ou no §0 do handoff contrariada
+por medição; cada número que escreveres tem de vir de um comando que corras e coles. A lista de
+funcionalidades, o âmbito, a stack e os comandos ficam como estão — só o estado muda.
+
+**O que NÃO fazer:** não inventar datas, contagens de testes nem resultados de deploy; não
+acrescentar funcionalidade nenhuma à lista; não commitar (o commit e o push continuam a aguardar
+autorização do utilizador, D4).
+
+
+| T21 | **Paleta de comandos rebenta ao abrir:** `ui/command.tsx` → `CommandDialog` monta os filhos sem os envolver no `<Command>` do cmdk (`Cannot read properties of undefined (reading 'subscribe')`). Atinge os 14 destinos, não é do `nav.ts` | Dev | **fechada** (Dev + QA + Revisor; 14 opções, filtro 14→1, 0 erros, axe 0 violações) | `relatorios/T21.md` · `relatorios/T21-qa.md` |
+
+## Registo de fecho — T20 (2026-11-01)
+
+- **Dev:** reescreveu só a secção de estado. `git diff --stat` = `README.md` (26), `docs/plano/ESTADO-E-HANDOFF.md` (48)
+  e `.prettierignore` (+1) → 3 ficheiros, 47/28. Lista de funcionalidades, âmbito, stack, estrutura, arranque e
+  comandos: zero linhas alteradas. Cada número saiu de um comando colado no `relatorios/T20.md`.
+- **QA (prova própria):** `curl` nas três rotas (`307` → `/entrar`, `200`), `rev-parse`/`rev-list` (`2f84384`, `0 0`),
+  `gh run view 41320502835` (`success`, `push`, `2f84384`), deploy `dpl_2sq…` `READY` em produção com o alias
+  `psi-lac` (medido pela API). Entrou em **produção** com a conta demo e contou a barra lateral: «Dia a dia» com
+  **4** destinos — o menu da T19 não está publicado. Reproduziu a paleta `Ctrl+K` partida em produção e no build
+  local (`dialog=0 input=0 itens=0`, `Cannot read properties of undefined (reading 'subscribe')`).
+- **Achado do QA, corrigido:** as «8 execuções falhadas» eram **7 `failure` + 1 `cancelled`**. O Dev reconfirmou com
+  o `gh` (`{"total":8,"porConclusao":[{"cancelled":1},{"failure":7}]}`) e a frase passou a «as oito… não passaram:
+  sete falharam e uma foi cancelada por ser duplicada». O mesmo número aparecia no §0 e foi corrigido lá também.
+- **Revisor:** aprovada sem bloqueantes. Nota de registo: o `.prettierignore` já ignorava `*.md`, por isso o
+  `format:check` verde **não** é prova de que o README está formatado — só o resto. O QA confirmou-o desligando o
+  ignore (`prettier --check --ignore-path /dev/null` → `[warn]` nos dois `.md`).
+- Gate final: `format:check`, `lint`, `typecheck`, `test` (28 ficheiros, 522), `build` — todos exit 0.
+- **Pendente:** commit e deploy (D4 — aguarda autorização do utilizador).
+
+## T21 — A paleta de comandos rebenta ao abrir
+
+**Achado pelo Dev na T19 e confirmado por mim no código** (`apps/web/src/components/ui/command.tsx:41-58`):
+o `CommandDialog` mete `children` (`CommandInput`, `CommandList`, `CommandItem`, todos do `cmdk`)
+dentro do `DialogContent` **sem os envolver no `<Command>`**, que é quem cria o contexto. Resultado:
+abrir a paleta dá `PAGE ERROR: Cannot read properties of undefined (reading 'subscribe')`.
+
+É anterior a nós e independente do `nav.ts` — acontece igual com os 12 destinos antigos, por isso
+nenhum utilizador conseguiu usar a paleta até hoje. Ficou fora da T19 por estar fora dos ficheiros
+dessa tarefa, como deve ser.
+
+**Ficheiros que pode escrever:** `apps/web/src/components/ui/command.tsx` e o spec que prova a
+paleta (`e2e/15-navegacao.spec.ts` já tem o motivo escrito no cabeçalho: o teste da paleta entra
+lá quando isto estiver corrigido). Mais nada.
+
+**Critério de aceitação (verificável):**
+
+1. Abrir a paleta (`Ctrl+K` / `Cmd+K`) não lança erro na consola e mostra a lista.
+2. Escrever «consolida» filtra e clicar no item abre `/consolidacao-contas`; o mesmo para
+   «contas a pagar».
+3. O teste da paleta passa a estar no `e2e/15-navegacao.spec.ts` e falha se a correção for
+   revertida (colar as duas execuções).
+4. Gate completo verde: `format:check`, `lint`, `typecheck`, `test` (522), `build`.
+5. `git diff` limitado a esses dois ficheiros.
+
+**O que NÃO fazer:** não trocar o `cmdk` nem o `Dialog`; não reescrever a paleta; não mexer no
+`nav.ts` (já está fechado pela T19); não fazer commit nem push.
+
+
+| T22 | **`DialogHeader` do `CommandDialog` vive fora do `DialogContent`:** o `<h2>` «Ir para» `sr-only` está sempre no DOM, mesmo com a paleta fechada, e entra na lista de cabeçalhos de um leitor de ecrã em todas as páginas | Dev | aberta (achado do Revisor na T21; anterior a nós) | — |
+
+## Registo de fecho — T21 (2026-11-01)
+
+- **Dev:** `apps/web/src/components/ui/command.tsx` — `{children}` passou a `<Command>{children}</Command>` (+6/−1, 5 das quais
+  comentário a explicar a causa). Um `<Command>` a mais nenhum; sem trocar `cmdk`, `Dialog` nem o consumidor. Dois testes novos em
+  `e2e/15-navegacao.spec.ts` que abrem com `Ctrl+K`, contam as opções, exigem que o filtro **encurte** a lista, clicam e conferem
+  URL e `h1`, com recolha de `pageerror`/`console.error` ligada antes de abrir.
+- **Prova nos dois sentidos:** sem a correção, `2 failed` (`getByRole('dialog')` → element(s) not found) e o erro original medido
+  no build: `dialogos=0 opcoes=0`, `Cannot read properties of undefined (reading 'subscribe')`. Com ela, `5 passed (9.8 s)` e
+  `erros = []` em todo o percurso.
+- **QA (prova própria):** `dialog=1 input=1 listbox=1 opcoes=14`; «consolida» 14 → 1 → `/consolidacao-contas`; «contas a pagar»
+  14 → 1 → `/contas-pagar-receber`; zero `pageerror`/`console.error`. Repôs `ui/command.tsx` de `2f84384`, **reconstruiu** e viu o
+  defeito original; repôs a versão do Dev e viu passar. **Axe sobre a paleta aberta: 0 violações** — nunca tinha sido medido, porque
+  a paleta rebentava antes de ser vista.
+- **Revisor:** aprovada. A correção é a padrão do shadcn e a mínima; `command-palette.tsx` é o único consumidor, logo não há duplo
+  aninhamento. Notas de registo: (1) `DialogHeader` fora do `DialogContent` deixa o `<h2>` «Ir para» sempre no DOM → virou **T22**;
+  (2) o pacote `cn@0.4.0` é o oficial do shadcn, sem risco; (3) um comentário do spec deixou de ser exato — corrigido nesta mesma
+  tarefa.
+- Gate final: `format:check`, `lint` 4/4, `typecheck` 4/4, `test` (28 ficheiros, 522), `build` 2/2 — todos exit 0.
+- **Pendente:** commit e deploy (D4 — aguarda autorização do utilizador).
+
+## T22 — O título escondido da paleta está sempre no DOM
+
+**Achado pelo Revisor ao fechar a T21.** Em `apps/web/src/components/ui/command.tsx:45-48`, o
+`DialogHeader`/`DialogTitle`/`DialogDescription` são renderizados **fora** do `DialogContent`. O
+Radix resolve o nome acessível do diálogo à mesma (liga `aria-labelledby`/`aria-describedby` pelo
+contexto, e o axe deu 0 violações com a paleta aberta), mas o `<h2>` «Ir para» `sr-only` fica no
+DOM **sempre**, mesmo com a paleta fechada — entra na lista de cabeçalhos e no fluxo de leitura de
+um leitor de ecrã em todas as páginas.
+
+Não é regressão da T21: já estava assim antes. O axe não apanha isto porque não é violação — é
+ruído de estrutura.
+
+**Correção mínima esperada:** mover o `DialogHeader` para dentro do `DialogContent`. Nada mais.
+
+**Critério de aceitação:** com a paleta **fechada**, o documento não tem o `<h2>` «Ir para»; com a
+paleta **aberta**, o diálogo continua nomeado (o teste da T21 e o axe do 80 continuam verdes).
+
+**O que NÃO fazer:** não mexer no `<Command>{children}</Command>` da T21, nem no `command-palette.tsx`.
 
 ## Regras
 

@@ -2,12 +2,17 @@
 
 Aplicação web de finanças pessoais — uma nova versão, com interface atualizada, das funcionalidades do [Minhas Economias](https://wwws.minhaseconomias.com.br/).
 
-> **Estado em 2026-11-01: o código está verde, a produção está atrasada.**
-> O gate passa por inteiro nesta árvore de trabalho — `format:check`, `lint`,
-> `typecheck`, `test` (522 testes, 28 ficheiros) e `build` — e
-> `pnpm install --frozen-lockfile` também. **Nada disto está em produção**: o que
-> está publicado é o commit `e4366ee`, e os 8 deploys seguintes falharam todos.
-> Em produção, `/contas-pagar-receber` e `/consolidacao-contas` respondem `404`.
+> **Estado em 2026-11-01: o código está verde e a produção está ao nível do `main`.**
+> O gate passa por inteiro — `format:check`, `lint`, `typecheck`, `test`
+> (522 testes, 28 ficheiros) e `build` — e `pnpm install --frozen-lockfile` também.
+> `main` e `origin/main` estão no mesmo commit, `2f84384`, com o CI verde (execução
+> `41320502835`), e é esse o commit que está publicado: o deploy
+> `dpl_2sqFbHRkwG4ZqP1vNEsRiQFuYcQo` está `READY` em produção e serve o domínio
+> abaixo. Medido agora: `/contas-pagar-receber` e `/consolidacao-contas` respondem
+> `307` para `/entrar` (existem e pedem sessão) e `/api/health` responde `200`.
+> O que **ainda não** está publicado é a entrada desses dois ecrãs no menu: está na
+> árvore de trabalho, por commitar. E a paleta de comandos (`Ctrl+K`) falha ao
+> abrir — defeito conhecido, com tarefa aberta no `TASKS.md`.
 > Produção: <https://financas-pessoais-psi-lac.vercel.app>
 
 ## O que é
@@ -112,10 +117,11 @@ O mesmo gate corre em cada `push` e em cada *pull request* pelo GitHub Actions
 (`.github/workflows/ci.yml`). O fumo é um workflow separado, à mão, porque escreve
 numa base real.
 
-**O CI está vermelho em `main` desde 2026-10-14 19:30**: 8 execuções falhadas, a
-última em `b980ed0` (2026-10-18), que nem passa do `--frozen-lockfile`. A árvore de
-trabalho atual passa o mesmo gate localmente, mas ainda não foi empurrada — o CI
-ainda não a viu.
+**O CI está verde em `main`**: a execução `41320502835` (push em `main`, commit
+`2f84384`, 2026-11-01) terminou com sucesso. As oito execuções anteriores, de
+2026-10-14 a 2026-10-18, não passaram: sete falharam e uma foi cancelada por ser
+duplicada — a última delas em `b980ed0`. O trabalho que ainda está na árvore de
+trabalho local não foi empurrado, por isso o CI ainda não o correu.
 
 ### Duas armadilhas do ambiente de desenvolvimento (Windows)
 

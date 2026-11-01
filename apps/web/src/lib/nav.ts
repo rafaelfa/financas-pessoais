@@ -3,9 +3,11 @@ import {
   ChartColumn,
   CreditCard,
   FileUp,
+  Layers,
   LayoutDashboard,
   ListFilter,
   PiggyBank,
+  Receipt,
   Repeat,
   Settings,
   Tags,
@@ -51,6 +53,18 @@ const CONTAS: NavItem = {
   label: 'Contas',
   description: 'Saldos, arquivo e ajuste de saldo',
   icon: Wallet,
+};
+const CONTAS_A_PAGAR_RECEBER: NavItem = {
+  href: '/contas-pagar-receber',
+  label: 'Contas a pagar/receber',
+  description: 'O que tens de pagar e de receber, com data',
+  icon: Receipt,
+};
+const CONSOLIDACAO: NavItem = {
+  href: '/consolidacao-contas',
+  label: 'Consolidação',
+  description: 'Saldos agrupados por finalidade',
+  icon: Layers,
 };
 const CARTOES: NavItem = {
   href: '/cartoes',
@@ -109,7 +123,10 @@ const DEFINICOES: NavItem = {
 
 /** Barra lateral, agrupada por intenção do utilizador. */
 export const NAV_SECTIONS: readonly NavSection[] = [
-  { title: 'Dia a dia', items: [PAINEL, TRANSACOES, CONTAS, CARTOES] },
+  {
+    title: 'Dia a dia',
+    items: [PAINEL, TRANSACOES, CONTAS, CONTAS_A_PAGAR_RECEBER, CONSOLIDACAO, CARTOES],
+  },
   { title: 'Planeamento', items: [ORCAMENTO, OBJETIVOS, RECORRENCIAS, REGRAS] },
   { title: 'Análise', items: [CATEGORIAS, RELATORIOS, IMPORTAR, DEFINICOES] },
 ];

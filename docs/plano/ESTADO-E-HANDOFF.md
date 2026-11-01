@@ -11,26 +11,38 @@
 - **Gate local verde** nesta árvore: `pnpm format:check`, `pnpm lint`,
   `pnpm typecheck`, `pnpm test` (**522 testes**, 28 ficheiros) e `pnpm build`, todos
   com código de saída 0. O `pnpm install --frozen-lockfile` também passa.
-- **Nada disto está commitado.** O trabalho de outubro vive na árvore de trabalho;
-  a decisão D4 é só commitar e fazer push com autorização do utilizador.
-- **Produção atrasada.** O que está publicado é o commit `e4366ee`. Em
-  `https://financas-pessoais-psi-lac.vercel.app`, `/api/health` responde `200`,
-  `/` responde `307` para `/entrar`, e **`/contas-pagar-receber` e
-  `/consolidacao-contas` respondem `404`** — a funcionalidade nova não está lá.
-  Os 8 deploys seguintes ao `e4366ee` falharam todos (detalhe em `MAPA.md`).
-- **CI vermelho desde 2026-10-14 19:30**: 8 execuções falhadas, a última em
-  `b980ed0` (2026-10-18), que nem passa do `--frozen-lockfile`. A árvore atual passa
-  o mesmo gate localmente, mas não foi empurrada — o CI ainda não a viu.
-- **Tarefas fechadas**: T1, T2, T3, T7, T11, T12, T13 e T16. A T8 foi absorvida na
-  T7. Na T16 falta a re-execução do QA (o código e a prova do Dev estão fechados:
-  12/12, um sucesso em dois pedidos simultâneos).
-- **Tarefas abertas**: T9, T10, T14, T15, T17 e T18 — e ainda T6 (visual) e T5
-  (deploy, bloqueada à espera de autorização explícita do utilizador).
+- **Publicado: `2f84384`.** Em 2026-11-01, `main` e `origin/main` estão no mesmo
+  commit (`2f84384`), com o CI verde na execução `41320502835`, e o deploy
+  `dpl_2sqFbHRkwG4ZqP1vNEsRiQFuYcQo` está `READY` em produção, a servir
+  `https://financas-pessoais-psi-lac.vercel.app` (o domínio está nas *aliases* desse
+  deploy).
+- **Produção responde.** Medido agora nesse domínio: `/api/health` dá `200`; `/`,
+  `/contas-pagar-receber` e `/consolidacao-contas` dão `307` para `/entrar` — as duas
+  rotas novas existem e pedem sessão, já não dão `404`.
+- **Por publicar: a entrada no menu.** A T19 pôs «Contas a pagar/receber» e
+  «Consolidação» no `nav.ts`, e esse trabalho está na árvore de trabalho, por
+  commitar (`git diff 2f84384 -- apps/web/src/lib/nav.ts` → 18 inserções, 1
+  remoção), pelo que não está em produção. A decisão D4 continua a ser commitar e
+  fazer push com autorização do utilizador.
+- **Paleta de comandos avariada.** `Ctrl+K`/`⌘K` rebenta ao abrir
+  (`Cannot read properties of undefined (reading 'subscribe')`): o `CommandDialog`
+  de `components/ui/command.tsx` monta os filhos sem os envolver no `<Command>` do
+  `cmdk`. É anterior a nós, atinge os 14 destinos e tem tarefa aberta (T21).
+- **CI**: verde em `2f84384` (execução `41320502835`, 2026-11-01). As oito execuções
+  anteriores, de 2026-10-14 a 2026-10-18, não passaram — sete falharam e uma foi
+  cancelada por ser duplicada; a última delas foi em `b980ed0`.
+- **Tarefas fechadas**: T1, T2, T3, T4, T5, T7, T11, T12, T13 e T19 — mais a T16,
+  que espera a re-execução do QA (o código e a prova do Dev estão fechados: 12/12,
+  um sucesso em dois pedidos simultâneos). A T8 foi absorvida na T7. O quadro está em
+  `TASKS.md`.
+- **Tarefas abertas**: T6, T9, T10, T14, T15, T17, T18, T20 e T21. O que espera o
+  utilizador é o commit e o push (D4).
 - **Decisões à espera do utilizador** (`DECISOES.md`): **A2, A3, A4, A5 e A7**.
   A A1 está decidida: a funcionalidade do `b980ed0` fica.
-- **Testes ponta a ponta**: 33 testes, 30 verdes; as 3 falhas são as pré-existentes
-  de `35-estado-transacoes` (T10), alheias ao trabalho de outubro. Prova em
-  `relatorios/T3.md`.
+- **Testes ponta a ponta**: 33 testes, 30 verdes na medição da T3; as 3 falhas eram
+  as pré-existentes de `35-estado-transacoes` (T10). Prova em `relatorios/T3.md`. A
+  suite completa não foi re-executada depois da T19, que acrescentou o spec
+  `e2e/15-navegacao.spec.ts` (3 testes; prova em `relatorios/T19-qa.md`).
 - **Base de dados**: Neon. A `DATABASE_URL` desta máquina aponta para o ramo de
   teste, não para produção — os relatórios do QA foram medidos lá.
 - **Onde olhar**: `docs/gestao/MAPA.md` (o que foi medido, com números),
