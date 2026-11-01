@@ -11,38 +11,38 @@
 - **Gate local verde** nesta árvore: `pnpm format:check`, `pnpm lint`,
   `pnpm typecheck`, `pnpm test` (**522 testes**, 28 ficheiros) e `pnpm build`, todos
   com código de saída 0. O `pnpm install --frozen-lockfile` também passa.
-- **Publicado: `2f84384`.** Em 2026-11-01, `main` e `origin/main` estão no mesmo
-  commit (`2f84384`), com o CI verde na execução `41320502835`, e o deploy
-  `dpl_2sqFbHRkwG4ZqP1vNEsRiQFuYcQo` está `READY` em produção, a servir
+- **Publicado: `468a138`.** Em 2026-11-01, `main` e `origin/main` estão no mesmo
+  commit (`468a138`), com o CI verde na execução `41346236265`, e o deploy
+  `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk` está `READY` em produção, a servir
   `https://financas-pessoais-psi-lac.vercel.app` (o domínio está nas *aliases* desse
   deploy).
-- **Produção responde.** Medido agora nesse domínio: `/api/health` dá `200`; `/`,
-  `/contas-pagar-receber` e `/consolidacao-contas` dão `307` para `/entrar` — as duas
-  rotas novas existem e pedem sessão, já não dão `404`.
-- **Por publicar: a entrada no menu.** A T19 pôs «Contas a pagar/receber» e
-  «Consolidação» no `nav.ts`, e esse trabalho está na árvore de trabalho, por
-  commitar (`git diff 2f84384 -- apps/web/src/lib/nav.ts` → 18 inserções, 1
-  remoção), pelo que não está em produção. A decisão D4 continua a ser commitar e
-  fazer push com autorização do utilizador.
-- **Paleta de comandos avariada.** `Ctrl+K`/`⌘K` rebenta ao abrir
-  (`Cannot read properties of undefined (reading 'subscribe')`): o `CommandDialog`
-  de `components/ui/command.tsx` monta os filhos sem os envolver no `<Command>` do
-  `cmdk`. É anterior a nós, atinge os 14 destinos e tem tarefa aberta (T21).
-- **CI**: verde em `2f84384` (execução `41320502835`, 2026-11-01). As oito execuções
+- **Verificado em produção, com sessão iniciada** (conta demo, só leitura): «Dia a
+  dia» tem seis destinos — Painel, Transações, Contas, Contas a pagar/receber,
+  Consolidação, Cartões — e os dois novos abrem com o título certo; a paleta
+  `Ctrl+K` abre com as 14 opções, «consolida» e «contas a pagar» encurtam a lista
+  para um item e levam aos dois ecrãs; sem `pageerror` nem `console.error` em todo
+  o percurso; `/api/health` → `200` e as três rotas → `307` para `/entrar`.
+- **Menu e paleta deixaram de ser dívida.** A T19 fechou a entrada dos dois ecrãs no
+  menu e a T21 a paleta, que rebentava ao abrir por lhe faltar o `<Command>` do
+  `cmdk`. Ambas estão publicadas. Ficou registada a T22: o `<h2>` «Ir para» da
+  paleta vive fora do `DialogContent` e está sempre no DOM, mesmo com a paleta
+  fechada.
+- **CI**: verde em `468a138` (execução `41346236265`, 2026-11-01). As oito execuções
   anteriores, de 2026-10-14 a 2026-10-18, não passaram — sete falharam e uma foi
   cancelada por ser duplicada; a última delas foi em `b980ed0`.
-- **Tarefas fechadas**: T1, T2, T3, T4, T5, T7, T11, T12, T13 e T19 — mais a T16,
-  que espera a re-execução do QA (o código e a prova do Dev estão fechados: 12/12,
-  um sucesso em dois pedidos simultâneos). A T8 foi absorvida na T7. O quadro está em
-  `TASKS.md`.
-- **Tarefas abertas**: T6, T9, T10, T14, T15, T17, T18, T20 e T21. O que espera o
-  utilizador é o commit e o push (D4).
+- **Tarefas fechadas**: T1, T2, T3, T4, T5, T7, T11, T12, T13, T19, T20 e T21 —
+  mais a T16, que espera a re-execução do QA (o código e a prova do Dev estão
+  fechados: 12/12, um sucesso em dois pedidos simultâneos). A T8 foi absorvida na
+  T7. O quadro está em `TASKS.md`.
+- **Tarefas abertas**: T6, T9, T10, T14, T15, T17, T18 e T22. O commit e o push, que
+  estavam à espera do utilizador (D4), foram feitos.
 - **Decisões à espera do utilizador** (`DECISOES.md`): **A2, A3, A4, A5 e A7**.
   A A1 está decidida: a funcionalidade do `b980ed0` fica.
 - **Testes ponta a ponta**: 33 testes, 30 verdes na medição da T3; as 3 falhas eram
   as pré-existentes de `35-estado-transacoes` (T10). Prova em `relatorios/T3.md`. A
-  suite completa não foi re-executada depois da T19, que acrescentou o spec
-  `e2e/15-navegacao.spec.ts` (3 testes; prova em `relatorios/T19-qa.md`).
+  suite completa não foi re-executada depois da T19: o spec `e2e/15-navegacao.spec.ts`
+  tem agora cinco testes (três da barra lateral, dois da paleta), provados em
+  `relatorios/T19-qa.md` e `relatorios/T21-qa.md`.
 - **Base de dados**: Neon. A `DATABASE_URL` desta máquina aponta para o ramo de
   teste, não para produção — os relatórios do QA foram medidos lá.
 - **Onde olhar**: `docs/gestao/MAPA.md` (o que foi medido, com números),
