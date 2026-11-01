@@ -536,8 +536,8 @@ fazer commit nem push.
   (só compara prefixo com barra); o spec não passa com lista vazia (`toHaveText` de 6 rótulos), não tem
   `waitForTimeout` nem `force`, e não depende de dados. Confirmou que o motivo escrito sobre a paleta é
   verdadeiro (`command.tsx:53` monta os filhos sem o `<Command>` da linha 22).
-- **Limite conhecido:** a paleta de comandos não foi provada na interface porque rebenta ao abrir — é a T21,
-  anterior a este trabalho e independente do `nav.ts`.
+- **Limite na altura em que fechou:** a paleta de comandos não ficou provada na interface porque rebentava ao abrir;
+  a T21 corrigiu-a e provou-a depois (14 opções, filtro 14 → 1, axe com 0 violações).
 - **Publicado em 2026-11-01:** commit `468a138`, CI `41346236265` verde, deploy `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk`
   `READY`. Verificado em produção com sessão: «Dia a dia» com 6 destinos, os dois ecrãs a abrir com o título certo e
   `/api/health` `200`. O estado publicado passou a ser o `ddbdcd7` depois do commit de documentação.
