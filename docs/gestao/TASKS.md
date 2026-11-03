@@ -1022,6 +1022,8 @@ desmontar. O aviso `aria-hidden` também vinha daí: 0 em 13 fechos depois de o 
 **Nota honesta do Dev:** os diálogos abertos a partir da lista (edição, pagamento) não têm gatilho,
 logo fecham com o foco no `body` por desenho — não são o caso do critério, mas fica escrito.
 
+| T37 | **Foco perdido nos diálogos abertos pela lista** (edição, pagamento): 5 de 6 modos de fecho deixam o foco no `body`, não na linha/cartão de origem | Dev | aberta (achado da T36; nunca tiveram gatilho) | `relatorios/T37.md` |
+
 ## Regras de método que ficaram desta ronda
 
 - **Um teste de largura precisa de conteúdo que force a largura.** Medir um ecrã vazio dá sempre verde — foi o que quase deixou passar o scroll de `/transacoes` (o utilizador do `globalSetup` não tem transações). Se um teste mede layout, os dados que provocam o problema têm de existir no próprio teste.
