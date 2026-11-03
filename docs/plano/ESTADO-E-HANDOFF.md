@@ -182,11 +182,14 @@ relatórios `docs/spec/T8.*` — este documento é o índice.
 2. **Validar a importação com um extrato real de um banco português.** É a única
    lacuna que nenhuma verificação fecha: as amostras são sintéticas. Vale sobretudo
    para o dialecto OFX **sem nenhuma tag de fecho**.
-3. **`CRON_SECRET` não tem quem a use.** Está declarada no `.env.example` e no
-   `turbo.json`, mas não existe rota de cron (as únicas rotas de API são
-   `/api/health` e `/api/auth/[...all]`). Ou se cria a rota que gera as recorrências
-   vencidas e se acrescenta a entrada `crons`, ou se retira a variável — manter uma
-   variável que promete uma tarefa agendada inexistente é um documento que mente.
+3. **`CRON_SECRET` — resolvido em 2026-11-01 (T32).** A variável saiu do
+   `.env.example`, do `turbo.json` e do workflow de CI: não existe rota de cron (as
+   únicas rotas de API são `/api/health` e `/api/auth/[...all]`), e **a geração das
+   recorrências vencidas é manual**, por um botão idempotente
+   (`generateDueRecurrences`). Um cron diário continua a ser uma opção futura: se
+   aparecer, volta a variável e acrescenta-se a entrada `crons`. Falta o dono da
+   conta remover `CRON_SECRET` das variáveis de ambiente da Vercel — não se toca
+   nisso a partir do repositório.
 4. **Bens e dívidas (património) não têm ecrã.** O património líquido contabiliza-os,
    mas não há forma de os registar.
 5. **`GoalMovementType` admite `yield`** no motor e na base, mas nenhum caminho o

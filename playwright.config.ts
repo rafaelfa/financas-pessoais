@@ -17,11 +17,18 @@ import { defineConfig, devices } from '@playwright/test';
  * 2. **`localhost` e não `127.0.0.1`.** O `BETTER_AUTH_URL` do `.env` é
  *    `http://localhost:3000` e o `better-auth` valida a origem. Tocar no URL é
  *    mudar o contrato da aplicação para servir o teste.
- * 3. **`next dev` e não `next start`.** Nesta sandbox o `next build` falha com
- *    `spawn EPERM` (o `test:e2e` num ambiente normal pode trocar por
- *    `pnpm build && pnpm start`). Os números de desempenho medidos em `dev` são
- *    um limite superior, não o que a produção serve — está declarado no
- *    relatório `docs/spec/T8.4-e2e-e-desempenho.md`.
+ * 3. **Build de produção, não `next dev`.** O `webServer` corre
+ *    `pnpm build && pnpm --filter @repo/web start`, para o teste exercitar o
+ *    mesmo binário que vai para o ar. O `next dev` foi abandonado por um motivo
+ *    concreto: o indicador de desenvolvimento do Next («1 Insight», no canto
+ *    inferior) fica por cima do «Terminar sessão», no rodapé da barra lateral, e
+ *    o clique expirava aos 20 s — um falso negativo em `20-autenticacao.spec.ts`,
+ *    não um defeito da aplicação. O `spawn EPERM` que esta nota citava era desta
+ *    sandbox e já não se aplica: o `next build` corre aqui sem problema.
+ *    Consequência para os números: como agora se mede o build de produção, os
+ *    valores de `docs/spec/T8.4-e2e-e-desempenho.md` — medidos em `dev` à época —
+ *    deixaram de ser um «limite superior» e estão desatualizados; o que a suite
+ *    mede hoje é o que a produção serve.
  *
  * Percursos sem sessão (`registar`, `autenticacao`) trocam o `storageState`
  * dentro do próprio spec.
@@ -41,6 +48,9 @@ const reuseExistingServer = process.env.E2E_REUSE_SERVER === '1';
  * se mede tem de vir de uma instalação reprodutível noutra máquina.
  */
 const canal = process.env.E2E_CHANNEL;
+
+/** O canal declarado aplica-se a todos os projetos, ou a um deles fica sem browser. */
+const comCanal = canal === undefined ? {} : { channel: canal };
 
 export default defineConfig({
   testDir: './e2e',
@@ -73,14 +83,34 @@ export default defineConfig({
   projects: [
     {
       name: canal === undefined ? 'chromium' : `chromium-${canal}`,
-      use: {
-        ...devices['Desktop Chrome'],
-        ...(canal === undefined ? {} : { channel: canal }),
-      },
+      use: { ...devices['Desktop Chrome'], ...comCanal },
+    },
+    /*
+     * Dois projetos a mais, de propósito estreitos: só os ecrãs novos e um
+     * percurso. Multiplicar a suite inteira não provava mais nada e triplicava o
+     * tempo. O de telemóvel existe para exercitar o ramo `Drawer` dos diálogos
+     * (a 393 px o `useIsMobile` diz que sim); o escuro, para o tema.
+     */
+    {
+      name: 'telemovel',
+      use: { ...devices['Pixel 5'], ...comCanal },
+      testMatch: /(45-contas-pagar-receber|55-consolidacao-contas)\.spec\.ts/,
+    },
+    {
+      name: 'escuro',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'dark', ...comCanal },
+      testMatch: /15-navegacao\.spec\.ts/,
     },
   ],
   webServer: {
-    command: 'pnpm --filter @repo/web dev',
+    /*
+     * Build de produção e não `next dev`: o indicador de desenvolvimento do Next
+     * ficava por cima do «Terminar sessão» no rodapé da barra lateral e o clique
+     * expirava — falso negativo em `20-autenticacao.spec.ts`. O build demora, mas
+     * um `pnpm test:e2e` num clone limpo passa a arrancar sozinho e a correr o
+     * mesmo código que vai para o ar.
+     */
+    command: 'pnpm build && pnpm --filter @repo/web start',
     url: `${baseURL}/entrar`,
     reuseExistingServer,
     timeout: 240_000,

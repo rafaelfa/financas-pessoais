@@ -70,7 +70,14 @@ export function AccountGroupDialog({
   const isMobile = useIsMobile();
   const [openState, setOpenState] = useState(false);
   const isOpen = open ?? openState;
+  const valoresIniciais = defaultValues || { name: '', description: '' };
+
   const setOpen = (next: boolean) => {
+    // Fechar limpa o formulário: reabrir não pode mostrar o que já foi submetido.
+    if (!next) {
+      form.reset(valoresIniciais);
+    }
+
     setOpenState(next);
     onOpenChange?.(next);
   };
@@ -80,10 +87,7 @@ export function AccountGroupDialog({
 
   const form = useForm<AccountGroupFormValues>({
     resolver: zodResolver(accountGroupSchema),
-    defaultValues: defaultValues || {
-      name: '',
-      description: '',
-    },
+    defaultValues: valoresIniciais,
   });
 
   /* `ui/form.tsx` não gera ids; cada instância do diálogo gera os seus. */

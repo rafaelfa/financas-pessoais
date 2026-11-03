@@ -40,7 +40,7 @@ type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>;
 
 const STATUS_COLORS: Record<Status, BadgeVariant> = {
   OPEN: 'default',
-  PAID: 'default',
+  PAID: 'success',
   OVERDUE: 'destructive',
   CANCELLED: 'secondary',
 };

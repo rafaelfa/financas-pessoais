@@ -87,7 +87,21 @@ export function ReceivablePayableDialog({
   const isMobile = useIsMobile();
   const [openState, setOpenState] = useState(false);
   const isOpen = open ?? openState;
+  const valoresIniciais = defaultValues || {
+    type: 'PAYABLE',
+    description: '',
+    amountInCents: 0,
+    dueDate: new Date().toISOString().split('T')[0],
+    note: '',
+  };
+
   const setOpen = (next: boolean) => {
+    // Fechar limpa o formulário: reabrir não pode mostrar o que já foi submetido.
+    if (!next) {
+      form.reset(valoresIniciais);
+      setAmountText(textoDeEuros(valoresIniciais.amountInCents ?? 0));
+    }
+
     setOpenState(next);
     onOpenChange?.(next);
   };
@@ -102,22 +116,33 @@ export function ReceivablePayableDialog({
   const uid = useId();
   const fieldId = (name: string) => `${uid}-${name}`;
 
-  const [amountText, setAmountText] = useState(() => {
-    const initial = defaultValues?.amountInCents ?? 0;
-
-    return initial > 0 ? centsToEuros(initial) : '';
-  });
+  const [amountText, setAmountText] = useState(() =>
+    textoDeEuros(defaultValues?.amountInCents ?? 0),
+  );
 
   const form = useForm<ReceivablePayableFormValues>({
     resolver: zodResolver(receivablePayableSchema),
-    defaultValues: defaultValues || {
-      type: 'PAYABLE',
-      description: '',
-      amountInCents: 0,
-      dueDate: new Date().toISOString().split('T')[0],
-      note: '',
-    },
+    defaultValues: valoresIniciais,
   });
+
+  /** Põe os erros do servidor no campo que os originou, não só no toast. */
+  function applyFieldErrors(fieldErrors?: Record<string, string[]>) {
+    for (const field of [
+      'type',
+      'description',
+      'amountInCents',
+      'dueDate',
+      'categoryId',
+      'financialAccountId',
+      'note',
+    ] as const) {
+      const message = fieldErrors?.[field]?.[0];
+
+      if (message !== undefined) {
+        form.setError(field, { type: 'server', message });
+      }
+    }
+  }
 
   async function onSubmit(data: ReceivablePayableFormValues) {
     setIsSubmitting(true);
@@ -129,6 +154,7 @@ export function ReceivablePayableDialog({
           : await createReceivablePayable(data);
 
       if (!result.ok) {
+        applyFieldErrors(result.fieldErrors);
         toast({
           title: 'Não foi possível guardar',
           description: result.error,
@@ -407,6 +433,11 @@ export function ReceivablePayableDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Cêntimos → texto do campo: vazio quando não há valor, senão `12,34`. */
+function textoDeEuros(cents: number): string {
+  return cents > 0 ? centsToEuros(cents) : '';
 }
 
 /** `1234` cêntimos → `12,34`, como o utilizador português escreve. */

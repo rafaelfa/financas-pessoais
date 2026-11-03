@@ -874,6 +874,154 @@ porque protege também quem chame a ação por outro caminho; a decisão e a pro
 
 | T28 | **Endurecimento (opcional):** o schema de edição não exige o sinal do valor por tipo (a criação exige). Hoje nenhum caminho o explora; uma guarda de 2 linhas com `existing.kind` fecha-o | Dev | aberta (não bloqueia) | — |
 
+| T29 | O teste de acessibilidade **não protege contra a regressão dos rótulos**: o axe não acusa `placeholder` como nome. Falta asserção de nome acessível | QA | aberta (após T31) | `relatorios/T29.md` |
+| T31 | **Mobile e tema escuro nunca foram exercitados**: os e2e só correm em Chromium a 1280 px e no tema claro | Dev | a fazer | `relatorios/T31.md` |
+| T32 | `CRON_SECRET` promete uma tarefa agendada que não existe (a geração de recorrências é manual, por botão) | Dev | a fazer | `relatorios/T32.md` |
+
+## Ronda “defeitos abertos” (2026-11-03)
+
+O utilizador pediu para resolver os seis defeitos que listei como abertos. Já fechados nesta mesma
+ronda: **T10/T26** (500 na edição de lançamento) e **T18**. Entram agora:
+
+- **T6** — variante `success` no `Badge` + token `--success` (claro e escuro) para o estado «paga»
+  deixar de sair igual a «aberta».
+- **T15** — o diálogo de contas a pagar/receber passa a mostrar os `fieldErrors` no campo, como o de
+  grupos já faz desde a T12.
+- **T9** — o e2e passa a correr contra o **build de produção** por omissão; contra `next dev` o
+  *overlay* do Next intercetou cliques e deu um falso negativo.
+- **T31** — projetos de telemóvel (Chromium e WebKit) e tema escuro na configuração do Playwright; o
+  ramo `Drawer` dos diálogos e o axe no escuro nunca foram exercitados.
+- **T29** — asserção de **nome acessível** nos campos (o axe aceita `placeholder` como nome, e por
+  isso não teria apanhado o defeito dos rótulos da T17).
+- **T32** — remover `CRON_SECRET` do `.env.example` e do `turbo.json`: não há rota de cron e a
+  geração de recorrências é um botão idempotente na própria interface (`generateDueRecurrences`).
+  Criar infraestrutura de cron para um problema que a UI já resolve é o contrário de simplificar.
+
+| T33 | **Em telemóvel nenhum formulário em `Drawer` pode ser submetido:** o rodapé fica abaixo do ecrã e o `DrawerContent` não rola (393×727: conteúdo 1742 px, `overflow-y: visible`) | Dev | a fazer (urgente — achado da T31) | `relatorios/T33.md` |
+
+## T33 — o `Drawer` de telemóvel está partido (achado da T31)
+
+Ao acrescentar o projeto de telemóvel ao Playwright, a configuração pedida revelou um defeito real:
+
+```
+viewport 393×727 (Pixel 5)
+drawer: altura 581 px · conteúdo 1742 px · overflow-y: visible   ← não rola
+botão «Criar Conta»: top 730 · bottom 762  (o ecrã tem 727)
+scrollIntoView → não muda nada · clique → timeout
+```
+
+**Nenhum utilizador de telemóvel consegue criar, editar ou pagar uma conta a pagar/receber** — o
+botão de submeter fica fora do ecrã e não há scroll. Vale para todos os diálogos em `Drawer` (mesma
+estrutura em `ui/drawer.tsx`).
+
+Não é flake: o Dev reproduziu fora do e2e, com números. E o defeito estava lá desde a T7 — ninguém
+viu porque **o ramo de telemóvel nunca tinha sido exercitado**; foi preciso um projeto de telemóvel
+para o pôr a descoberto. Confirma a tese de que "nunca testado" não é "não tem problemas".
+
+**Correção esperada (escolhida pelo Lead):** corrigir o `Drawer` partilhado — altura máxima em `svh`
+e miolo com `overflow-y-auto`, com o rodapé alcançável. Uma correção, todos os diálogos.
+
+| T33 | **Em telemóvel nenhum formulário em `Drawer` podia ser submetido:** rodapé abaixo do ecrã e sem scroll | Dev | Dev done (medidas antes → depois; 81/81); em prova QA | `relatorios/T33.md` |
+| T34 | **Inconsistência de telemóvel:** o diálogo de pagamento usa `Dialog` em todos os tamanhos e não `Drawer` como os outros dois, por isso abre centrado em vez de folha | Dev | aberta (visual, baixa prioridade) | — |
+
+## Registo — T33 (2026-11-01)
+
+Correção no primitivo (`ui/drawer.tsx`, 2 sítios): `max-h-[80vh]` → `max-h-[85svh]`,
+`overflow-y-auto` + `overscroll-contain` no `DrawerContent`, e `DrawerFooter` **sticky** no fundo
+(sem o sticky, o formulário de edição com uma linha a mais voltava a empurrar o botão para fora:
+722–754 contra 727 de ecrã).
+
+```
+ANTES   conteúdo 1742 px · overflow-y: visible · botão 730–762 → fora (ecrã 727) · clique: timeout
+DEPOIS  conteúdo 1851 px · overflow-y: auto    · botão 679–711 → dentro · clique cria a conta (1234 cêntimos)
+```
+
+Suite: **81/81** — `[telemovel] 45` 0/6 → **6/6**, `55` 3/3, `[escuro] 15-navegacao` 5/5,
+`[chromium]` 67/67 sem regressões. Também provado: tema escuro nos dois ecrãs novos (fundo
+`rgb(30,37,44)`, luminância 36 contra 19 da página) e o T15 no ramo telemóvel.
+
+**Por verificar:** `svh` num telefone real com a barra do browser a aparecer; gesto de arrastar
+para fechar; rodapé sticky com o teclado virtual aberto (o Playwright não emula teclado).
+
+**Objeção DEVE do Revisor nesta ronda:** o bloco de comentário do `playwright.config.ts:20-22`
+continuava a documentar «`next dev` e não `next start`» e a justificação com `spawn EPERM` —
+contradizia o `command` da T9 e convidava a reverter a correção. Corrigido antes de publicar, junto
+com o `channel` que os projetos novos não herdavam.
+
+**Dívida declarada:** só **9 dos 81** testes correm em telemóvel, e são a única cobertura do
+primitivo `Drawer` — passa a T3 continuada: um dia, os percursos principais também em telemóvel.
+
+**Achado do Dev, por tratar:** `docs/spec/T8.4-e2e-e-desempenho.md` tem números medidos em `dev` e
+agora esses já não são «limite superior» — são história de outra configuração. Ficheiro do QA:
+ou se remedem contra o build de produção, ou passam a estar marcados como históricos com a data.
+Fica registado para a próxima passagem do QA; o comentário do `playwright.config.ts` já aponta para
+isso, para ninguém ler os números como atuais.
+
+| T35 | **Três defeitos que a correção do `Drawer` expôs:** espaçador do `vaul` a inflar o scroll, foco preso ao fechar, formulário a guardar valores | Dev | Dev done (scroll 1851 → 612; 81/81); em prova QA | `relatorios/T35.md` |
+
+## T35 — resíduos que só apareceram ao exercitar o `Drawer` a sério
+
+Os três vieram do QA, todos medidos, nenhum inventado:
+
+1. `drawer-content::after` ocupa **1233,88 px** vazios; rolar até ao fim deixa o rodapé e o último
+   campo **acima** do ecrã (`top` −556 / −592). Ou seja: dá para rolar para dentro do nada. É
+   consequência directa de pôr `overflow-y-auto` no `DrawerContent` — o espaçador do `vaul` passou a
+   fazer parte da área rolável.
+2. Ao fechar o drawer, o Chromium escreve `Blocked aria-hidden on an element because its descendant
+   retained focus` — gestão de foco do `vaul`, não tratada.
+3. O formulário de criação **guarda os valores** ao reabrir: submeter outra vez dá «Já tens uma conta
+   com essa descrição». Falta repor o formulário ao fechar ou depois de criar.
+
+Nenhum deles é regressão de comportamento antigo — são todos consequência de o `Drawer` passar
+finalmente a ser usado.
+
+**Diagnóstico do espaçador (Dev):** é o `vaul` que o cria —
+`[data-vaul-drawer]::after { position:absolute; top:100%; height:200% }`, um fundo pintado abaixo
+da folha para o arrastar não deixar buraco. Como o `::after` é absoluto em relação ao
+`DrawerContent`, pôr-lhe o scroll transformou-o em conteúdo: 2×617 ≈ 1234 px de vazio. **Não foi
+removido** (riscava a animação de arrastar): o scroll passou para um wrapper interior. Área rolável
+de 1851 → **612 px**, e no fim da rolagem o último campo (599–663) e o rodapé (679–711) ficam dentro
+dos 727.
+
+**Revisor:** aprovada sem achados materiais. Confirmou o que eu temia no foco — `quemAbriu` é lido
+antes do efeito do `vaul`, apanha o botão; aberto por código o valor é `body` e `body.focus()` é
+inócuo (e nesse caminho o Radix também não restauraria nada, porque as listas montam o diálogo por
+linha); `focus()` num nó removido não lança. O `sticky` melhora com o wrapper e o `::after` fica fora
+da área rolável.
+
+**Verificação que só um telefone responde:** com `overscroll-contain` no wrapper, confirmar que o
+**arrastar para fechar** do `vaul` continua a responder a partir do miolo. O Playwright não emula o
+gesto; fica pendente de um teste manual num telefone real, junto com o teclado virtual.
+
+| T36 | **Foco perdido ao fechar pelo «Cancelar» do drawer:** volta ao `body` em vez do botão que abriu (por Escape funciona) | Dev | Dev done (handler removido; 9/9); em prova QA | `relatorios/T36.md` |
+
+## T36 — o foco só volta por Escape, não por «Cancelar»
+
+Medido pelo QA em três ciclos, com clique real (CDP): **Escape ×3 → foco no botão «Nova Conta»**
+(certo); **«Cancelar» ×3 → foco no `body`** (errado). Com `.click()` sintético voltava ao botão, o que
+diz que o comportamento depende de o botão ter recebido foco antes de fechar — é precisamente o caso
+de quem usa teclado.
+
+Hipótese de trabalho para o Dev: o alvo do foco é apanhado no **render** do conteúdo, e no caminho
+do «Cancelar» esse render volta a acontecer depois de o foco já estar dentro do diálogo, pelo que o
+ref aponta para o próprio botão «Cancelar» (que desaparece a seguir). Alternativa preferível:
+**não** fazer `preventDefault()` quando não há alvo guardado, deixando o Radix devolver o foco ao
+trigger — que é o comportamento por omissão dele.
+
+**Fechado — e a correção foi apagar, não acrescentar.** O Dev mediu com e sem o handler:
+
+```
+COM o nosso onCloseAutoFocus   Escape → BUTTON ×3 ✓   Cancelar → BODY ×3 ✗   overlay → BODY ×3 ✗
+SEM nada nosso (Radix puro)    Escape → BUTTON ×3 ✓   Cancelar → BUTTON ×3 ✓ overlay → BUTTON ×3 ✓
+```
+
+O `preventDefault()` era o que anulava o restauro do Radix, e o nosso `focus()` ia para um nó a
+desmontar. O aviso `aria-hidden` também vinha daí: 0 em 13 fechos depois de o código sair.
+`ui/drawer.tsx` ficou com **+14/−3** contra o HEAD (era +34/−2), sem uma linha de foco.
+
+**Nota honesta do Dev:** os diálogos abertos a partir da lista (edição, pagamento) não têm gatilho,
+logo fecham com o foco no `body` por desenho — não são o caso do critério, mas fica escrito.
+
 ## Regras de método que ficaram desta ronda
 
 - **Um teste de largura precisa de conteúdo que force a largura.** Medir um ecrã vazio dá sempre verde — foi o que quase deixou passar o scroll de `/transacoes` (o utilizador do `globalSetup` não tem transações). Se um teste mede layout, os dados que provocam o problema têm de existir no próprio teste.

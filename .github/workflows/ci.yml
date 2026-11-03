@@ -56,7 +56,6 @@ jobs:
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/financas?schema=public
       BETTER_AUTH_SECRET: ci-only-secret-not-used-for-real-sessions-000000
       BETTER_AUTH_URL: http://localhost:3000
-      CRON_SECRET: ci-only-cron-secret
       NODE_ENV: test
       CI: 'true'
 
