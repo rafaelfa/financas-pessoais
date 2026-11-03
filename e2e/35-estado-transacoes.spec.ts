@@ -17,13 +17,7 @@ import {
   idDoLancamento,
   lerLancamento,
 } from './support/db';
-import {
-  abrirRota,
-  escolherNoSelect,
-  entrarPelaInterface,
-  hojeEmLisboa,
-  lancarGasto,
-} from './support/ui';
+import { abrirRota, escolherNoSelect, hojeEmLisboa, lancarGasto } from './support/ui';
 
 /**
  * F8.5 — mudar o estado de um lançamento de «por confirmar» para «confirmado» e
@@ -45,10 +39,10 @@ import {
  * apontava `test.use({ storageState })` a um ficheiro escrito no `beforeAll` e o
  * Playwright tentava lê-lo antes de ele existir (`ENOENT` em
  * `e2e/.auth/estado-transacoes.json`, medido na corrida de 2026-10-11). Cada
- * teste entra pela interface com `entrarPelaInterface`, que é a via que o
- * utilizador próprio do `20-autenticacao.spec.ts` já usa e não depende de ordem
- * nenhuma entre ficheiros. Custa quatro entradas a mais; em troca, o spec corre
- * de uma corrida limpa, sem `e2e/.auth/` pré-existente.
+ * teste recebe o cookie de sessão de uma entrada feita **uma vez** no
+ * `beforeAll`, por HTTP — quatro entradas pela interface esbarravam no
+ * *rate limit* do better-auth. Em troca, o spec corre de uma corrida limpa, sem
+ * `e2e/.auth/` pré-existente.
  *
  * A ordem dos passos é a do utilizador: `lancarGasto` cria o lançamento pela
  * interface; para o cenário ficar exatamente «por confirmar», o `status` é
@@ -181,6 +175,13 @@ async function medirAviso(
   };
 }
 
+/**
+ * O estado é mostrado em dois sítios na linha (a tabela tem uma versão para
+ * ecrã estreito e outra para largo, ambas no DOM, uma escondida por CSS): o
+ * `getByText` encontra as duas e o `.filter({ visible: true })` fica com a que
+ * o utilizador vê.
+ */
+
 /** A linha do extrato pela descrição (única na corrida). */
 function linhaDoLancamento(page: Page, descricao: string): Locator {
   return page.getByRole('row', { name: new RegExp(descricao) });
@@ -252,6 +253,42 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
   const medidas: Record<string, unknown> = { email, medidoEm: new Date().toISOString() };
   let sufixo = '';
 
+  /*
+   * Sessão em cada teste, sem passar pelo formulário de entrada.
+   *
+   * O `storageState` está vazio de propósito e o `beforeAll` cria o utilizador
+   * por HTTP. Sem sessão, três dos testes abriam `/transacoes`, eram desviados
+   * para `/entrar` e ficavam à espera do formulário de lançamento rápido numa
+   * página onde ele não existe — era a segunda metade da falha, a par do
+   * localizador «Natureza».
+   *
+   * A entrada é feita **uma vez** no `beforeAll` (por HTTP) e o cookie de sessão
+   * é injetado no contexto de cada teste. Entrar pela interface quatro vezes
+   * seguidas esbarrava no *rate limit* do better-auth (10/min em
+   * `/sign-in/email`): na suite completa os testes ficavam em `/entrar`. Com um
+   * único `sign-in`, o número de pedidos de autenticação deste spec passa de 4
+   * para 1.
+   */
+  let cookieDaSessao: { readonly name: string; readonly value: string } | undefined;
+
+  test.beforeEach(async ({ page }) => {
+    if (cookieDaSessao === undefined) {
+      throw new Error('o beforeAll não deixou cookie de sessão');
+    }
+
+    await page.context().addCookies([
+      {
+        name: cookieDaSessao.name,
+        value: cookieDaSessao.value,
+        domain: 'localhost',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+      },
+    ]);
+  });
+
   test.beforeAll(async () => {
     sufixo = Date.now().toString(36);
 
@@ -269,6 +306,32 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
         registo.status(),
         `o registo devolveu ${registo.status()}: ${await registo.text()}`,
       ).toBeLessThan(400);
+
+      const entrada = await contexto.post('/api/auth/sign-in/email', {
+        data: { email, password: PALAVRA_PASSE },
+      });
+
+      expect(entrada.status(), `a entrada devolveu ${entrada.status()}`).toBeLessThan(400);
+
+      const cabecalho = entrada
+        .headersArray()
+        .filter((cabecalhoHttp) => cabecalhoHttp.name.toLowerCase() === 'set-cookie')
+        .map((cabecalhoHttp) => cabecalhoHttp.value)
+        .find((valor) => valor.includes('session_token'));
+
+      if (cabecalho === undefined) {
+        throw new Error('a entrada não devolveu o cookie de sessão');
+      }
+
+      const [par, ...resto] = cabecalho.split(';')[0]?.split('=') ?? [];
+      const nome = par ?? '';
+      const valor = resto.join('=');
+
+      if (nome === '' || valor === '') {
+        throw new Error('cookie de sessão ilegível');
+      }
+
+      cookieDaSessao = { name: nome, value: valor };
     } finally {
       await contexto.dispose();
     }
@@ -298,7 +361,6 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
   test('(c) o estado por omissão de um lançamento criado na interface', async ({ page }) => {
     const descricao = `F85 omissao ${sufixo}`;
 
-    await entrarPelaInterface(page, { email, palavraPasse: PALAVRA_PASSE });
     await abrirRota(page, '/transacoes');
     await lancarGasto(page, {
       valor: '11,11',
@@ -358,7 +420,9 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
     const linha = linhaDoLancamento(page, descricao);
 
     await expect(linha).toBeVisible();
-    await expect(linha.getByText('Por confirmar', { exact: true })).toBeVisible();
+    await expect(
+      linha.getByText('Por confirmar', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
 
     const textoAntes = await textoDaLinha(linha);
 
@@ -368,7 +432,9 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
       `[F8.5] «Confirmar» → HTTP ${confirmar.acao.statusHttp} · base ${confirmar.antes} → ${confirmar.depois} · aviso=${confirmar.aviso.apareceu}`,
     );
 
-    await expect(linha.getByText('Confirmado', { exact: true })).toBeVisible();
+    await expect(
+      linha.getByText('Confirmado', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
 
     const textoDepoisDeConfirmar = await textoDaLinha(linha);
 
@@ -378,7 +444,9 @@ test.describe('F8.5 — o estado do lançamento muda mesmo?', () => {
       `[F8.5] «Ignorar» → HTTP ${ignorar.acao.statusHttp} · base ${ignorar.antes} → ${ignorar.depois} · aviso=${ignorar.aviso.apareceu}`,
     );
 
-    await expect(linha.getByText('Ignorado', { exact: true })).toBeVisible();
+    await expect(
+      linha.getByText('Ignorado', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
 
     const textoDepoisDeIgnorar = await textoDaLinha(linha);
 

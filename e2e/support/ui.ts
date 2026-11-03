@@ -32,9 +32,22 @@ export async function abrirRota(page: Page, rota: string): Promise<void> {
   await expect(page.locator('body')).not.toContainText('Internal Server Error');
 }
 
-/** O formulário do lançamento rápido, em `/transacoes`. */
+/**
+ * O formulário do lançamento rápido, em `/transacoes`.
+ *
+ * O localizador antigo era `filter({ hasText: 'Natureza' })`. O seletor de
+ * natureza saiu de dentro do `<form>` (passou a três botões — Gasto, Ganho,
+ * Transferência — fora dele, `transaction-quick-add.tsx`), e o texto deixou de
+ * existir no formulário: o helper procurava um formulário que já não existe.
+ *
+ * O âmbito passa a ser o **campo** `Valor`, que continua dentro do `<form>` e tem
+ * `label` ligado (`htmlFor`). É o único campo com o nome acessível exatamente
+ * «Valor» na aplicação (os diálogos usam «Valor (€)» e as tabelas usam células,
+ * não `label`), por isso não há ambiguidade; ainda assim o `has` é avaliado
+ * dentro de cada `form`, portanto não depende de unicidade na página.
+ */
 export function formularioDeLancamentoRapido(page: Page): Locator {
-  return page.locator('form').filter({ hasText: 'Natureza' });
+  return page.locator('form').filter({ has: page.getByLabel('Valor', { exact: true }) });
 }
 
 /** Espera pelo aviso (toast) com o texto indicado. */

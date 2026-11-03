@@ -186,7 +186,9 @@ o gate continua verde e os 522 testes continuam.
 flutuante.
 
 | T9  | Correr o e2e contra `next start` (build de produção) em vez de `next dev`: o *overlay* de desenvolvimento interceta cliques | Dev | aberta | `relatorios/T9.md` |
-| T10 | Investigar 3 e2e de `35-estado-transacoes` que falham: o formulário rápido (`hasText: 'Natureza'`) não aparece | Dev | aberta (pré-existente, não bloqueia T3) | `relatorios/T10.md` |
+| T26 | **Editar um lançamento pela interface dá HTTP 500** em produção: `updateTransaction` faz `createTransactionSchema.partial()` e o schema tem `superRefine`, que no Zod 4 lança | Dev | Dev done (67/67 e2e); em prova QA | `relatorios/T26.md` |
+| T27 | **Editar uma transferência é impossível pela interface:** o diálogo envia sempre `accountId` e a ação recusa "por presença do campo", mesmo quando o valor não muda | Dev | aberta (achado da T26) | `relatorios/T27.md` |
+| T10 | Investigar 3 e2e de `35-estado-transacoes` que falham | QA | **fechada** (localizador + sessão em falta; a 4.ª falha revelou a T26) | `relatorios/T10.md` |
 
 ## Baseline do e2e (2026-11-01, ramo Neon de teste)
 
@@ -437,7 +439,7 @@ deve criar movimento, e a base tem de ficar com **um** pagamento e **um** movime
   concorrente do montante grava o valor antigo. Risco teórico, registado.
 
 | T17 | **Acessibilidade dos ecrãs novos:** `FormLabel` sem `htmlFor` (campos só alcançáveis por placeholder) e os dois ecrãs fora da varredura do axe | Dev | a fazer | `relatorios/T17.md` |
-| T18 | O e2e do pagamento conta os movimentos (+1) mas não confere o montante do movimento criado | QA | aberta (junta à T17) | `relatorios/T3.md` |
+| T18 | O e2e do pagamento conta os movimentos (+1) mas não confere o montante do movimento criado | QA | **fechada** (montante, `kind`, estado, `settled` e conta conferidos; 9 verdes em duas execuções) | `relatorios/T3.md` |
 
 ## Registo — T3 (2026-11-01)
 
@@ -659,6 +661,223 @@ ruído de estrutura.
 paleta **aberta**, o diálogo continua nomeado (o teste da T21 e o axe do 80 continuam verdes).
 
 **O que NÃO fazer:** não mexer no `<Command>{children}</Command>` da T21, nem no `command-palette.tsx`.
+
+| T23 | **Polimento visual aprovado pelo utilizador:** scroll horizontal em `/transacoes`, 6 frases em pt-BR, cartões sem destaque no escuro e património sem hierarquia no Painel | Dev | **fechada** (Dev + QA + Revisor; 0 rotas com excesso em 56 medições, contraste 14,2:1, 15 frases) | `relatorios/T23.md` · `relatorios/T23-qa.md` |
+| T24 | **T22:** o `DialogHeader` do `CommandDialog` vive fora do `DialogContent`, por isso o `<h2>` «Ir para» está sempre no DOM | Dev | aberta (fase própria; não bloqueia nada) | `relatorios/T24.md` |
+
+## T23 — Polimento visual (aprovado pelo utilizador)
+
+**Contexto:** o utilizador disse que a app está «muito básica» e autorizou este conjunto depois de eu medir em
+produção e o Revisor mapear o código (`relatorios/T23-mapa-visual-revisor.md`). Não é um redesenho: são quatro
+coisas pequenas, três delas defeitos. **Fora do âmbito, de propósito:** reestilizar `ui/card.tsx` (23 ficheiros,
+29 cartões, todos os ecrãs) e criar sparkline (não existe componente; é trabalho novo).
+
+**Ficheiros que pode escrever:**
+`apps/web/src/components/ui/sidebar.tsx`, `apps/web/src/app/(app)/consolidacao-contas/page.tsx`,
+`apps/web/src/components/receivable-payable-dialog.tsx`, `apps/web/src/app/globals.css`,
+`apps/web/src/components/kpi-card.tsx`, `apps/web/src/components/page-header.tsx`,
+`apps/web/src/app/(app)/page.tsx` e **um** spec novo `e2e/16-largura.spec.ts`. Mais nada.
+
+### 1. Scroll horizontal em `/transacoes` (defeito)
+
+**Medido:** a 1200 px de largura de janela, `document.documentElement.scrollWidth = 1309` contra `innerWidth = 1200`
+— 109 px a mais. **Causa (Revisor, confirmada por eliminação):** `SidebarInset` (`sidebar.tsx:293-298`) é um *flex
+item* `w-full flex-1` **sem `min-w-0`**; o `min-width:auto` não o deixa encolher abaixo do `min-content` do
+conteúdo, e esse mínimo é a tabela (`whitespace-nowrap` em `ui/table.tsx:60,72`). O `overflow-x-auto` da tabela
+nunca chega a rolar porque o pai cresceu com ela.
+
+**Correção esperada:** `min-w-0` no `SidebarInset`, uma classe. **Não** mexer na tabela partilhada.
+
+### 2. Português de Portugal em todo o lado (defeito)
+
+Seis frases em pt-BR no meio de uma app em pt-PT — e uma delas agramatical em qualquer variante:
+
+- `consolidacao-contas/page.tsx:22` — «Agrupe suas contas…»
+- `consolidacao-contas/page.tsx:80` — «Crie grupos para consolidar suas contas…»
+- `consolidacao-contas/page.tsx:105` — «…áreas específicas da **sua finança**»
+- `receivable-payable-dialog.tsx:163,189,214` — «Registre uma conta que **você** precisa pagar», «Despesa que você precisa pagar», «Receita que você espera receber»
+
+Reescreve no registo do resto da app: **tu**, não você; «as tuas contas»; «as tuas finanças». Sem mudar o
+significado nem acrescentar frases novas.
+
+### 3. Cartões sem destaque no escuro (aspecto)
+
+**Medido:** no tema escuro, fundo `lab 6.17`, cartão `lab 11.23`, contorno `lab 21.10` — a separação vem quase só
+do contorno. E existe já um token com o tom certo, **a zero usos**: `--surface-raised` (`globals.css:134`).
+
+**Correção esperada:** no `.dark`, aproximar `--card` do valor que `--surface-raised` já tem (~`oklch(0.27 …)`).
+Umas linhas em `globals.css`. **O tema claro não muda.** O contorno continua a existir.
+
+### 4. O património não é o herói (hierarquia)
+
+**Medido:** no Painel, os quatro números são todos `28px/600` e os cartões têm todos `113px` — «Património líquido
+7556,43 €» tem o mesmo peso que «Saídas do mês 0,00 €». Pior: o `h1` da página é `24px` (`page-header.tsx:20`),
+ou seja **o indicador é maior que o título da página**.
+
+**Correção esperada:**
+- `kpi-card.tsx`: prop **opcional** `prominent` (ex.: `text-4xl` no valor). Por omissão, tudo como está.
+- `page.tsx`: usar `prominent` **só** no cartão do património.
+- `page-header.tsx`: subir o `h1` de `text-2xl` para `text-3xl`, para a hierarquia não ficar invertida.
+- Os outros 13 KPIs (Orçamento, Relatórios) **não mudam**.
+
+**Critério de aceitação (verificável, cola a prova):**
+
+1. `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (522) e `pnpm build` — todos exit 0.
+2. Spec novo `e2e/16-largura.spec.ts`: nas 14 rotas autenticadas, `scrollWidth <= innerWidth + 1` a 1200 px e a
+   1024 px. **Prova ao contrário:** sem o `min-w-0`, o spec tem de falhar em `/transacoes` (cola as duas execuções).
+3. Nenhuma das seis frases em pt-BR fica; `grep` a `você|suas|Agrupe|Registre` nos ficheiros de produto devolve 0.
+   Cola o `grep`.
+4. No escuro, mede com `getComputedStyle` a luminância do fundo e do cartão **antes e depois** e cola os dois
+   valores; o cartão tem de ficar mais claro que antes e o texto continuar legível (contraste do `foreground`
+   sobre o cartão ≥ 4.5:1, cola o cálculo). No tema claro, os valores **não** mudam.
+5. No Painel: o valor do património fica `≥ 36px` e os outros três continuam `≤ 28px`; o `h1` fica `30px`. Cola as
+   quatro medições e um par de imagens antes/depois.
+6. `git diff --stat` limitado aos oito ficheiros acima.
+
+**O que NÃO fazer:** não tocar em `ui/card.tsx`; não criar componente de sparkline; não acrescentar dependências;
+não mudar rótulos, ordem do menu nem `MOBILE_NAV`; não mexer nos specs 80/90; não commitar nem fazer push.
+
+## Registo de fecho — T23 (2026-11-01)
+
+**Cinco rondas de Dev, porque o âmbito cresceu três vezes — e isso está registado como erro meu, não do Dev.**
+Cada varredura de pt-BR encontrava mais frases (6 → 11 → 15). Fechei a extensão quando o padrão deu zero.
+
+- **Scroll (defeito):** `min-w-0` no `SidebarInset` (`sidebar.tsx:298`). Antes: 5 rotas com excesso — `/transacoes` +109 e
+  `/recorrencias` +94 a 1200; `/transacoes` +256, `/cartoes` +124, `/recorrencias` +256 a 1024. Depois: **0 rotas com excesso**
+  em 14 rotas × 2 larguras × 2 conjuntos de dados = **56 medições**. A tabela passou a rolar **dentro** do `overflow-x-auto`.
+- **Teste que guarda o defeito:** `e2e/16-largura.spec.ts` (28 casos). Sem a classe → `1 failed / 27 passed`; com ela →
+  `28 passed`. **Armadilha apanhada a meio caminho:** a primeira versão passava por acidente porque o utilizador do `globalSetup`
+  não tinha transações — sem tabela não há largura mínima. O spec passou a criar e apagar dados no `beforeAll`/`afterAll`.
+  Limite conhecido: com esses dados falha a 1024 e não a 1200; com os dados da demo falha nas duas (verificado pelo QA e pelo Revisor).
+- **pt-BR:** **15 frases** corrigidas em 5 ficheiros. Não são 6: as rondas mostraram que o texto da app foi escrito com registos
+  diferentes. **7 strings ficaram de fora e estão na T25** — 4 delas só apareceram na varredura do QA (dois *toasts* «ao salvar»,
+  «Não consegui registrar o pagamento», `placeholder="Aluguel"`). **O critério «zero pt-BR» não se cumpriu na T23**; cumpre-se na T25.
+- **Escuro:** `--card` `0.235 → 0.26` (fundo `L*6.17`, cartão `L*11.23 → 14.13`). Contraste do texto **14,18:1**, rótulos
+  **5,82:1**. Tema claro **inalterado** (fundo `L*98,89`, cartão `L*100`, 17,35:1).
+- **Efeito secundário que a nossa mudança criou, e que fechámos na 5.ª ronda:** ao subir o cartão, a separação cartão↔superfícies
+  internas caiu de **4,06 → 1,16** níveis de luminosidade; o rodapé da tabela e o *hover* fundiam-se com o cartão. Corrigido
+  subindo `--muted` `0.27 → 0.31` e `--secondary` `0.28 → 0.32` no `.dark`: o salto voltou a **5,80** (`muted`) e **6,96**
+  (`secondary`), com `muted-foreground` sobre `muted` a **4,96:1**. **Não baixámos o cartão** — isso desfazia o que o utilizador aprovou.
+  Nota: a faixa do rodapé usa `bg-muted/50`, por isso mostra metade do salto (Δ 3,05). Se precisar de ser mais marcada, é
+  `ui/table.tsx:36` (`bg-muted` inteiro) — é desenho, não a correção pedida, e não foi tocado.
+- **Hierarquia:** `h1` `24 → 30px`; património `28 → 36px`; os outros três continuam a 28px; os **13 KPIs** de Orçamento e
+  Relatórios não mudaram (prop `prominent` opcional, omissão `false`).
+- **QA (prova própria):** 56 medições de scroll, prova ao contrário com rebuild, contrastes, hierarquia nos 6 ecrãs, 12 imagens
+  e regressão visual em Painel, Transações, Contas a pagar/receber, Objetivos, Orçamento e Relatórios. PASS, com a ressalva do pt-BR.
+- **Revisor:** aprovada. Confirmou o `min-w-0` em offcanvas (375px), `variant=inset` e colapso; o `prominent` sem efeito nos
+  outros KPIs; títulos longos a 768px sem sobreposição; e que os dados do spec são criados e apagados sem dependência de ordem.
+- Gate final: `format:check`, `lint` 4/4, `typecheck` 4/4, `test` (28 ficheiros, 522), `build` 2/2, spec 16 `28 passed`.
+- **Pendente:** commit e deploy (aguarda autorização do utilizador).
+
+## T24 — O título escondido da paleta está sempre no DOM (T22)
+
+**Achado do Revisor na T21.** Em `apps/web/src/components/ui/command.tsx:45-48` o `DialogHeader`/`DialogTitle`/
+`DialogDescription` são renderizados **fora** do `DialogContent`. O Radix resolve o nome acessível do diálogo à
+mesma (`aria-labelledby` pelo contexto, e o axe deu 0 violações), mas o `<h2>` «Ir para» `sr-only` fica no DOM
+**sempre** — entra na lista de cabeçalhos e no fluxo de leitura de um leitor de ecrã em todas as páginas.
+
+**Correção mínima:** mover o `DialogHeader` para dentro do `DialogContent`. Nada mais.
+
+**Critério de aceitação:** com a paleta **fechada**, `aria-hidden` ao lado, o documento não tem o `<h2>` «Ir para»
+(teste no `e2e/15-navegacao.spec.ts`); com a paleta **aberta**, o diálogo continua com nome acessível e o teste
+atual passa. Axe do 80 continua verde. Gate completo verde.
+
+
+| T25 | **Microcopy: as 7 strings de pt-BR que sobraram** — inclui as 3 que a T23 deixou de fora e as 4 que só o QA encontrou (toasts «ao salvar», «registrar», placeholder «Aluguel») | Dev | aberta (2026-11-01; nenhuma bloqueia) | `relatorios/T25.md` |
+
+## T25 — Microcopy: o resto da lista fechada na T23
+
+**Porque existe:** durante a T23 a correção do pt-BR foi crescendo a cada varredura (6 → 11 → 15 frases). Fechei o âmbito quando o padrão deu zero e mandei deixar o resto **registado em vez de corrigido**, para a tarefa não andar sem fim. Esta é essa lista, fechada pelo Dev no `relatorios/T23.md` §2 e §3.
+
+**As 7 ocorrências por corrigir** (todas em texto de produto visível, nenhuma em comentário). As três primeiras foram registadas pelo Dev na T23; as quatro seguintes só apareceram na varredura do QA — e duas delas chegam ao utilizador por *toast*, que ninguém vê a ler o código:
+
+| Ficheiro:linha | Hoje | Proposta |
+|---|---|---|
+| `components/account-group-dialog.tsx:135` | toast «Ocorreu um erro ao **salvar** o grupo» | «…ao guardar o grupo» |
+| `components/account-group-dialog.tsx:146` | «Crie um grupo para consolidar várias contas **em uma** visualização.» | «Cria um grupo para consolidares várias contas numa visualização.» |
+| `components/account-group-dialog.tsx:148` | `submitLabel = 'Salvar Alterações'` | «Guardar alterações» |
+| `components/receivable-payable-dialog.tsx:152` | toast «…ao **salvar** a conta» | «…ao guardar a conta» |
+| `components/receivable-payable-dialog.tsx:165` | `submitLabel = 'Salvar Alterações'` | «Guardar alterações» |
+| `components/receivable-payable-dialog.tsx:235` | `placeholder="… Aluguel …"` | «… Renda …» (pt-PT; confirmar com o campo vizinho) |
+| `server/receivable-payable-actions.ts:252` | «Não consegui **registrar** o pagamento» — chega ao ecrã por `toast({ description: result.error })` | «…registar o pagamento» |
+
+**Atenção ao mexer nas duas `Salvar Alterações`:** ao contrário do resto, **estas estão assertadas em e2e** — `e2e/45-contas-pagar-receber.spec.ts:97` e `e2e/55-consolidacao-contas.spec.ts:125` procuram o texto. Mudar o rótulo obriga a atualizar os dois specs no mesmo passo, senão o gate fica vermelho.
+
+Nota: a lista completa do varrimento exaustivo (12 ocorrências) está no `relatorios/T23.md`, com 11 classificadas como **pt-PT correto em comentários** — não se tocam.
+
+**Critério de aceitação:** as sete substituídas; varredura larga (`você|suas |seus |Gerencie|Registre|Agrupe|Adicione|Visualize|Selecione|Preencha|Escolha|Comece|Crie |deseja|Digite|em uma|Salvar|registrar|Aluguel`) em texto de produto devolve **0 reais**; os dois e2e que assertam «Salvar Alterações» atualizados no mesmo passo (`45:97`, `55:125`); gate completo verde e spec afetado a passar.
+
+**O que NÃO fazer:** não transformar isto numa revisão de texto de toda a app; não mexer em comentários.
+
+## T10 — diagnóstico fechado (2026-11-01): não é defeito da aplicação
+
+O helper `formularioDeLancamentoRapido` (`e2e/support/ui.ts:36-38`) procura
+`locator('form').filter({ hasText: 'Natureza' })`. **O seletor de natureza saiu do formulário** e
+passou a três botões fora dele — `Gasto`, `Ganho`, `Transferência` — com o `kind` a entrar por prop
+(`kind: mode`, `transaction-quick-add.tsx:199`).
+
+Dentro do `<form>` ficaram: `Valor`, `Data`, `Cartão`, `Para a conta`, `Categoria`,
+`Número de parcelas`, `Descrição`. `grep -rn "Natureza" apps/web/src` só devolve os diálogos de
+categoria, recorrência e regra.
+
+**Provado em produção:** `/transacoes` tem os três botões e funcionam. A mudança veio de um commit
+de 2026-10-14 e ninguém deu por ela porque o CI estava vermelho desde essa data — o teste deixou de
+proteger o que dizia proteger, e a falha era invisível.
+
+**Correção:** pertence ao QA (é dono do `e2e/`): trocar o filtro por algo estável e acessível
+(`filter({ has: page.getByLabel('Valor', { exact: true }) })`), varrer os outros helpers à procura
+do mesmo apodrecimento e só depois exigir 34/34.
+
+## T26 — Editar lançamento devolve 500 (achado pela T10)
+
+**Como apareceu:** a T10 corrigiu o teste obsoleto e, com ele a correr outra vez, a quarta verificação
+falhou por motivo real. O teste estava a proteger um defeito que ninguém via há semanas.
+
+```
+⨯ Error: .partial() cannot be used on object schemas containing refinements
+  apps/web/src/server/transactions-actions.ts:446-447
+```
+
+`updateTransaction` faz `createTransactionSchema.partial()` e `createTransactionSchema` é
+`createTransactionShape.superRefine(...)` (`packages/shared/src/domain/transactions.ts:75`). No
+Zod 4, `.partial()` sobre um schema com refinamento **lança na chamada** — por isso é 500 na
+edição e o resto da aplicação funciona.
+
+**Consequência:** qualquer edição de lançamento pela interface falha. É o ecrã mais usado da app.
+
+**Já existe a peça certa:** `updateTransactionSchema` (`transactions.ts:147`), escrita à mão e sem
+`.partial()` sobre refinamento.
+
+**Varredura da mesma classe de defeito (feita pelo Lead):** os outros sete `.partial()` do projeto
+não correm risco — `budgetShape`, `goalShape`, `recurrenceShape`, `ruleShape` são *shapes* simples
+(é para isso que o sufixo `Shape` existe) e `createAccountSchema`, `createCreditCardSchema`,
+`createReceivablePayableSchema` e `createAccountGroupSchema` não têm refinamento. O refinamento de
+`accounts.ts:147` é de outra schema (compra parcelada). **Só a transação está afetada.**
+
+## T27 — Editar transferência está bloqueado (achado da T26)
+
+Com o 500 da T26 corrigido, a edição de uma **transferência** chega finalmente à regra de negócio —
+e é recusada sempre:
+
+> «Numa transferência não podes mudar a conta nem a categoria. Elimina-a e cria outra.»
+
+A regra recusa **pela presença do campo** `accountId`, e o diálogo de edição envia-o **sempre**
+(`transaction-edit-dialog.tsx:141`). Ou seja: com o 500 ou com a correção, editar uma transferência
+nunca funcionou — antes falhava antes de chegar à regra.
+
+**Candidatos de correção:** (a) a ação compara valores em vez de presença
+(`value.accountId !== existing.accountId`), que corresponde ao que a mensagem promete — só recusa
+quando muda; (b) o diálogo deixa de enviar `accountId` quando não mudou. A (a) é mais robusta
+porque protege também quem chame a ação por outro caminho; a decisão e a prova são da tarefa.
+
+**Não é regressão de nada que tenhamos feito** — é um caminho que nunca esteve alcançável.
+
+| T28 | **Endurecimento (opcional):** o schema de edição não exige o sinal do valor por tipo (a criação exige). Hoje nenhum caminho o explora; uma guarda de 2 linhas com `existing.kind` fecha-o | Dev | aberta (não bloqueia) | — |
+
+## Regras de método que ficaram desta ronda
+
+- **Um teste de largura precisa de conteúdo que force a largura.** Medir um ecrã vazio dá sempre verde — foi o que quase deixou passar o scroll de `/transacoes` (o utilizador do `globalSetup` não tem transações). Se um teste mede layout, os dados que provocam o problema têm de existir no próprio teste.
+- **Quando uma varredura de texto encontra uma frase, a lista do padrão está errada.** Corrigir a frase e voltar a correr; cada ronda encontrou mais. O critério de fim é o `grep` dar zero, não a lista de sítios que eu vi a olho.
 
 ## Regras
 

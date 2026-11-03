@@ -6,8 +6,9 @@ import {
   createTransactionSchema,
   createTransferSchema,
   splitInstallments,
+  updateTransactionSchema,
 } from '@repo/shared';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { todayInLisbon } from '@/lib/today';
 
@@ -443,10 +444,12 @@ export async function createTransfer(
 /** Altera um lançamento. Numa transferência, o valor é espelhado no par. */
 export async function updateTransaction(input: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
-  const parsed = createTransactionSchema
-    .partial()
-    .extend({ id: z.string().min(1) })
-    .safeParse(input);
+  /*
+   * `updateTransactionSchema` e não `createTransactionSchema.partial()`: no Zod 4,
+   * `.partial()` sobre um schema com `superRefine` lança na construção, e a edição
+   * respondia 500. Este schema é o que o formulário já usa para validar.
+   */
+  const parsed = updateTransactionSchema.safeParse(input);
 
   if (!parsed.success) {
     return fromZodError(parsed.error);
