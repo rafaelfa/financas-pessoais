@@ -1024,6 +1024,117 @@ logo fecham com o foco no `body` por desenho — não são o caso do critério, 
 
 | T37 | **Foco perdido nos diálogos abertos pela lista** (edição, pagamento): 5 de 6 modos de fecho deixam o foco no `body`, não na linha/cartão de origem | Dev | aberta (achado da T36; nunca tiveram gatilho) | `relatorios/T37.md` |
 
+| T38 | **Ecrã de bens e dívidas:** o património líquido conta com eles e não havia forma de os registar | Dev | **fechada** (QA 8/8; suite 87/87; `e2e/26-patrimonio.spec.ts`) | `relatorios/T38.md` |
+| T41 | **O Painel só mostra os KPIs quando há lançamentos** (`hasData`): quem registe bens e dívidas sem movimentos vê o estado vazio e o património existe sem se ver | Dev | aberta (achado da T38) | — |
+| T42 | **O património líquido do Painel ignora as faturas de cartão abertas e o valor dos objetivos** | Dev | Dev done (fatura −25 000, objetivo +50 000; ambos os ecrãs iguais); em prova QA | `relatorios/T42.md` |
+
+## T38 — ecrã de bens e dívidas (medido antes de planear)
+
+Antes de planear, a base de teste dizia: **0 bens, 0 dívidas** — o património do Painel era só contas
+menos cartões. Confirmava a queixa do utilizador.
+
+Resultado (pela interface, valores da base e do Painel):
+
+```
+Painel inicial                         0
+bem «Casa» 12.500,00           → base 1250000 · Painel 1 250 000
+dívida 3.000,00 (3,50 % → 350 bp) → Painel 950 000
+editar o bem para 13.000,00    → base 1300000 · Painel 1 000 000
+arquivar o bem                 → linha fica, `archivedAt` preenchido · Painel −300 000
+valor 0 / datas trocadas       → mensagem no campo, 0 linhas criadas
+telemóvel 393×727              → Drawer, «Registar bem» 639–671 dentro de 727
+```
+
+Testes: 522 → **541** (19 de schema). Gate verde.
+
+**Fora da lista pedida, com justificação aceite:** `server/dashboard.ts` (o `netWorth()` era chamado
+sem `assets`/`liabilities` — sem isto o critério 1 era impossível) e `packages/db/smoke.mjs`
+(a `/patrimonio` no fumo, que o próprio âmbito pedia).
+
+**Complexidades acima da referência:** `updateLiability` 15, `createAsset`/`updateAsset`/`createLiability`
+6–10. Vêm do idioma de updates parciais que o projeto j谩 usa (`...(value.x !== undefined ? …)`), o
+mesmo do `updateTransaction` (14). Não se baixa sem perder tipos do Prisma — fica declarado.
+
+## T38 — objeções DEVE do Revisor (2026-11-03)
+
+**(a) Dois «património líquido» com fórmulas diferentes.** A página faz `bens − dívidas` inline
+(`patrimonio/page.tsx:30`) enquanto o Painel usa `netWorth({accounts, assets, liabilities})`
+(`dashboard.ts:249`). Com 10 000 € em contas, 200 000 € de casa e 150 000 € de crédito, o Painel diz
+**60 000 €** e a página diz **50 000 €** — o mesmo nome, dois números. O comentário do próprio
+ficheiro diz que usa o motor, e não usa.
+
+**(b) Não se pode gravar uma dívida liquidada.** `positiveCentsSchema` (exige > 0) foi usado para
+`valueInCents`, `outstandingInCents` e `installmentAmountInCents`; uma dívida a 0,00 € devolve «O valor
+tem de ser maior que zero». `nonNegativeCentsSchema` existe precisamente para saldos e valores de bens.
+
+**Confirmações úteis do Revisor:** não há duplicação com contas/cartões/faturas (chaves distintas do
+*breakdown*); o filtro de arquivados está nas consultas, como nas categorias; todas as consultas levam
+`userId`; as duas queries novas viajam no `Promise.all` que já existia. E a razão pela qual o T26 não
+se repete aqui: o `.partial()` corre sobre o `liabilityShape` **antes** do refinamento.
+
+## Nota honesta sobre o critério «zero» da T38
+
+O critério 5 que escrevi pedia «valor 0 → mensagem». O Revisor depois mostrou que **uma dívida
+liquidada tem de poder gravar-se a 0,00 €** e a correção passou a aceitar zero (`nonNegativeCentsSchema`,
+e o mesmo para bens). O QA fez bem em assinalar a contradição: **o critério estava errado, não o
+código**. O teste e2e ficou com o comportamento real e um comentário; a regra é «zero é válido»,
+por decisão registada — quem mudar isso muda também o schema e o teste.
+
+## T42 — O património líquido do Painel está incompleto (achado do Revisor na T38)
+
+`dashboard.ts:249` chama `netWorth({ accounts, transactions, assets, liabilities, upTo })` e **não
+passa `invoices` nem `goalMovements`**. Só que a fórmula está escrita no próprio módulo
+(`packages/shared/src/finance/netWorth.ts:17-23`):
+
+> `ativos = saldos em conta + investimentos + bens` · `passivos = fatura de cartão aberta + dívidas`
+> e, por decisão documentada, **o valor acumulado em objetivos conta como ativo**.
+
+Faltam, portanto, duas parcelas reais: **a dívida dos cartões** (faturas abertas) — que faz o número
+sair **inflacionado** — e **o valor em objetivos** — que o faz sair **subavaliado**. O `NetWorthBreakdown`
+já tem `invoicesInCents` e `goalsInCents`; o Painel simplesmente não lhes dá dados.
+
+Isto é anterior ao nosso trabalho, mas torna-se mais sério agora: até hoje a página de património e o
+Painel discordavam; agora mostram **o mesmo número errado nos dois sítios**, e a confiança que isso
+transmite é pior do que a incoerência anterior.
+
+**Correção esperada:** carregar as faturas abertas e os movimentos de objetivo no `dashboard.ts` e
+passá-los ao motor (as consultas já existem em `server/invoices.ts` e `server/goals.ts`), sem escrever
+a fórmula no `dashboard`. Prova: um cartão com fatura aberta de X faz o património descer X, e um
+objetivo com Y acumulado faz subir Y — medido nos dois ecrãs.
+
+## Duas instruções minhas que estavam erradas (T42-b), registadas
+
+1. **Tirar três colunas do `select` dos objetivos: não é possível sem mexer no motor.** `FinanceGoal`
+   (`packages/shared/src/finance/types.ts:139`) exige `targetAmountInCents`, `targetDate` e
+   `contributionFrequency`, apesar de o `netWorth` só ler dois campos. O Dev aplicou, viu o
+   `TS2322`, e **reverteu em vez de fazer cast ou de inventar valores** — fez bem. As três colunas
+   custam bytes; mudar o contrato do motor (usado também pelo `goalProgress`) para poupar bytes não se
+   justifica. **Decisão: ficam.**
+2. **O critério «`grep toRecurrenceFrequency` → 0» era inválido**: a função também serve as
+   recorrências (`dashboard.ts:334`), que nada têm a ver com objetivos. Devia ter pedido «0 no bloco
+   dos objetivos», não no ficheiro.
+
+**O que ficou feito e provado:** o filtro de data na consulta dos movimentos
+(`date: { lte: today }`), com os cinco números do breakdown idênticos ao cêntimo.
+
+## T44 — Duplicação do mapeamento de objetivos (declarada, do Revisor)
+
+A conversão dos movimentos de objetivo para o tipo do motor está escrita em dois sítios:
+`goals.ts:75-81` (ecrã `/objetivos`) e dentro do `dashboard.ts` (património). O Revisor identificou o
+corte: `toFinanceGoal` e `toFinanceGoalMovement` para `server/mapping.ts`, ao lado de
+`toFinanceInvoice`, usados pelos dois — com a terceira variante (`goals.ts:178`) a ficar com os campos
+extra que só ela tem.
+
+**Porque não entrou já:** o corte mexe em `goals.ts`, que serve uma página fechada e testada, para
+ganhar estrutura e não comportamento. O custo/risco de o fazer na véspera de publicar é maior do que
+o da duplicação existir mais uma semana. Fica registado com o sítio exato.
+
+**Achados menores do mesmo Revisor, a corrigir já (T42-b):** o `select` dos objetivos traz
+`targetAmountInCents`, `targetDate` e `contributionFrequency` que o `netWorth` não lê (`netWorth.ts:57`
+só usa `id` e `initialReservedInCents`), e o `toRecurrenceFrequency` é peso morto; e
+`goalMovement.findMany` não tem filtro de data, pelo que o *payload* cresce sem tecto (o motor
+descarta depois, mas os dados já viajaram).
+
 ## Regras de método que ficaram desta ronda
 
 - **Um teste de largura precisa de conteúdo que force a largura.** Medir um ecrã vazio dá sempre verde — foi o que quase deixou passar o scroll de `/transacoes` (o utilizador do `globalSetup` não tem transações). Se um teste mede layout, os dados que provocam o problema têm de existir no próprio teste.

@@ -23,7 +23,13 @@ import {
   type DashboardScopeChoices,
 } from './dashboard-scope';
 import { loadInvoiceContext } from './invoice-context';
-import { toFinanceAccount, toFinanceCategory, toFinanceTransaction } from './mapping';
+import {
+  toFinanceAccount,
+  toFinanceCategory,
+  toFinanceInvoice,
+  toFinancePayment,
+  toFinanceTransaction,
+} from './mapping';
 import { requireUser } from './session';
 
 export type { DashboardScope, DashboardView } from './dashboard-scope';
@@ -159,22 +165,73 @@ export async function getDashboard(scopeParams?: {
   const requestedView = dashboardViewFromParam(scopeParams?.view);
   const requestedId = scopeParams?.id ?? null;
 
-  const [accounts, transactions, categories, lastTransaction, recurrences, invoiceContext] =
-    await Promise.all([
-      prisma.financialAccount.findMany({ where: { userId: user.id } }),
-      prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
-      prisma.category.findMany({
-        where: { userId: user.id, archivedAt: null },
-        select: { id: true, name: true, kind: true, parentId: true, isInternal: true },
-      }),
-      prisma.transaction.findFirst({
-        where: { userId: user.id },
-        orderBy: { date: 'desc' },
-        select: { date: true },
-      }),
-      prisma.recurrence.findMany({ where: { userId: user.id, isActive: true } }),
-      loadInvoiceContext(user.id, today),
-    ]);
+  const [
+    accounts,
+    transactions,
+    categories,
+    lastTransaction,
+    recurrences,
+    invoiceContext,
+    assets,
+    liabilities,
+    invoices,
+    invoicePayments,
+    goals,
+    goalMovements,
+  ] = await Promise.all([
+    prisma.financialAccount.findMany({ where: { userId: user.id } }),
+    prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
+    prisma.category.findMany({
+      where: { userId: user.id, archivedAt: null },
+      select: { id: true, name: true, kind: true, parentId: true, isInternal: true },
+    }),
+    prisma.transaction.findFirst({
+      where: { userId: user.id },
+      orderBy: { date: 'desc' },
+      select: { date: true },
+    }),
+    prisma.recurrence.findMany({ where: { userId: user.id, isActive: true } }),
+    loadInvoiceContext(user.id, today),
+    /*
+     * Bens e dívidas entram no património líquido. Sem estas duas consultas o
+     * `netWorth` recebia `undefined` e o número do Painel era, na prática, só
+     * contas menos cartões — mesmo com a fórmula correta do lado do motor.
+     */
+    prisma.asset.findMany({
+      where: { userId: user.id, archivedAt: null },
+      select: { id: true, valueInCents: true },
+    }),
+    prisma.liability.findMany({
+      where: { userId: user.id, archivedAt: null },
+      select: { id: true, outstandingInCents: true },
+    }),
+    /*
+     * As duas parcelas que faltavam ao património: faturas de cartão (passivo) e
+     * valor acumulado nos objetivos (ativo). O motor já as sabe somar; o Painel
+     * é que não lhas dava.
+     */
+    prisma.invoice.findMany({ where: { userId: user.id } }),
+    prisma.invoicePayment.findMany({ where: { userId: user.id } }),
+    prisma.goal.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        targetAmountInCents: true,
+        initialReservedInCents: true,
+        targetDate: true,
+        contributionFrequency: true,
+      },
+    }),
+    /*
+     * `date` é `@db.Date`: a comparação é de calendário, não de instante. O motor
+     * voltaria a descartar o que passa de `today`, mas os dados não precisam de
+     * viajar para serem ignorados.
+     */
+    prisma.goalMovement.findMany({
+      where: { userId: user.id, date: { lte: new Date(today) } },
+      select: { goalId: true, type: true, amountInCents: true, date: true },
+    }),
+  ]);
 
   const financeAccounts = accounts.map(toFinanceAccount);
   const financeTransactions = transactions.map(toFinanceTransaction);
@@ -228,6 +285,23 @@ export async function getDashboard(scopeParams?: {
   const patrimony = netWorth({
     accounts: financeAccounts,
     transactions: financeTransactions,
+    assets,
+    liabilities,
+    invoices: invoices.map(toFinanceInvoice),
+    invoicePayments: invoicePayments.map(toFinancePayment),
+    goals: goals.map((goal) => ({
+      id: goal.id,
+      targetAmountInCents: goal.targetAmountInCents,
+      initialReservedInCents: goal.initialReservedInCents,
+      targetDate: goal.targetDate.toISOString().slice(0, 10),
+      contributionFrequency: toRecurrenceFrequency(goal.contributionFrequency),
+    })),
+    goalMovements: goalMovements.map((movement) => ({
+      goalId: movement.goalId,
+      type: movement.type === 'WITHDRAWAL' ? 'withdrawal' : 'deposit',
+      amountInCents: movement.amountInCents,
+      date: movement.date.toISOString().slice(0, 10),
+    })),
     upTo: today,
   });
 

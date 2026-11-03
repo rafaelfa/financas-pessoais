@@ -36,6 +36,7 @@ const ROUTES = [
   '/',
   '/transacoes',
   '/contas',
+  '/patrimonio',
   '/categorias',
   '/cartoes',
   '/orcamento',

@@ -460,3 +460,120 @@ export async function lerMovimentoDoPagamento(
     };
   });
 }
+
+/* ------------------------------------------------------------------------- *
+ * Património — bens e dívidas (T38)
+ *
+ * Leitura e limpeza para `26-patrimonio`. A base confirma o que a interface
+ * escreveu (valor, arquivo) e apaga o que o spec criou; não prepara o caminho.
+ * ------------------------------------------------------------------------- */
+
+/** Um bem lido da base. */
+export interface BemMedido {
+  readonly id: string;
+  readonly valueInCents: number;
+  readonly archivedAt: string | null;
+}
+
+/** O bem do utilizador com este nome exato. */
+export async function lerBem(email: string, nome: string): Promise<BemMedido | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT a.id, a."valueInCents" AS valor, a."archivedAt" AS arquivado
+         FROM asset a
+         JOIN "user" u ON u.id = a."userId"
+        WHERE u.email = $1 AND a.name = $2
+        ORDER BY a."createdAt" DESC
+        LIMIT 1`,
+      [email, nome],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return {
+      id: String(row.id),
+      valueInCents: Number(row.valor),
+      archivedAt: row.arquivado === null ? null : String(row.arquivado),
+    };
+  });
+}
+
+/** Uma dívida lida da base. */
+export interface DividaMedida {
+  readonly id: string;
+  readonly principalInCents: number;
+  readonly outstandingInCents: number;
+  readonly archivedAt: string | null;
+}
+
+/** A dívida do utilizador com este nome exato. */
+export async function lerDivida(email: string, nome: string): Promise<DividaMedida | undefined> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT l.id, l."principalInCents" AS capital, l."outstandingInCents" AS saldo,
+              l."archivedAt" AS arquivado
+         FROM liability l
+         JOIN "user" u ON u.id = l."userId"
+        WHERE u.email = $1 AND l.name = $2
+        ORDER BY l."createdAt" DESC
+        LIMIT 1`,
+      [email, nome],
+    );
+
+    const row = result.rows[0];
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return {
+      id: String(row.id),
+      principalInCents: Number(row.capital),
+      outstandingInCents: Number(row.saldo),
+      archivedAt: row.arquivado === null ? null : String(row.arquivado),
+    };
+  });
+}
+
+/** Quantos bens e dívidas do utilizador começam pelo prefixo (ativos e arquivados). */
+export async function contarPatrimonio(email: string, prefixo: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT (
+         (SELECT count(*) FROM asset a JOIN "user" u ON u.id = a."userId"
+           WHERE u.email = $1 AND a.name LIKE $2)
+         +
+         (SELECT count(*) FROM liability l JOIN "user" u ON u.id = l."userId"
+           WHERE u.email = $1 AND l.name LIKE $2)
+       )::int AS total`,
+      [email, `${prefixo}%`],
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
+/** Apaga os bens e dívidas do utilizador cujo nome comece pelo prefixo. */
+export async function limparPatrimonioDoSpec(
+  email: string,
+  prefixo: string,
+): Promise<{ bens: number; dividas: number }> {
+  return withClient(async (client) => {
+    const bens = await client.query(
+      `DELETE FROM asset
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1) AND name LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+    const dividas = await client.query(
+      `DELETE FROM liability
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1) AND name LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+
+    return { bens: bens.rowCount ?? 0, dividas: dividas.rowCount ?? 0 };
+  });
+}

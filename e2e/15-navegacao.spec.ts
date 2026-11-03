@@ -53,6 +53,7 @@ const SECAO_DIA_A_DIA = [
   'Contas',
   'Contas a pagar/receber',
   'Consolidação',
+  'Património',
   'Cartões',
 ];
 

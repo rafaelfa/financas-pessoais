@@ -3,6 +3,7 @@ import {
   ChartColumn,
   CreditCard,
   FileUp,
+  Landmark,
   Layers,
   LayoutDashboard,
   ListFilter,
@@ -66,6 +67,12 @@ const CONSOLIDACAO: NavItem = {
   description: 'Saldos agrupados por finalidade',
   icon: Layers,
 };
+const PATRIMONIO: NavItem = {
+  href: '/patrimonio',
+  label: 'Património',
+  description: 'Bens e dívidas que compõem o teu património líquido',
+  icon: Landmark,
+};
 const CARTOES: NavItem = {
   href: '/cartoes',
   label: 'Cartões',
@@ -125,7 +132,7 @@ const DEFINICOES: NavItem = {
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     title: 'Dia a dia',
-    items: [PAINEL, TRANSACOES, CONTAS, CONTAS_A_PAGAR_RECEBER, CONSOLIDACAO, CARTOES],
+    items: [PAINEL, TRANSACOES, CONTAS, CONTAS_A_PAGAR_RECEBER, CONSOLIDACAO, PATRIMONIO, CARTOES],
   },
   { title: 'Planeamento', items: [ORCAMENTO, OBJETIVOS, RECORRENCIAS, REGRAS] },
   { title: 'Análise', items: [CATEGORIAS, RELATORIOS, IMPORTAR, DEFINICOES] },

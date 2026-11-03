@@ -12,3 +12,4 @@ export * from './transactions';
 export * from './planning';
 export * from './import';
 export * from './receivable-payable';
+export * from './patrimonio';
