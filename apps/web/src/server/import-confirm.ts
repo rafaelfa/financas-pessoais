@@ -207,6 +207,8 @@ export async function runConfirm(args: {
   readonly tx: ConfirmTx;
   readonly userId: string;
   readonly accountId: string;
+  /** Cartão do extrato, quando o utilizador o escolheu e a posse foi confirmada. */
+  readonly cardId?: string;
   readonly rows: readonly ImportRowInput[];
   readonly ownedCategories: ReadonlySet<string>;
 }): Promise<ConfirmOutcome> {
@@ -309,10 +311,16 @@ export async function runConfirm(args: {
         description,
         financialAccountId: args.accountId,
         categoryId: row.categoryId,
+        cardId: args.cardId ?? null,
         // Um movimento de extrato é algo que já aconteceu no banco.
         settled: true,
         settledOn: date,
-        paymentMethod: 'DEBIT',
+        /*
+         * Com cartão escolhido, o meio é **crédito**: `CreditCard` é, por
+         * definição, um cartão de crédito. Sem cartão, mantém-se `DEBIT` — é o
+         * que o extrato de conta sempre significou aqui.
+         */
+        paymentMethod: args.cardId === undefined ? 'DEBIT' : 'CREDIT',
         paymentCondition: 'SINGLE',
         fitId,
         origin: 'IMPORTED',

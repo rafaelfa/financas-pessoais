@@ -1025,7 +1025,7 @@ logo fecham com o foco no `body` por desenho — não são o caso do critério, 
 | T37 | **Foco perdido nos diálogos abertos pela lista** (edição, pagamento): 5 de 6 modos de fecho deixam o foco no `body`, não na linha/cartão de origem | Dev | aberta (achado da T36; nunca tiveram gatilho) | `relatorios/T37.md` |
 
 | T38 | **Ecrã de bens e dívidas:** o património líquido conta com eles e não havia forma de os registar | Dev | **fechada** (QA 8/8; suite 87/87; `e2e/26-patrimonio.spec.ts`) | `relatorios/T38.md` |
-| T41 | **O Painel só mostra os KPIs quando há lançamentos** (`hasData`): quem registe bens e dívidas sem movimentos vê o estado vazio e o património existe sem se ver | Dev | aberta (achado da T38) | — |
+| T41 | **O Painel só mostra os KPIs quando há lançamentos** (`hasData`), e `/patrimonio` não mostra número no estado vazio | Dev | **fechada** (QA 5 cenários; incluindo cartão com fatura aberta a dar negativo) | `relatorios/T41.md` |
 | T42 | **O património líquido do Painel ignora as faturas de cartão abertas e o valor dos objetivos** | Dev | Dev done (fatura −25 000, objetivo +50 000; ambos os ecrãs iguais); em prova QA | `relatorios/T42.md` |
 
 ## T38 — ecrã de bens e dívidas (medido antes de planear)
@@ -1116,6 +1116,68 @@ objetivo com Y acumulado faz subir Y — medido nos dois ecrãs.
 
 **O que ficou feito e provado:** o filtro de data na consulta dos movimentos
 (`date: { lte: today }`), com os cinco números do breakdown idênticos ao cêntimo.
+| T39 | **A condição `cardId` das regras era ignorada pelo motor** (e a regra aparecia como inválida) | Dev | Dev done (teste vermelho → 20/20; 548 testes); em prova QA | `relatorios/T39.md` |
+| T40 | **`GoalMovementType.yield` era código morto** com uma migração associada | Dev | Dev done (enum com 2 valores, 3 movimentos intactos, 90 000 antes e depois); em prova QA | `relatorios/T40.md` |
+
+| T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **reprovada na autorização:** a confirmação aceita um `cardId` de outro utilizador | `relatorios/T45.md` |
+
+
+## T41 — a minha lista de seis termos estava errada, e o Dev provou-o
+
+Eu pedi `hasData = lançamentos || contas || bens || dívidas || objetivos || faturas`. O termo `contas`
+tornava o critério 1 impossível: **o registo cria sempre uma «Carteira principal»** (`provision.ts:63`),
+logo haveria sempre uma conta e o estado de boas-vindas nunca apareceria. O Dev mediu, afastou-se da
+lista e propôs:
+
+```ts
+hasData: transactions.length > 0 || patrimony.netInCents !== 0,
+```
+
+Dois termos, um ramo, zero consultas novas — e a pergunta certa: **«há valor?»**, não «há registos?».
+Fica registado porque é a segunda vez hoje que uma instrução minha é corrigida com prova (a primeira
+foi o `select` dos objetivos, T42-b).
+
+**Resíduo conhecido e aceite:** um bem ou objetivo **a zero**, sem mais nada, ainda mostra o estado
+vazio — `netInCents` é 0. Distinguir exigiria contar registos sem contar a carteira provisionada;
+para um canto tão estreito, não vale a linha extra.
+
+## T45 — a confirmação não confirma a posse do cartão (falha de autorização, 2026-11-03)
+
+O QA forjou o pedido: escolheu o **próprio** cartão na interface e reescreveu a chamada da server action
+com o id do cartão de **outra** utilizadora. Resultado:
+
+```
+pré-visualização → «Cartão não encontrado.»            (recusa, correto)
+confirmação      → «2 movimentos importados»           (aceita)
+base             → 2 transações do atacante com cardId = cartão da vítima, paymentMethod CREDIT
+```
+
+**Causa:** `import-actions.ts:96-104` e `:130-138` verificam a posse — **as duas dentro do
+`previewImport`** — com um comentário a dizer «a confirmação repete esta verificação». Não repete:
+`confirmImport` (`:215-281`) valida a conta (`:224-232`) e as categorias (`:247-265`) e passa o
+`cardId` ao `runConfirm`, que grava (`import-confirm.ts:314`).
+
+**É a terceira vez que esta classe aparece** (T13 com `accountIds`, a importação agora, sempre com um
+comentário a prometer uma verificação que não existe no sítio onde é usada). Regra que fica: um
+comentário a dizer «isto é verificado ali» não substitui a verificação aqui — e quem escreve o
+comentário é quem tem de provar que o outro sítio verifica.
+
+**O que passou:** OFX com cartão (2/2 com `cardId` e `CREDIT`), aplicar regras ao já importado (2
+categorizados), sem cartão (`null`/`DEBIT`), desfazer a importação (2 apagados, 0 restantes).
+
+## T45 — A importação não conhece cartões (achado do QA na T39)
+
+Medido: um CSV de 2 linhas importado pela interface fica com `origin = IMPORTED` e **`cardId = null`**
+nas duas. Com uma regra «só no cartão A» e uma regra de descrição «supermercado», a pré-visualização
+diz «1 seria categorizado» — e é a da **descrição**: a regra de cartão não apanha nenhuma.
+
+Causa: `import-confirm.ts:299-311` cria com `financialAccountId` e `paymentMethod: 'DEBIT'`, e **não
+escreve `cardId`**; e o fluxo de importação (`import.ts`, `import-preview.tsx`) **não pergunta** a que
+cartão pertence o extrato. Não é um `if` em falta: é uma pergunta que a interface não faz.
+
+**É funcionalidade, não correção** — e há uma decisão de produto dentro dela: um extrato de cartão
+importado deve virar lançamentos com `cardId` (e entrar na fatura desse cartão?) ou continuar a ser
+lançamentos de conta? A resposta muda o desenho.
 
 ## T44 — Duplicação do mapeamento de objetivos (declarada, do Revisor)
 

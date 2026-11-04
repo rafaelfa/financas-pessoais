@@ -85,6 +85,11 @@ export interface FinanceTransaction {
    */
   readonly invoiceId?: string;
   /**
+   * Cartão em que a compra foi feita, quando foi a crédito. As regras de
+   * categorização podem restringir-se a um cartão.
+   */
+  readonly cardId?: string;
+  /**
    * Parcelamento de uma compra de cartão: o plano e a posição desta parcela.
    * Uma compra em 12 parcelas gera 12 lançamentos, um por fatura.
    */
@@ -177,7 +182,7 @@ export interface FinanceAsset {
 export type RecurrenceFrequency = 'weekly' | 'monthly' | 'quarterly';
 
 /** Tipo de movimento de um objetivo. */
-export type GoalMovementType = 'deposit' | 'withdrawal' | 'yield';
+export type GoalMovementType = 'deposit' | 'withdrawal';
 
 /** Regra de categorização automática. */
 export interface FinanceTransactionRule {
@@ -196,6 +201,8 @@ export interface FinanceTransactionRule {
   readonly dayMin?: number;
   readonly dayMax?: number;
   readonly accountId?: string;
+  /** Restringe a regra às compras de um cartão. */
+  readonly cardId?: string;
   readonly targetCategoryId: string;
 }
 

@@ -153,7 +153,11 @@ export function ImportPreviewPanel({
     }));
 
     // Mesmo schema que o servidor aplica: a mensagem que aparece é a que ele daria.
-    const parsed = confirmImportSchema.safeParse({ accountId: preview.accountId, rows });
+    const parsed = confirmImportSchema.safeParse({
+      accountId: preview.accountId,
+      ...(preview.cardId === null ? {} : { cardId: preview.cardId }),
+      rows,
+    });
 
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message ?? 'Há linhas inválidas na seleção.');

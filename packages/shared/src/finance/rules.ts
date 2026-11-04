@@ -38,7 +38,8 @@ export function ruleHasCondition(rule: FinanceTransactionRule): boolean {
     rule.amountMaxInCents !== undefined ||
     rule.dayMin !== undefined ||
     rule.dayMax !== undefined ||
-    hasTextCondition(rule.accountId)
+    hasTextCondition(rule.accountId) ||
+    hasTextCondition(rule.cardId)
   );
 }
 
@@ -119,6 +120,16 @@ export function matchesRule(
   }
 
   if (rule.accountId !== undefined && transaction.accountId !== rule.accountId) {
+    return false;
+  }
+
+  /*
+   * «Só neste cartão» é igualdade, como o `accountId`: uma transação sem cartão
+   * (dinheiro, transferência, débito direto) não passou por cartão nenhum, logo
+   * não verifica a condição. Aceitá-la faria a regra apanhar tudo o que não é de
+   * cartão — o oposto do que o utilizador pediu ao escolher o cartão.
+   */
+  if (rule.cardId !== undefined && transaction.cardId !== rule.cardId) {
     return false;
   }
 

@@ -849,7 +849,6 @@ enum GoalState {
 enum GoalMovementType {
   DEPOSIT
   WITHDRAWAL
-  YIELD
 }
 
 model Goal {

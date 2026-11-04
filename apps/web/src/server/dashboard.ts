@@ -432,7 +432,28 @@ export async function getDashboard(scopeParams?: {
       firstNegativeDate: forecast.firstNegativeDate,
     },
     lastTransactionDate: lastTransaction?.date.toISOString().slice(0, 10) ?? null,
-    hasData: transactions.length > 0,
+    /*
+     * «Há alguma coisa?» — e não «há lançamentos?». Um utilizador que registe um
+     * bem, uma dívida, um objetivo ou um cartão sem nunca lançar um movimento
+     * tem património para ver, e a página escondia tudo.
+     *
+     * Não se testa `accounts.length` porque o registo cria uma «Carteira
+     * principal» vazia (`provision.ts`): toda a conta nova tem uma conta, e o
+     * estado vazio de boas-vindas nunca apareceria. O que interessa é se há
+     * valor: contas com saldo, bens, objetivos e faturas movem todos o
+     * `netInCents`, e os lançamentos contam por si (podem existir a zero).
+     *
+     * Os registos que a pessoa **criou** contam mesmo a zero: quem regista um bem
+     * sem valor tem alguma coisa para ver, e a página convidava-o a começar do
+     * nada. `accounts` continua de fora, porque a carteira é criada no registo.
+     */
+    hasData:
+      transactions.length > 0 ||
+      patrimony.netInCents !== 0 ||
+      assets.length > 0 ||
+      liabilities.length > 0 ||
+      goals.length > 0 ||
+      invoices.length > 0,
   };
 }
 

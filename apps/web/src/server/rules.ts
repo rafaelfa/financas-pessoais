@@ -100,6 +100,7 @@ export async function listRules(): Promise<RuleView[]> {
         dayMin: rule.dayMin ?? undefined,
         dayMax: rule.dayMax ?? undefined,
         accountId: rule.financialAccountId ?? undefined,
+        cardId: rule.cardId ?? undefined,
       })),
     ).map((rule) => rule.id),
   );
@@ -179,6 +180,7 @@ export async function previewRules(): Promise<{
       dayMin: rule.dayMin ?? undefined,
       dayMax: rule.dayMax ?? undefined,
       accountId: rule.financialAccountId ?? undefined,
+      cardId: rule.cardId ?? undefined,
     })),
   );
 

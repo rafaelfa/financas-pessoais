@@ -61,6 +61,12 @@ export const MAX_IMPORT_ROWS = 2_000;
 
 export const confirmImportSchema = z.object({
   accountId: entityIdSchema,
+  /**
+   * Cartão do extrato, opcional: um extrato de cartão é todo do mesmo cartão. Se
+   * vier, os movimentos criados ficam ligados a ele, e as regras «só neste
+   * cartão» passam a poder categorizá-los.
+   */
+  cardId: entityIdSchema.optional(),
   rows: z
     .array(importRowInputSchema)
     .min(1, 'Não escolheste nenhuma linha para importar.')
@@ -110,6 +116,8 @@ export const revertImportSchema = z.object({
  */
 export const previewImportSchema = z.object({
   accountId: entityIdSchema,
+  /** Cartão do extrato, opcional — é o que deixa as regras de cartão sugerirem. */
+  cardId: entityIdSchema.optional(),
   content: z
     .string()
     .min(1, 'Escolhe um ficheiro ou cola o extrato.')

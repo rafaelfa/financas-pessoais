@@ -329,6 +329,7 @@ export async function applyRules(): Promise<ActionResult<{ applied: number }>> {
       dayMin: rule.dayMin ?? undefined,
       dayMax: rule.dayMax ?? undefined,
       accountId: rule.financialAccountId ?? undefined,
+      cardId: rule.cardId ?? undefined,
     })),
   );
 

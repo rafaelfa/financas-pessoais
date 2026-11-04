@@ -11,6 +11,7 @@ import { ImportReceiptsPanel, saveImportReceipt } from '@/components/import-reve
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AccountView } from '@/server/accounts';
+import type { CardView } from '@/server/cards';
 import type { CategoryView } from '@/server/categories';
 import type { ImportPreview } from '@/server/import';
 import type { ConfirmImportResult } from '@/server/import-actions';
@@ -35,9 +36,11 @@ const TOUCH = 'min-h-11 sm:min-h-8';
 export function ImportWorkflow({
   accounts,
   categories,
+  cards,
 }: {
   readonly accounts: readonly AccountView[];
   readonly categories: readonly CategoryView[];
+  readonly cards: readonly CardView[];
 }) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [result, setResult] = useState<ConfirmImportResult | null>(null);
@@ -87,6 +90,7 @@ export function ImportWorkflow({
       ) : (
         <ImportFilePicker
           accounts={accounts}
+          cards={cards}
           onPreview={(next) => {
             setPreview(next);
             toast.success(

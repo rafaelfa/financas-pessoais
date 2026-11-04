@@ -16,17 +16,14 @@ const TODAY = '2026-10-10';
 const MOVEMENTS: FinanceGoalMovement[] = [
   { goalId: GOAL.id, type: 'deposit', amountInCents: 100_000, date: '2026-08-01' },
   { goalId: GOAL.id, type: 'withdrawal', amountInCents: 20_000, date: '2026-09-01' },
-  { goalId: GOAL.id, type: 'yield', amountInCents: 5_000, date: '2026-10-01' },
+  { goalId: GOAL.id, type: 'deposit', amountInCents: 5_000, date: '2026-10-01' },
   { goalId: GOAL.id, type: 'deposit', amountInCents: 50_000, date: '2026-12-01' },
 ];
 
 describe('efeito dos movimentos', () => {
-  it('depósitos e rendimentos somam, resgates subtraem', () => {
+  it('depósitos somam, resgates subtraem', () => {
     expect(
       movementEffectInCents({ goalId: 'g', type: 'deposit', amountInCents: 100, date: TODAY }),
-    ).toBe(100);
-    expect(
-      movementEffectInCents({ goalId: 'g', type: 'yield', amountInCents: 100, date: TODAY }),
     ).toBe(100);
     expect(
       movementEffectInCents({ goalId: 'g', type: 'withdrawal', amountInCents: 100, date: TODAY }),

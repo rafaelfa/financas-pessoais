@@ -185,3 +185,45 @@ describe('precedência e pré-visualização', () => {
     expect(preview[0]?.categoryId).toBe('cat-groceries');
   });
 });
+
+describe('condição por cartão', () => {
+  const regraDoCartao = rule({ id: 'r-card', cardId: 'card-1' });
+
+  it('uma regra só com cartão é uma regra válida', () => {
+    expect(ruleHasCondition(regraDoCartao)).toBe(true);
+    expect(invalidRules([regraDoCartao])).toEqual([]);
+  });
+
+  it('aplica-se a uma transação desse cartão', () => {
+    expect(matchesRule(transaction({ id: 't1', cardId: 'card-1' }), regraDoCartao)).toBe(true);
+  });
+
+  it('não se aplica a uma transação de outro cartão', () => {
+    expect(matchesRule(transaction({ id: 't2', cardId: 'card-2' }), regraDoCartao)).toBe(false);
+  });
+
+  /*
+   * Uma transação sem cartão é dinheiro que não passou por cartão nenhum: a
+   * condição «só neste cartão» não se verifica. É a mesma semântica do
+   * `accountId`, que exige igualdade e não «ausente conta como tudo».
+   */
+  it('não se aplica a uma transação sem cartão', () => {
+    expect(matchesRule(transaction({ id: 't3' }), regraDoCartao)).toBe(false);
+  });
+
+  it('com cartão e descrição, exigem-se as duas condições', () => {
+    const regra = rule({ id: 'r-card-desc', cardId: 'card-1', descriptionContains: 'edp' });
+
+    expect(
+      matchesRule(transaction({ id: 'a', cardId: 'card-1', description: 'EDP Comercial' }), regra),
+    ).toBe(true);
+    // a descrição bate, o cartão não
+    expect(
+      matchesRule(transaction({ id: 'b', cardId: 'card-2', description: 'EDP Comercial' }), regra),
+    ).toBe(false);
+    // o cartão bate, a descrição não
+    expect(
+      matchesRule(transaction({ id: 'c', cardId: 'card-1', description: 'Águas do Porto' }), regra),
+    ).toBe(false);
+  });
+});

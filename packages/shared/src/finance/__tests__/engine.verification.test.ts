@@ -1666,9 +1666,6 @@ describe('6. objetivos: casos limite', () => {
       }),
     ).toBe(100);
     expect(
-      movementEffectInCents({ goalId: 'g', type: 'yield', amountInCents: 100, date: '2026-01-01' }),
-    ).toBe(100);
-    expect(
       movementEffectInCents({
         goalId: 'g',
         type: 'withdrawal',
@@ -2596,7 +2593,7 @@ describe('9. invariantes', () => {
         { length: randomInt(random, 0, 8) },
         (_, _position) => ({
           goalId: randomInt(random, 0, 1) === 0 ? 'g1' : 'g2',
-          type: (['deposit', 'withdrawal', 'yield'] as const)[randomInt(random, 0, 2)]!,
+          type: (['deposit', 'withdrawal'] as const)[randomInt(random, 0, 1)]!,
           amountInCents: randomInt(random, 1, 20_000),
           date: `2026-10-${String(randomInt(random, 1, 28)).padStart(2, '0')}`,
         }),

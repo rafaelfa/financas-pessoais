@@ -63,6 +63,9 @@ interface FakeRow {
   id: string;
   userId: string;
   financialAccountId: string;
+  /** Cartão do extrato, quando a confirmação o recebeu. */
+  cardId?: string | null;
+  paymentMethod?: string;
   fitId: string | null;
   date: Date;
   amountInCents: number;
@@ -207,6 +210,7 @@ async function confirm(
   db: FakeDb,
   rows: ReturnType<typeof row>[],
   hooks: { beforeCreate?: () => void } = {},
+  cardId?: string,
 ) {
   const tx = createFakeTx(db, hooks);
 
@@ -215,6 +219,7 @@ async function confirm(
       tx: tx as never,
       userId: USER,
       accountId: ACCOUNT,
+      ...(cardId === undefined ? {} : { cardId }),
       rows,
       ownedCategories: new Set<string>(),
     });
@@ -450,5 +455,35 @@ describe('invariante da contagem', () => {
       (outcome?.created ?? 0) + (outcome?.alreadyExists ?? 0) + (outcome?.skippedRows.length ?? 0);
 
     expect(total).toBe(rows.length);
+  });
+});
+
+describe('cartão do extrato', () => {
+  /*
+   * Um extrato de cartão é todo do mesmo cartão: o `cardId` é do lote, não da
+   * linha. Sem ele, uma regra «só neste cartão» nunca apanhava um importado — e
+   * era isso que o QA mediu.
+   */
+  it('sem cartão: grava `cardId` nulo e mantém o meio de pagamento em débito', async () => {
+    const db = createFakeDb([]);
+    const { outcome } = await confirm(db, [row('2026-10-02', 'padaria', -350)]);
+
+    expect(outcome?.created).toBe(1);
+    expect(db.rows[0]?.cardId).toBeNull();
+    expect(db.rows[0]?.paymentMethod).toBe('DEBIT');
+  });
+
+  it('com cartão: grava o `cardId` e passa o meio de pagamento a crédito', async () => {
+    const db = createFakeDb([]);
+    const { outcome } = await confirm(
+      db,
+      [row('2026-10-02', 'compra no cartão', -350)],
+      {},
+      'cartao-1',
+    );
+
+    expect(outcome?.created).toBe(1);
+    expect(db.rows[0]?.cardId).toBe('cartao-1');
+    expect(db.rows[0]?.paymentMethod).toBe('CREDIT');
   });
 });

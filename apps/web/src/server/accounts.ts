@@ -35,6 +35,7 @@ export const TRANSACTION_SELECT = {
   financialAccountId: true,
   categoryId: true,
   invoiceId: true,
+  cardId: true,
   goalId: true,
   transferGroupId: true,
   settled: true,

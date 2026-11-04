@@ -86,6 +86,7 @@ export interface TransactionRow {
   readonly financialAccountId: string | null;
   readonly categoryId: string | null;
   readonly invoiceId: string | null;
+  readonly cardId?: string | null;
   readonly goalId: string | null;
   readonly transferGroupId: string | null;
   readonly settled: boolean;
@@ -113,6 +114,7 @@ export function toFinanceTransaction(row: TransactionRow): FinanceTransaction {
     accountId: row.financialAccountId ?? '',
     categoryId: row.categoryId ?? undefined,
     invoiceId: row.invoiceId ?? undefined,
+    cardId: row.cardId ?? undefined,
     settled: row.settled,
     goalId: row.goalId ?? undefined,
     transferGroupId: row.transferGroupId ?? undefined,

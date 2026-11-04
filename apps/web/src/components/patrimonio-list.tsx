@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, ArchiveRestore, Pencil, Plus, Trash } from 'lucide-react';
+import { Archive, ArchiveRestore, Gem, Pencil, Receipt, Trash } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { setAssetArchived, setLiabilityArchived } from '@/server/patrimonio-actions';
@@ -102,10 +103,12 @@ export function PatrimonioList({
         </div>
 
         {ativos.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-            Ainda não tens bens registados. Uma casa, um carro ou outra coisa de valor entram aqui
-            pelo valor que lhes deres hoje.
-          </p>
+          <EmptyState
+            icon={Gem}
+            title="Ainda não tens bens registados"
+            description="Uma casa, um carro ou outra coisa de valor entram aqui pelo valor que lhes deres hoje."
+            action={<AssetDialog mode="create" trigger={<Button size="sm">Registar bem</Button>} />}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {ativos.map((asset) => (
@@ -196,10 +199,14 @@ export function PatrimonioList({
         </div>
 
         {dividasAtivas.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-            Ainda não tens dívidas registadas. Um empréstimo ou um crédito entra aqui pelo que ainda
-            deves, não pelo que pediste.
-          </p>
+          <EmptyState
+            icon={Receipt}
+            title="Ainda não tens dívidas registadas"
+            description="Um empréstimo ou um crédito entra aqui pelo que ainda deves, não pelo que pediste."
+            action={
+              <LiabilityDialog mode="create" trigger={<Button size="sm">Registar dívida</Button>} />
+            }
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {dividasAtivas.map((liability) => (
@@ -373,24 +380,6 @@ export function PatrimonioList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-/** Botão do cabeçalho quando ainda não há nada: cria o primeiro. */
-export function PrimeiroBemOuDivida() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <AssetDialog
-        mode="create"
-        trigger={
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" aria-hidden />
-            Registar bem
-          </Button>
-        }
-      />
-      <LiabilityDialog mode="create" trigger={<Button size="sm">Registar dívida</Button>} />
     </div>
   );
 }

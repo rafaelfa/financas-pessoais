@@ -23,6 +23,7 @@ import { ImportLimitations } from '@/components/import-limitations';
 import { previewImport } from '@/server/import-actions';
 import type { ImportPreview } from '@/server/import';
 import type { AccountView } from '@/server/accounts';
+import type { CardView } from '@/server/cards';
 
 /**
  * Escolha da origem (ficheiro ou texto colado) e da conta de destino.
@@ -59,11 +60,16 @@ type PastedFormat = 'ofx' | 'csv';
 /** De onde vem o extrato. */
 type SourceMode = 'file' | 'text';
 
+/** O Radix Select reserva a string vazia: «nenhum cartão» precisa de um valor próprio. */
+const NONE = '__sem_cartao__';
+
 export function ImportFilePicker({
   accounts,
+  cards,
   onPreview,
 }: {
   readonly accounts: readonly AccountView[];
+  readonly cards: readonly CardView[];
   readonly onPreview: (preview: ImportPreview) => void;
 }) {
   const activeAccounts = accounts.filter((account) => !account.archived);
@@ -73,6 +79,8 @@ export function ImportFilePicker({
     () => (activeAccounts.find((account) => account.isPrimary) ?? activeAccounts[0])?.id ?? '',
   );
   const [format, setFormat] = useState<FormatChoice>('auto');
+  /* Vazio = extrato de conta. Um cartão escolhido liga os movimentos a ele. */
+  const [cardId, setCardId] = useState('');
   const [pastedFormat, setPastedFormat] = useState<PastedFormat | ''>('');
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
@@ -160,7 +168,12 @@ export function ImportFilePicker({
       // Lido no browser: o ficheiro nunca vai para o servidor como anexo.
       const content = mode === 'file' && selectedFile !== null ? await selectedFile.text() : text;
 
-      const result = await previewImport({ accountId, content, format: declared });
+      const result = await previewImport({
+        accountId,
+        content,
+        format: declared,
+        ...(cardId === '' ? {} : { cardId }),
+      });
 
       if (!result.ok) {
         setFormError(result.error);
@@ -231,6 +244,32 @@ export function ImportFilePicker({
               </SelectContent>
             </Select>
             <FieldError id="importar-conta-erro">{errorFor('accountId')}</FieldError>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="importar-cartao">Cartão</Label>
+            <Select
+              value={cardId === '' ? NONE : cardId}
+              onValueChange={(next) => setCardId(next === NONE ? '' : next)}
+            >
+              <SelectTrigger id="importar-cartao" className={`w-full ${TOUCH}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Nenhum (extrato de conta)</SelectItem>
+                {cards
+                  .filter((card) => !card.archived)
+                  .map((card) => (
+                    <SelectItem key={card.id} value={card.id}>
+                      {card.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Escolhe o cartão se este ficheiro for o extrato dele. Os movimentos passam a
+              pertencer-lhe, e as regras «só neste cartão» aplicam-se.
+            </FieldDescription>
           </div>
 
           <Tabs

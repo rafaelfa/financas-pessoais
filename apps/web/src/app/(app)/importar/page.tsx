@@ -4,6 +4,7 @@ import { ImportExportPanel } from '@/components/import-export-panel';
 import { ImportWorkflow } from '@/components/import-workflow';
 import { PageHeader } from '@/components/page-header';
 import { listAccounts } from '@/server/accounts';
+import { listCards } from '@/server/cards';
 import { listCategories } from '@/server/categories';
 
 export const metadata: Metadata = { title: 'Importar' };
@@ -21,7 +22,11 @@ export const metadata: Metadata = { title: 'Importar' };
  * (o servidor volta a validar que são do utilizador e não internas).
  */
 export default async function ImportarPage() {
-  const [accounts, categories] = await Promise.all([listAccounts(), listCategories()]);
+  const [accounts, categories, cards] = await Promise.all([
+    listAccounts(),
+    listCategories(),
+    listCards(),
+  ]);
 
   return (
     <>
@@ -31,7 +36,7 @@ export default async function ImportarPage() {
       />
 
       <div className="space-y-8">
-        <ImportWorkflow accounts={accounts} categories={categories} />
+        <ImportWorkflow accounts={accounts} categories={categories} cards={cards} />
 
         <ImportExportPanel accounts={accounts} />
       </div>

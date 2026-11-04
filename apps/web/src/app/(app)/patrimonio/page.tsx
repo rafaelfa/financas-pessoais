@@ -1,10 +1,8 @@
-import { Landmark } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { Amount } from '@/components/amount';
-import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
-import { PatrimonioList, PrimeiroBemOuDivida } from '@/components/patrimonio-list';
+import { PatrimonioList } from '@/components/patrimonio-list';
 import { getDashboard } from '@/server/dashboard';
 import { listAssets, listLiabilities } from '@/server/patrimonio';
 
@@ -13,9 +11,13 @@ export const metadata: Metadata = { title: 'Património' };
 /**
  * Bens e dívidas.
  *
- * O número que interessa é o património líquido: bens a somar, dívidas a
- * subtrair. A conta é a do motor (`netWorth.ts`) e o Painel usa a mesma — esta
- * página mostra as parcelas, não uma segunda verdade.
+ * O número que interessa é o património líquido — contas + bens + objetivos −
+ * faturas − dívidas — e vem do **Painel**: é o mesmo `netWorth` com as mesmas
+ * entradas, para os dois ecrãs não poderem discordar.
+ *
+ * Os três totais aparecem **sempre**, mesmo a zero: quem chega aqui sem bens nem
+ * dívidas tem, ainda assim, contas, cartões ou objetivos a contar. O convite a
+ * registar fica dentro de cada secção, não no lugar da página.
  */
 export default async function PatrimonioPage() {
   const [assets, liabilities, dashboard] = await Promise.all([
@@ -32,30 +34,7 @@ export default async function PatrimonioPage() {
     (total, liability) => total + liability.outstandingInCents,
     0,
   );
-
-  /*
-   * O número do líquido vem do **Painel**: é o mesmo `netWorth` com as mesmas
-   * entradas (contas, bens e dívidas). Uma soma `bens − dívidas` dava 50.000 €
-   * onde o Painel dava 60.000 €, porque esquecia as contas.
-   */
   const liquido = dashboard.patrimonyInCents;
-
-  if (assets.length === 0 && liabilities.length === 0) {
-    return (
-      <>
-        <PageHeader
-          title="Património"
-          description="Bens e dívidas: o que tens e o que deves, para além do dinheiro nas contas."
-        />
-        <EmptyState
-          icon={Landmark}
-          title="Ainda não tens bens nem dívidas"
-          description="Regista a casa, o carro ou um empréstimo. O património líquido do Painel passa a contar com eles."
-          action={<PrimeiroBemOuDivida />}
-        />
-      </>
-    );
-  }
 
   return (
     <>

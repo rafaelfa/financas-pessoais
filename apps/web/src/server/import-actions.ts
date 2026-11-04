@@ -71,7 +71,7 @@ export async function previewImport(input: unknown): Promise<ActionResult<Import
     return fromZodError(parsed.error);
   }
 
-  const { accountId, content } = parsed.data;
+  const { accountId, content, cardId } = parsed.data;
   const format: ImportFormat = resolveFormat(content, parsed.data.format);
 
   /*
@@ -106,9 +106,27 @@ export async function previewImport(input: unknown): Promise<ActionResult<Import
 
   const previewRules = toPreviewRules(rules as readonly RuleRow[], categories);
 
+  /*
+   * O cartão, quando vem, tem de ser do utilizador — a regra da T13. Aqui é para
+   * dar o erro cedo (uma pré-visualização com o cartão de outra pessoa não faz
+   * sentido). **Não é esta verificação que protege a escrita**: a confirmação tem
+   * a sua, porque um id vindo do cliente confirma-se no sítio onde é usado.
+   */
+  if (cardId !== undefined) {
+    const card = await prisma.creditCard.findFirst({
+      where: { id: cardId, userId: user.id },
+      select: { id: true },
+    });
+
+    if (card === null) {
+      return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
+    }
+  }
+
   const preview = buildImportPreview({
     format,
     content,
+    cardId,
     account: account satisfies PreviewAccount,
     existing: existing satisfies readonly ExistingTransaction[],
     rules: previewRules.rules,
@@ -187,7 +205,7 @@ export async function confirmImport(input: unknown): Promise<ActionResult<Confir
     return fromZodError(parsed.error);
   }
 
-  const { accountId, rows } = parsed.data;
+  const { accountId, rows, cardId } = parsed.data;
   const account = await prisma.financialAccount.findFirst({
     where: { id: accountId, userId: user.id },
     select: { id: true },
@@ -195,6 +213,27 @@ export async function confirmImport(input: unknown): Promise<ActionResult<Confir
 
   if (account === null) {
     return fail('Conta não encontrada.', { accountId: ['Escolhe uma conta tua.'] });
+  }
+
+  /*
+   * A posse do cartão confirma-se **aqui**, onde o identificador é usado para
+   * escrever — não basta tê-la confirmado na pré-visualização, que é outro
+   * pedido e outro cliente. Foi assim que uma confirmação forjada gravou
+   * movimentos no cartão de outra pessoa (T45, achado do QA): o comentário da
+   * pré-visualização dizia que «a escrita repete a verificação», e não repetia.
+   *
+   * A mensagem é a mesma da pré-visualização: quem forjou o id não fica a saber
+   * se o cartão existe.
+   */
+  if (cardId !== undefined) {
+    const card = await prisma.creditCard.findFirst({
+      where: { id: cardId, userId: user.id },
+      select: { id: true },
+    });
+
+    if (card === null) {
+      return fail('Cartão não encontrado.', { cardId: ['Escolhe um cartão teu.'] });
+    }
   }
 
   /*
@@ -239,6 +278,7 @@ export async function confirmImport(input: unknown): Promise<ActionResult<Confir
         tx,
         userId: user.id,
         accountId: account.id,
+        cardId,
         rows,
         ownedCategories,
       }),

@@ -23,6 +23,8 @@ export interface ImportPreview {
   readonly format: ImportFormat;
   readonly accountId: string;
   readonly accountName: string;
+  /** Cartão escolhido para o extrato, ou `null` para um extrato de conta. */
+  readonly cardId: string | null;
   readonly rows: readonly ImportRow[];
   readonly newCount: number;
   readonly duplicateCount: number;
@@ -76,6 +78,7 @@ export interface RuleRow {
   readonly dayMin: number | null;
   readonly dayMax: number | null;
   readonly financialAccountId: string | null;
+  readonly cardId: string | null;
 }
 
 /**
@@ -88,6 +91,7 @@ export interface RuleRow {
 export function buildImportPreview(args: {
   readonly format: ImportFormat;
   readonly content: string;
+  readonly cardId?: string;
   readonly account: PreviewAccount;
   readonly existing: readonly ExistingTransaction[];
   readonly rules: readonly FinanceTransactionRule[];
@@ -95,7 +99,7 @@ export function buildImportPreview(args: {
 }): Omit<ImportPreview, 'accountId' | 'accountName'> {
   const base = args.format === 'ofx' ? buildFromOfx(args) : buildFromCsv(args);
 
-  return { format: args.format, ...base };
+  return { format: args.format, cardId: args.cardId ?? null, ...base };
 }
 
 /** Aviso comum quando não há regras: sem elas, nada é sugerido. */
@@ -108,6 +112,7 @@ function noRulesWarning(): string {
 
 function buildFromOfx(args: {
   readonly content: string;
+  readonly cardId?: string;
   readonly account: PreviewAccount;
   readonly existing: readonly ExistingTransaction[];
   readonly rules: readonly FinanceTransactionRule[];
@@ -127,6 +132,7 @@ function buildFromOfx(args: {
       parserIssue: null,
     })),
     existing: args.existing,
+    cardId: args.cardId,
     rules: { rules: args.rules, categoryNames: args.categoryNames },
     // O saldo **declarado** é o do primeiro extrato, o mesmo de onde vêm os
     // movimentos: misturar o saldo de uma conta com os movimentos de outra era o
@@ -139,6 +145,7 @@ function buildFromOfx(args: {
 
 function buildFromCsv(args: {
   readonly content: string;
+  readonly cardId?: string;
   readonly account: PreviewAccount;
   readonly existing: readonly ExistingTransaction[];
   readonly rules: readonly FinanceTransactionRule[];
@@ -165,6 +172,7 @@ function buildFromCsv(args: {
       parserIssue: null,
     })),
     existing: args.existing,
+    cardId: args.cardId,
     rules: { rules: args.rules, categoryNames: args.categoryNames },
     statedEndBalanceInCents: statement.lastBalanceInCents,
     warnings,
@@ -201,6 +209,9 @@ export function toPreviewRules(
         ...(row.dayMin !== null ? { dayMin: row.dayMin } : {}),
         ...(row.dayMax !== null ? { dayMax: row.dayMax } : {}),
         ...(row.financialAccountId !== null ? { accountId: row.financialAccountId } : {}),
+        // Sem isto, uma regra «só neste cartão» chegava ao motor sem cartão e
+        // passava a valer para tudo — o oposto do que a regra diz.
+        ...(row.cardId !== null ? { cardId: row.cardId } : {}),
       })),
     categoryNames: new Map(categories.map((category) => [category.id, category.name])),
   };

@@ -380,6 +380,7 @@ function suggest(
     readonly description: string;
   },
   accountId: string,
+  cardId: string | undefined,
   index: number,
   rules: PreviewRules,
 ): { readonly id: string; readonly name: string } | null {
@@ -400,6 +401,7 @@ function suggest(
     date: row.date,
     description: row.description,
     accountId,
+    cardId,
     settled: false,
   };
 
@@ -482,6 +484,12 @@ export interface BuildPreviewInput {
   readonly raw: readonly RawRow[];
   readonly existing: readonly ExistingTransactionFingerprint[];
   readonly rules: PreviewRules;
+  /**
+   * Cartão do extrato, quando o utilizador disse qual é. Só serve para a
+   * sugestão de categoria: uma regra «só neste cartão» só corresponde se a linha
+   * souber a que cartão pertence.
+   */
+  readonly cardId?: string;
   /** Saldo final declarado pelo ficheiro, quando existe. */
   readonly statedEndBalanceInCents: number | null;
   readonly warnings: readonly string[];
@@ -546,7 +554,8 @@ export function buildPreview(input: BuildPreviewInput): ImportPreviewBase {
       seen.add(derivedFitId);
     }
 
-    const suggestion = status === 'new' ? suggest(raw, input.account.id, index, input.rules) : null;
+    const suggestion =
+      status === 'new' ? suggest(raw, input.account.id, input.cardId, index, input.rules) : null;
 
     rows.push({
       index,
