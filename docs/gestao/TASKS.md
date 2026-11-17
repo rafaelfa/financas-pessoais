@@ -2746,3 +2746,39 @@ nos bordos. Um rect de CSS e um `axe` verde não provam que o dedo acerta.
   escrita; com duas abas o toast pode dizer «3 apagados» e a base ter apagado 2.
 - `transaction-table.tsx` · `sm:after:-inset-x-2` está acoplado a `w-10` + `sm:min-w-8`; se a
   coluna mudar de largura, o alvo invade a coluna de datas ou encolhe abaixo do mínimo, em silêncio.
+
+## T56 — Segurança: Next 16.4.0 → 16.4.6 (D21)
+
+**Porque:** a versão fixada tem duas falhas **críticas** de execução remota de código e uma alta
+de negação de serviço, e neste projeto são alcançáveis: o `/_next/image` é servido por omissão e
+responde **sem autenticação** mesmo sem `next/image` em uso, e as Server Actions são usadas em
+todas as mutações. A D21 já registou os avisos e decidiu a subida depois da T53.
+
+**Comportamento esperado**
+
+1. `next` e `eslint-config-next` passam a **`16.4.6`**, com pin exato (sem `^` — o pin é
+   deliberado e não muda aqui).
+2. `pnpm-lock.yaml` re-resolvido. É **esperado** que o diff inclua as entradas com peer do Next
+   (`better-auth@1.7.7(next@16.4.6(…))`, `@next/eslint-plugin-next`, `eslint-config-next`): é a
+   mesma árvore com a versão nova, não uma dependência a mais.
+3. **Zero alterações de código de aplicação.** É um patch.
+
+**Critério de aceitação**
+
+1. `apps/web/node_modules/next/package.json` diz **16.4.6**, e o lockfile não tem nenhuma
+   `next@16.4.0` a sobrar. Prova também que só existe **uma** versão de `next` na árvore
+   (`pnpm why next`).
+2. O registo do npm consultado **com o comando**, não de memória: 16.4.0 devolve os avisos (os da
+   D21) e **16.4.6 devolve zero**. Cola as duas saídas.
+3. `npx next build` **corrido diretamente** em `apps/web` já não termina em `SecurityFatalError`
+   (o `nudge` do Next só dispara para versões afetadas). Se ainda disparar, diz porquê e não
+   contornes com variáveis de ambiente.
+4. Gate completo: `format:check`, `lint`, `typecheck`, `test` (**582**), `build` (turbo) e a
+   **suíte 101/101** — a subida é de patch, mas o comportamento é o que se mede.
+5. `git diff --stat` mexeu **só** em `apps/web/package.json` e `pnpm-lock.yaml`. Qualquer ficheiro
+   de código no diff é sinal de que a subida não é o que se pensa.
+6. Zero dependências novas, zero migrações, zero alterações a `next.config`.
+
+**O que NÃO fazer:** não subir de minor nem de major; não aproveitar para atualizar outras
+dependências («já que estamos aqui»); não mexer em `config.experimental` nem definir
+`__NEXT_AGENT_UPGRADE` para calar o aviso; não commitar nem empurrar (é o Lead).
