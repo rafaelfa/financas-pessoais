@@ -2379,11 +2379,12 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
-| T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
+| T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (escrita, depois da T59) |
 | T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | aberta (depois da T58) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
-| T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
-| T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | aberta (bloqueada pela T53) |
+| T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (escrita, depois da T54) |
+| T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
+| T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | aberta (handoff) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3051,3 +3052,29 @@ pagar/receber e faturas de cartão — e nenhum deles responde à pergunta que s
 **O que NÃO fazer:** não criar tabela nem migração («um evento» não se guarda aqui — deriva-se do que
 já existe); não pôr `/calendario` na barra lateral; não pôr o calendário a criar lançamentos; não
 trazer as recorrências inactivas; não afrouxar a spec da paleta; não commitar nem empurrar.
+
+### T56 — prova de fecho (QA, build novo)
+
+| O que                              | Números                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| Versão instalada                   | **16.4.6** · `pnpm why next -r` mostra **uma só**; lockfile com 8 `next@16.4.6` e **0** `next@16.4.0` |
+| Registo do npm (consultado pelo QA) | 16.4.0 → **5 avisos** (2 critical, 1 high, 2 moderate) · 16.4.6 → **`{}`**     |
+| `next build` directo               | «▲ Next.js 16.4.6» · *Compiled successfully* · **exit 0** · 0 `SecurityFatalError` |
+| Ambiente                           | sem `__NEXT_AGENT_UPGRADE` nem variáveis `NEXT*`; `next.config.ts` **igual ao HEAD** |
+| `pnpm audit --prod`                | **36 → 31**; **critical 2 → 0**; menções a `next` **5 → 0**                    |
+| Suíte                              | **104 passed (6,2 m)**, sem morte de worker                                    |
+| Seis páginas no build novo          | 200, título certo, **0** `pageerror`, **0** erro de consola                    |
+| Diff                               | `apps/web/package.json` (4) e `pnpm-lock.yaml` (106) — **zero** código          |
+
+**Método do Revisor, que vale mais do que o diff:** comparou os **conjuntos de chaves** dos dois
+lockfiles — 1162 de cada lado, diferença simétrica de 32, **12 nomes alterados** (todos do Next,
+incluindo os oito `@next/swc-*`) e **zero nomes novos ou removidos**. Os binários nativos alinhados
+com o runtime são a falha clássica destas subidas, e passam despercebidos num *diff* de 106 linhas.
+
+**Armadilha de leitura registada:** `grep 16.4.0 pnpm-lock.yaml` continua a dar **três** resultados —
+são `globals@16.4.0`, o pacote de globais do ESLint. Coincidência de número, não é o Next.
+
+**O que esta tarefa não compra:** restam **31** avisos na árvore de produção, quase todos
+transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a maior parte; o
+`mysql2` (MySQL num projeto PostgreSQL), o `deepmerge-ts` (exige subir o `better-auth`) e o
+`picomatch` (sem correção publicada) ficam com a razão escrita.
