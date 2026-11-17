@@ -4,11 +4,11 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-| ID  | Tarefa                                                                                                     | Dono   | Estado         | Prova            |
-| --- | ---------------------------------------------------------------------------------------------------------- | ------ | -------------- | ---------------- |
-| T1  | Repor o install e a formatação: lockfile com `react-hook-form`/`@hookform/resolvers`, 12 ficheiros formatados, `.gitattributes` | Dev    | **fechada** (Dev + QA + Revisor) | `relatorios/T1.md` |
-| T2  | Fazer `lint`, `typecheck` e `build` verdes sem mudar comportamento (80 erros de tipo, 51 de lint) | Dev    | **fechada** (QA provou o cancelar em runtime) | `relatorios/T2.md` |
-| T3  | Provar os ecrãs novos com e2e: criar, editar, pagar e apagar pela interface, com estado na base | QA | **fechada** (9 testes novos, 2 execuções seguidas, suite 30/33) | `relatorios/T3.md` || T4  | Atualizar `README.md` e `docs/plano/ESTADO-E-HANDOFF.md` para o estado real | Dev | **fechada** (verificado por `curl` e gate re-corrido) | — |
+| ID  | Tarefa                                                                                                                          | Dono | Estado                                                          | Prova              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------- | ------------------ |
+| T1  | Repor o install e a formatação: lockfile com `react-hook-form`/`@hookform/resolvers`, 12 ficheiros formatados, `.gitattributes` | Dev  | **fechada** (Dev + QA + Revisor)                                | `relatorios/T1.md` |
+| T2  | Fazer `lint`, `typecheck` e `build` verdes sem mudar comportamento (80 erros de tipo, 51 de lint)                               | Dev  | **fechada** (QA provou o cancelar em runtime)                   | `relatorios/T2.md` |
+| T3  | Provar os ecrãs novos com e2e: criar, editar, pagar e apagar pela interface, com estado na base                                 | QA   | **fechada** (9 testes novos, 2 execuções seguidas, suite 30/33) | `relatorios/T3.md` |     | T4  | Atualizar `README.md` e `docs/plano/ESTADO-E-HANDOFF.md` para o estado real | Dev | **fechada** (verificado por `curl` e gate re-corrido) | —   |
 
 ## T1 — Repor o install e a formatação
 
@@ -39,7 +39,7 @@ O último deploy que subiu foi o `e4366ee`; os 8 commits seguintes falharam todo
 Vercel e no CI. Consequência prática: **nada do trabalho de outubro chegou ao ar** e
 não há nada partido em produção. Detalhe em `MAPA.md` → "Produção, CI e Vercel".
 
-| T5  | Pôr a produção a par do `main`: deploy e verificação autenticada nas 14 páginas | Lead   | **fechada** (commit `2f84384`, CI verde, deploy `READY`, 14/14 a 200) | ver `MAPA.md` |
+| T5 | Pôr a produção a par do `main`: deploy e verificação autenticada nas 14 páginas | Lead | **fechada** (commit `2f84384`, CI verde, deploy `READY`, 14/14 a 200) | ver `MAPA.md` |
 
 ## T2 — Fazer o gate de tipos e lint passar
 
@@ -87,7 +87,7 @@ regras do ESLint, não acrescentar `any` para calar `TS2339`, não tocar em `doc
   **Commitar sempre com caminhos explícitos, nunca `git add -A` nem `git add .`.**
 - Pendente: commit (aguarda decisão do utilizador).
 
-| T6  | Variante `success` no `Badge` + token `--success` no `globals.css` para o estado "pago" deixar de sair sem cor | Dev | aberta (visual, depois de T4) | `relatorios/T6.md` |
+| T6 | Variante `success` no `Badge` + token `--success` no `globals.css` para o estado "pago" deixar de sair sem cor | Dev | aberta (visual, depois de T4) | `relatorios/T6.md` |
 
 ## Estado medido da T2 (Dev, 2026-11-01) — confirmado pelo Lead
 
@@ -106,8 +106,8 @@ reabre" passou a disparar de verdade. Antes `existing.status` era `undefined` em
 runtime porque o `select` não o trazia, e a regra nunca corria. QA: isto é o
 comportamento correto, não é regressão.
 
-| T7  | Tornar os ecrãs novos funcionais: são server components com `console.log` nos botões — têm de chamar as server actions que já existem | Dev | **fechada** (Dev + QA + Revisor; 2 objeções corrigidas e provadas com base real) | `relatorios/T7.md` |
-| T8  | Defeitos de dados da funcionalidade: `accountIds` descartado, cêntimos por vírgula flutuante e valor mostrado em cêntimos num campo «€» | Dev | aberta — junta à T7 num só passo | `relatorios/T8.md` |
+| T7 | Tornar os ecrãs novos funcionais: são server components com `console.log` nos botões — têm de chamar as server actions que já existem | Dev | **fechada** (Dev + QA + Revisor; 2 objeções corrigidas e provadas com base real) | `relatorios/T7.md` |
+| T8 | Defeitos de dados da funcionalidade: `accountIds` descartado, cêntimos por vírgula flutuante e valor mostrado em cêntimos num campo «€» | Dev | aberta — junta à T7 num só passo | `relatorios/T8.md` |
 
 ## O que a T2 provou de mau (medido, 2026-11-01)
 
@@ -115,7 +115,7 @@ O gate está verde, mas a funcionalidade **não funciona**. Isto é o retrato re
 em `relatorios/T2.md`:
 
 1. **Os botões não fazem nada.** As páginas `contas-pagar-receber` e `consolidacao-contas`
-   são *server components* e os handlers são `console.log('Pagar conta:', id)`,
+   são _server components_ e os handlers são `console.log('Pagar conta:', id)`,
    `console.log('Apagar conta:', id)`, `onEdit={(item) => console.log('Editar:', item)}`
    (`page.tsx:27,32,92,111` e `:20,82`). As server actions existem e não são chamadas.
    As listas também não têm `'use client'`, por isso nem respondem a cliques.
@@ -163,7 +163,7 @@ verificação. Nem eu nem o QA tínhamos razão aqui.
 ## T7 — Tornar os ecrãs novos funcionais
 
 **Porque:** hoje são uma maquete. Os botões têm `console.log` e as listas não são
-componentes cliente, por isso nada reage. As *server actions* já existem e estão
+componentes cliente, por isso nada reage. As _server actions_ já existem e estão
 fechadas por `requireUser()` — falta chamá-las.
 
 **Âmbito (medido em 2026-11-01):**
@@ -185,7 +185,7 @@ o gate continua verde e os 522 testes continuam.
 **Fora do âmbito (é T8):** `accountIds` descartado pelo Zod e cêntimos em vírgula
 flutuante.
 
-| T9  | Correr o e2e contra `next start` (build de produção) em vez de `next dev`: o *overlay* de desenvolvimento interceta cliques | Dev | aberta | `relatorios/T9.md` |
+| T9 | Correr o e2e contra `next start` (build de produção) em vez de `next dev`: o _overlay_ de desenvolvimento interceta cliques | Dev | aberta | `relatorios/T9.md` |
 | T26 | **Editar um lançamento pela interface dá HTTP 500** em produção: `updateTransaction` faz `createTransactionSchema.partial()` e o schema tem `superRefine`, que no Zod 4 lança | Dev | Dev done (67/67 e2e); em prova QA | `relatorios/T26.md` |
 | T27 | **Editar uma transferência é impossível pela interface:** o diálogo envia sempre `accountId` e a ação recusa "por presença do campo", mesmo quando o valor não muda | Dev | aberta (achado da T26) | `relatorios/T27.md` |
 | T10 | Investigar 3 e2e de `35-estado-transacoes` que falham | QA | **fechada** (localizador + sessão em falta; a 4.ª falha revelou a T26) | `relatorios/T10.md` |
@@ -426,7 +426,7 @@ deve criar movimento, e a base tem de ficar com **um** pagamento e **um** movime
   ambos `200`, **2 pagamentos e 2 movimentos**. Não é teoria, é dinheiro a duplicar.
 - **Depois**: `updateMany` com `status: { not: 'PAID' }` dentro da transação; o segundo pedido
   recebe `400` «Esta conta já está paga.» e não escreve nada. Três rondas, sempre `1 pagamento /
-  1 movimento`, contados por SQL e não pelo corpo da resposta.
+1 movimento`, contados por SQL e não pelo corpo da resposta.
 - Autorização intocada; complexidade 7 (era 6).
 - **Limites declarados:** só dois pedidos em paralelo (não três ou mais); só `PAYABLE`; não
   exercitou `createTransaction: false`; e continua a existir uma janela teórica entre a posse da
@@ -564,7 +564,6 @@ funcionalidades, o âmbito, a stack e os comandos ficam como estão — só o es
 acrescentar funcionalidade nenhuma à lista; não commitar (o commit e o push continuam a aguardar
 autorização do utilizador, D4).
 
-
 | T21 | **Paleta de comandos rebenta ao abrir:** `ui/command.tsx` → `CommandDialog` monta os filhos sem os envolver no `<Command>` do cmdk (`Cannot read properties of undefined (reading 'subscribe')`). Atinge os 14 destinos, não é do `nav.ts` | Dev | **fechada** (Dev + QA + Revisor; 14 opções, filtro 14→1, 0 erros, axe 0 violações) | `relatorios/T21.md` · `relatorios/T21-qa.md` |
 
 ## Registo de fecho — T20 (2026-11-01)
@@ -616,7 +615,6 @@ lá quando isto estiver corrigido). Mais nada.
 
 **O que NÃO fazer:** não trocar o `cmdk` nem o `Dialog`; não reescrever a paleta; não mexer no
 `nav.ts` (já está fechado pela T19); não fazer commit nem push.
-
 
 | T22 | **`DialogHeader` do `CommandDialog` vive fora do `DialogContent`:** o `<h2>` «Ir para» `sr-only` está sempre no DOM, mesmo com a paleta fechada, e entra na lista de cabeçalhos de um leitor de ecrã em todas as páginas | Dev | aberta (achado do Revisor na T21; anterior a nós) | — |
 
@@ -681,8 +679,8 @@ coisas pequenas, três delas defeitos. **Fora do âmbito, de propósito:** reest
 ### 1. Scroll horizontal em `/transacoes` (defeito)
 
 **Medido:** a 1200 px de largura de janela, `document.documentElement.scrollWidth = 1309` contra `innerWidth = 1200`
-— 109 px a mais. **Causa (Revisor, confirmada por eliminação):** `SidebarInset` (`sidebar.tsx:293-298`) é um *flex
-item* `w-full flex-1` **sem `min-w-0`**; o `min-width:auto` não o deixa encolher abaixo do `min-content` do
+— 109 px a mais. **Causa (Revisor, confirmada por eliminação):** `SidebarInset` (`sidebar.tsx:293-298`) é um _flex
+item_ `w-full flex-1` **sem `min-w-0`**; o `min-width:auto` não o deixa encolher abaixo do `min-content` do
 conteúdo, e esse mínimo é a tabela (`whitespace-nowrap` em `ui/table.tsx:60,72`). O `overflow-x-auto` da tabela
 nunca chega a rolar porque o pai cresceu com ela.
 
@@ -715,6 +713,7 @@ Umas linhas em `globals.css`. **O tema claro não muda.** O contorno continua a 
 ou seja **o indicador é maior que o título da página**.
 
 **Correção esperada:**
+
 - `kpi-card.tsx`: prop **opcional** `prominent` (ex.: `text-4xl` no valor). Por omissão, tudo como está.
 - `page.tsx`: usar `prominent` **só** no cartão do património.
 - `page-header.tsx`: subir o `h1` de `text-2xl` para `text-3xl`, para a hierarquia não ficar invertida.
@@ -750,12 +749,12 @@ Cada varredura de pt-BR encontrava mais frases (6 → 11 → 15). Fechei a exten
   não tinha transações — sem tabela não há largura mínima. O spec passou a criar e apagar dados no `beforeAll`/`afterAll`.
   Limite conhecido: com esses dados falha a 1024 e não a 1200; com os dados da demo falha nas duas (verificado pelo QA e pelo Revisor).
 - **pt-BR:** **15 frases** corrigidas em 5 ficheiros. Não são 6: as rondas mostraram que o texto da app foi escrito com registos
-  diferentes. **7 strings ficaram de fora e estão na T25** — 4 delas só apareceram na varredura do QA (dois *toasts* «ao salvar»,
+  diferentes. **7 strings ficaram de fora e estão na T25** — 4 delas só apareceram na varredura do QA (dois _toasts_ «ao salvar»,
   «Não consegui registrar o pagamento», `placeholder="Aluguel"`). **O critério «zero pt-BR» não se cumpriu na T23**; cumpre-se na T25.
 - **Escuro:** `--card` `0.235 → 0.26` (fundo `L*6.17`, cartão `L*11.23 → 14.13`). Contraste do texto **14,18:1**, rótulos
   **5,82:1**. Tema claro **inalterado** (fundo `L*98,89`, cartão `L*100`, 17,35:1).
 - **Efeito secundário que a nossa mudança criou, e que fechámos na 5.ª ronda:** ao subir o cartão, a separação cartão↔superfícies
-  internas caiu de **4,06 → 1,16** níveis de luminosidade; o rodapé da tabela e o *hover* fundiam-se com o cartão. Corrigido
+  internas caiu de **4,06 → 1,16** níveis de luminosidade; o rodapé da tabela e o _hover_ fundiam-se com o cartão. Corrigido
   subindo `--muted` `0.27 → 0.31` e `--secondary` `0.28 → 0.32` no `.dark`: o salto voltou a **5,80** (`muted`) e **6,96**
   (`secondary`), com `muted-foreground` sobre `muted` a **4,96:1**. **Não baixámos o cartão** — isso desfazia o que o utilizador aprovou.
   Nota: a faixa do rodapé usa `bg-muted/50`, por isso mostra metade do salto (Δ 3,05). Se precisar de ser mais marcada, é
@@ -782,24 +781,23 @@ mesma (`aria-labelledby` pelo contexto, e o axe deu 0 violações), mas o `<h2>`
 (teste no `e2e/15-navegacao.spec.ts`); com a paleta **aberta**, o diálogo continua com nome acessível e o teste
 atual passa. Axe do 80 continua verde. Gate completo verde.
 
-
 | T25 | **Microcopy: as 7 strings de pt-BR que sobraram** — inclui as 3 que a T23 deixou de fora e as 4 que só o QA encontrou (toasts «ao salvar», «registrar», placeholder «Aluguel») | Dev | aberta (2026-11-01; nenhuma bloqueia) | `relatorios/T25.md` |
 
 ## T25 — Microcopy: o resto da lista fechada na T23
 
 **Porque existe:** durante a T23 a correção do pt-BR foi crescendo a cada varredura (6 → 11 → 15 frases). Fechei o âmbito quando o padrão deu zero e mandei deixar o resto **registado em vez de corrigido**, para a tarefa não andar sem fim. Esta é essa lista, fechada pelo Dev no `relatorios/T23.md` §2 e §3.
 
-**As 7 ocorrências por corrigir** (todas em texto de produto visível, nenhuma em comentário). As três primeiras foram registadas pelo Dev na T23; as quatro seguintes só apareceram na varredura do QA — e duas delas chegam ao utilizador por *toast*, que ninguém vê a ler o código:
+**As 7 ocorrências por corrigir** (todas em texto de produto visível, nenhuma em comentário). As três primeiras foram registadas pelo Dev na T23; as quatro seguintes só apareceram na varredura do QA — e duas delas chegam ao utilizador por _toast_, que ninguém vê a ler o código:
 
-| Ficheiro:linha | Hoje | Proposta |
-|---|---|---|
-| `components/account-group-dialog.tsx:135` | toast «Ocorreu um erro ao **salvar** o grupo» | «…ao guardar o grupo» |
-| `components/account-group-dialog.tsx:146` | «Crie um grupo para consolidar várias contas **em uma** visualização.» | «Cria um grupo para consolidares várias contas numa visualização.» |
-| `components/account-group-dialog.tsx:148` | `submitLabel = 'Salvar Alterações'` | «Guardar alterações» |
-| `components/receivable-payable-dialog.tsx:152` | toast «…ao **salvar** a conta» | «…ao guardar a conta» |
-| `components/receivable-payable-dialog.tsx:165` | `submitLabel = 'Salvar Alterações'` | «Guardar alterações» |
-| `components/receivable-payable-dialog.tsx:235` | `placeholder="… Aluguel …"` | «… Renda …» (pt-PT; confirmar com o campo vizinho) |
-| `server/receivable-payable-actions.ts:252` | «Não consegui **registrar** o pagamento» — chega ao ecrã por `toast({ description: result.error })` | «…registar o pagamento» |
+| Ficheiro:linha                                 | Hoje                                                                                                | Proposta                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `components/account-group-dialog.tsx:135`      | toast «Ocorreu um erro ao **salvar** o grupo»                                                       | «…ao guardar o grupo»                                              |
+| `components/account-group-dialog.tsx:146`      | «Crie um grupo para consolidar várias contas **em uma** visualização.»                              | «Cria um grupo para consolidares várias contas numa visualização.» |
+| `components/account-group-dialog.tsx:148`      | `submitLabel = 'Salvar Alterações'`                                                                 | «Guardar alterações»                                               |
+| `components/receivable-payable-dialog.tsx:152` | toast «…ao **salvar** a conta»                                                                      | «…ao guardar a conta»                                              |
+| `components/receivable-payable-dialog.tsx:165` | `submitLabel = 'Salvar Alterações'`                                                                 | «Guardar alterações»                                               |
+| `components/receivable-payable-dialog.tsx:235` | `placeholder="… Aluguel …"`                                                                         | «… Renda …» (pt-PT; confirmar com o campo vizinho)                 |
+| `server/receivable-payable-actions.ts:252`     | «Não consegui **registrar** o pagamento» — chega ao ecrã por `toast({ description: result.error })` | «…registar o pagamento»                                            |
 
 **Atenção ao mexer nas duas `Salvar Alterações`:** ao contrário do resto, **estas estão assertadas em e2e** — `e2e/45-contas-pagar-receber.spec.ts:97` e `e2e/55-consolidacao-contas.spec.ts:125` procuram o texto. Mudar o rótulo obriga a atualizar os dois specs no mesmo passo, senão o gate fica vermelho.
 
@@ -849,7 +847,7 @@ edição e o resto da aplicação funciona.
 `.partial()` sobre refinamento.
 
 **Varredura da mesma classe de defeito (feita pelo Lead):** os outros sete `.partial()` do projeto
-não correm risco — `budgetShape`, `goalShape`, `recurrenceShape`, `ruleShape` são *shapes* simples
+não correm risco — `budgetShape`, `goalShape`, `recurrenceShape`, `ruleShape` são _shapes_ simples
 (é para isso que o sufixo `Shape` existe) e `createAccountSchema`, `createCreditCardSchema`,
 `createReceivablePayableSchema` e `createAccountGroupSchema` não têm refinamento. O refinamento de
 `accounts.ts:147` é de outra schema (compra parcelada). **Só a transação está afetada.**
@@ -888,7 +886,7 @@ ronda: **T10/T26** (500 na edição de lançamento) e **T18**. Entram agora:
 - **T15** — o diálogo de contas a pagar/receber passa a mostrar os `fieldErrors` no campo, como o de
   grupos já faz desde a T12.
 - **T9** — o e2e passa a correr contra o **build de produção** por omissão; contra `next dev` o
-  *overlay* do Next intercetou cliques e deu um falso negativo.
+  _overlay_ do Next intercetou cliques e deu um falso negativo.
 - **T31** — projetos de telemóvel (Chromium e WebKit) e tema escuro na configuração do Playwright; o
   ramo `Drawer` dos diálogos e o axe no escuro nunca foram exercitados.
 - **T29** — asserção de **nome acessível** nos campos (o axe aceita `placeholder` como nome, e por
@@ -968,7 +966,7 @@ Os três vieram do QA, todos medidos, nenhum inventado:
    consequência directa de pôr `overflow-y-auto` no `DrawerContent` — o espaçador do `vaul` passou a
    fazer parte da área rolável.
 2. Ao fechar o drawer, o Chromium escreve `Blocked aria-hidden on an element because its descendant
-   retained focus` — gestão de foco do `vaul`, não tratada.
+retained focus` — gestão de foco do `vaul`, não tratada.
 3. O formulário de criação **guarda os valores** ao reabrir: submeter outra vez dá «Já tens uma conta
    com essa descrição». Falta repor o formulário ao fechar ou depois de criar.
 
@@ -1068,7 +1066,7 @@ ficheiro diz que usa o motor, e não usa.
 tem de ser maior que zero». `nonNegativeCentsSchema` existe precisamente para saldos e valores de bens.
 
 **Confirmações úteis do Revisor:** não há duplicação com contas/cartões/faturas (chaves distintas do
-*breakdown*); o filtro de arquivados está nas consultas, como nas categorias; todas as consultas levam
+_breakdown_); o filtro de arquivados está nas consultas, como nas categorias; todas as consultas levam
 `userId`; as duas queries novas viajam no `Promise.all` que já existia. E a razão pela qual o T26 não
 se repete aqui: o `.partial()` corre sobre o `liabilityShape` **antes** do refinamento.
 
@@ -1120,7 +1118,6 @@ objetivo com Y acumulado faz subir Y — medido nos dois ecrãs.
 | T40 | **`GoalMovementType.yield` era código morto** com uma migração associada | Dev | Dev done (enum com 2 valores, 3 movimentos intactos, 90 000 antes e depois); em prova QA | `relatorios/T40.md` |
 
 | T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **reprovada na autorização:** a confirmação aceita um `cardId` de outro utilizador | `relatorios/T45.md` |
-
 
 ## T41 — a minha lista de seis termos estava errada, e o Dev provou-o
 
@@ -1194,7 +1191,7 @@ o da duplicação existir mais uma semana. Fica registado com o sítio exato.
 **Achados menores do mesmo Revisor, a corrigir já (T42-b):** o `select` dos objetivos traz
 `targetAmountInCents`, `targetDate` e `contributionFrequency` que o `netWorth` não lê (`netWorth.ts:57`
 só usa `id` e `initialReservedInCents`), e o `toRecurrenceFrequency` é peso morto; e
-`goalMovement.findMany` não tem filtro de data, pelo que o *payload* cresce sem tecto (o motor
+`goalMovement.findMany` não tem filtro de data, pelo que o _payload_ cresce sem tecto (o motor
 descarta depois, mas os dados já viajaram).
 
 ## Regras de método que ficaram desta ronda
@@ -1207,3 +1204,1166 @@ descarta depois, mas os dados já viajaram).
 - Cada tarefa tem um critério de aceitação verificável. "Funciona" não é critério.
 - Tarefa que cresce a meio: pára, divide, e volta a escrever a lista.
 - Tarefa fechada sem prova = tarefa aberta.
+- **Enquanto o QA estiver a provar, o Dev não reconstrói `.next`.** Os dois partilham a
+  mesma árvore: um `build`/`dev` a meio da medição dá 500 e `ChunkLoadError`, e a corrida
+  inteira do QA deixa de valer (aconteceu duas vezes na T46). Quem precisa de construir
+  avisa o Lead e espera a vez.
+- **Quem mede não aproveita números de um build que já mudou.** Corrida invalidada a meio
+  diz-se invalidada e repete-se — não se escolhem os valores que interessam.
+
+---
+
+# Vaga 1 — "barato e visível" (decisão D7–D11, 2026-11-17)
+
+Objetivo: a aplicação fica melhor sem tocar no modelo de dados. **Nenhuma tabela, nenhuma
+coluna, nenhuma migração em toda a vaga.** Publica-se tudo de uma vez no fim.
+
+| ID  | Tarefa                                                                                                                      | Dono | Estado                                                                                  | Prova               |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------- | ------------------- |
+| T46 | **Modo privacidade:** um interruptor troca os montantes por máscara, sem flash ao recarregar                                | Dev  | **fechada** (QA: 13→0 montantes, 0 px de altura, varredura limpa; Revisor: APROVO)      | `relatorios/T46.md` |
+| T47 | **Sparkline de 30 dias no cartão de cada conta**                                                                            | Dev  | **fechada** (PASS QA; gate verde com 563; payload: 0 em 8 rotas, 3 séries em `/contas`) | `relatorios/T47.md` |
+| T48 | **Filtro por valor no extrato** (`>`, `<`, `=`), chip removível — os chips e o total já existiam                            | Dev  | **fechada** (PASS QA re-provado; teto de 32 bits provado nos 4 lados; APROVO)           | `relatorios/T48.md` |
+| T49 | **Sugestão de descrição** a partir do histórico, com texto livre sempre aceite                                              | Dev  | **fechada** (PASS QA; lista no fluxo, um clique grava, `Escape` nos 3 casos)            | `relatorios/T49.md` |
+| T50 | **Cores de dinheiro com significado:** trocar as cores de paleta escritas à mão e apontar os gráficos aos tokens semânticos | Dev  | **fechada** (PASS QA; `axe` 2/6 → 0; borda 1 px a render)                               | `relatorios/T50.md` |
+| T51 | **`/contas`, dois defeitos herdados:** nome comprido cortado a seco e contraste do cartão arquivado (3,12:1)                | Dev  | **PASS do QA** nos dois defeitos; confirm do Revisor em curso                           | `relatorios/T51.md` |
+
+## T46 — Modo privacidade
+
+**Porque:** hoje qualquer pessoa ao lado vê os saldos. É o item mais barato do plano e
+serve de cronómetro da vaga (nenhum schema, nenhuma dependência).
+
+**Comportamento esperado**
+
+1. Um botão no cabeçalho (junto ao `CommandPalette` e ao `ModeToggle`) alterna entre
+   «Ocultar montantes» e «Mostrar montantes», com `Eye`/`EyeOff` do `lucide`.
+2. Atalho **`Ctrl+Shift+H`** (não `Ctrl+H`: no Chrome e no Firefox abre o histórico).
+   Não dispara dentro de campos de texto nem com a paleta aberta.
+3. Com a máscara ativa, cada montante renderizado por `<Amount>` mostra `••••` no lugar
+   dos dígitos, **com o mesmo número de caracteres** do valor formatado, para o layout
+   não saltar.
+4. A preferência fica em `localStorage` (`financas:privacidade`), aplicada por um script
+   inline no `<head>` **antes** da hidratação — recarregar nunca mostra um valor verdadeiro.
+5. **Não** se mascaram: campos de formulário (`money-input`, pré-visualização de
+   parcelas), textos de regras, nem exportações (CSV/XLSX/PDF). A privacidade é do ecrã.
+
+**Ficheiros que pode escrever:** `components/amount.tsx` · novo
+`components/privacy-mode.tsx` (provider + botão + atalho) · `components/app-shell.tsx`
+(cabeçalho) · `app/layout.tsx` (script inline e provider) · `components/category-donut.tsx`
+(o total passa a usar `<Amount>`) · `app/globals.css` (a classe da máscara). Mais nada.
+
+**Critério de aceitação (verificável, com números)**
+
+1. Painel com dados reais: contar os montantes no DOM (atributo `data-amount`) — antes
+   **N visíveis**, depois **N mascarados**, `N` igual nos dois lados.
+2. A altura da página não muda ao alternar: medir `document.body.scrollHeight` antes e
+   depois, a 360 px e a 1280 px; diferença ≤ 2 px.
+3. Recarregar com `F5` mantém a máscara; **no texto visível** do HTML servido não há
+   nenhum valor (prova por `curl`); o payload `self.__next_f` leva os números e isso é
+   aceite — a máscara é de apresentação, não é segredo (D14).
+4. Botão e atalho produzem o mesmo estado; o atalho não dispara a escrever num campo.
+5. Formulários e exportações continuam com valores (provar um CSV exportado com a
+   máscara ativa).
+6. Leitor de ecrã: o montante mascarado anuncia «montante oculto», não o valor.
+7. `format:check`, `lint`, `typecheck`, `test`, `build` verdes; **556 testes** sem
+   alterações; zero dependências novas; zero migrações.
+
+**O que NÃO fazer:** não tocar no servidor, na base de dados, no schema nem nas
+exportações; não mascarar inputs; não mudar o atalho `Ctrl+K`; não acrescentar
+dependências; não escrever em `e2e/` (é do QA); não fazer commit nem push.
+
+### T46 — correção pedida pelo Lead (2026-11-17), depois da entrega do Dev
+
+**Aceite do desenho do Dev:** cookie `financas-privacidade` + atributo
+`data-privacidade` no `<html>` + `<span>` da donut a usar os ajudantes. O custo («todas as
+rotas passam a dinâmicas, `/entrar` e `/registar` perdem o estático») fica registado em
+`DECISOES.md` D12.
+
+**Defeito a corrigir, dentro do mesmo âmbito:** os gráficos continuam a mostrar valores ao
+passar o rato (`components/ui/chart.tsx:234` usa `toLocaleString()` no valor, e o eixo da
+projeção formata em euros). Um modo que se chama privacidade e mostra números no tooltip não
+cumpre o que promete.
+
+**Ficheiros adicionais autorizados:** `components/ui/chart.tsx` (prop opcional
+`masked` no `ChartTooltipContent`) · `components/cashflow-chart.tsx` ·
+`components/dashboard-forecast-chart.tsx` (tooltip **e** `tickFormatter` do eixo) ·
+`components/category-donut.tsx` (já na lista).
+
+**Critério:** máscara ativa → o DOM do tooltip e os rótulos do eixo **não têm um único
+dígito** nos três gráficos; a forma e o tamanho do gráfico não mudam; com a máscara
+inativa, tudo continua exatamente como hoje (mesmo `toLocaleString()`, sem "melhorias" de
+formatação).
+
+### T46 — correção 2: valores servidos fora do `<Amount>` (achado do Revisor, 2026-11-17)
+
+O Revisor encontrou dois ecrãs que mostram dinheiro em texto montado **no servidor**, fora
+do `<Amount>` — e por isso visível com a máscara ligada:
+
+| Sitio                                        | O que mostra                                                   |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `app/(app)/page.tsx:282,297`                 | dica do KPI «Por competência: 1 234,56 €» na vista por omissão |
+| `app/(app)/page.tsx:173`                     | dica do KPI de cartão «Limite disponível: … €»                 |
+| `app/(app)/contas-pagar-receber/page.tsx:66` | «Valor Pendente» somado à mão (`/ 100`) e impresso com `€`     |
+
+**Ficheiros adicionais autorizados:** `app/(app)/page.tsx`,
+`app/(app)/contas-pagar-receber/page.tsx` (mais os já autorizados, para os menores).
+**Aspeto:** o resultado visual com a máscara **inativa** tem de ficar igual — cor e
+tamanho medidos antes e depois nesses três sítios.
+
+**Menores do mesmo Revisor, a fechar agora:** nome do cookie numa só constante
+(`layout.tsx` vs `privacy-mode.tsx`) · `Secure` quando a página é https · texto para
+leitor de ecrã no tooltip mascarado (como o `<Amount>` já tem) · `formatAmountText`
+deixa de ser exportado se não tem consumidor externo. O script no `<body>` fica onde está.
+
+**Critério de vaga (novo):** com a máscara ligada, varrer os **14 ecrãs** do `nav.ts` e
+listar **todos** os textos com dígitos que restem, classificando cada um: montante ou não
+(percentagens, contagens, datas e números de parcela são legítimos). A varredura é o
+critério — não a lista de sítios que alguém se lembrou de abrir.
+
+### T46 — fecho (2026-11-17): QA PASS, Revisor APROVO
+
+Prova do QA no build final (Painel com dados, a 1280 px):
+
+| Medida                                         | Antes | Depois                        |
+| ---------------------------------------------- | ----- | ----------------------------- |
+| Montantes visíveis (`[data-amount='visivel']`) | 13    | **0**                         |
+| Elementos com dígitos (Painel)                 | 38    | 14                            |
+| Caracteres dígito (Painel)                     | 137   | 45                            |
+| `scrollHeight` (Painel)                        | 2228  | 2228 (**0 px**)               |
+| Altura a 360 px, 15 ecrãs                      | —     | **0 px**, 0 elementos movidos |
+
+Os 14 textos que continuam com dígitos são datas, percentagens, contagens e números de
+parcela — classificados um a um em `relatorios/T46.md`. Restam **2** textos com `€`: os
+exemplos estáticos de `/importar` e `/definicoes`, que não são dados do utilizador.
+
+**Os dois extremos do arranque foram medidos**, e é o que valida o desenho D12:
+
+- Cookie apagado, `localStorage` vivo: primeiro frame **0 valores visíveis** (CSS) e os 13
+  ocultos depois da hidratação.
+- `localStorage` apagado, cookie vivo: primeiro frame já **12 ocultos / 0 dígitos**; com JS
+  desligado o HTML vem **todo oculto** (200). É o caso que justifica o cookie.
+
+Também provado: `F5` e um segundo separador mantêm os 13 ocultos; atalho dispara livre e
+não dispara em campo de texto nem com a paleta aberta; CSV/JSON continuam com valores,
+campos e pré-visualização de parcelas legíveis; `axe` 0 violações; 393×851 em modo escuro
+com 0 px; suite **88/88** (87 + `e2e/27-privacidade.spec.ts`); gate verde com **556**
+testes; base reposta ao baseline (2 users, 0 `qa.*`/`e2e-*`).
+
+**A contradição dos +36 px fechou-se contra o QA**, e está bem: eram do build intermédio
+(`.next` a ser substituído → 500/`ChunkLoadError`), não da máscara. Nenhum dos dois lados
+tinha razão por autoridade — tinha razão a medição no build que não mudou.
+
+**Fica como dívida (não é regressão da T46):** `/relatorios` a 360 px tem `scrollWidth`
+382 > 360 **antes e depois** da máscara. Passa para a T50 ou para uma tarefa própria de
+telemóvel.
+
+**Nota de critério:** o critério 3 dizia «no texto visível não há nenhum valor» — cumpre-se.
+Não dizia «nenhum dígito»: as datas do eixo X e do tooltip (`09/12`) mantêm-se, e é o
+certo (D15). O critério de vaga já previa esta distinção; ficou registada.
+
+## T47 — Sparkline de 30 dias em cada conta
+
+**Porque:** `/contas` mostra o saldo de hoje e mais nada. Uma linha de 30 dias diz se a
+conta está a subir ou a descer sem abrir `/relatorios`, e é o tipo de coisa que se vê de
+relance. Zero schema, zero dependências.
+
+**Âmbito (mais estreito do que a linha antiga da tabela):** `AccountCard`, que é usado
+**só** em `/contas` (ativas e arquivadas). O Painel não desenha cartões por conta — o KPI
+dele é do âmbito escolhido —, por isso não entra nesta tarefa.
+
+**Comportamento esperado**
+
+1. Cada cartão de conta mostra uma sparkline de **30 pontos**, um por dia, do 30.º dia
+   atrás até hoje (fuso `Europe/Lisbon`, via `todayInLisbon()`).
+2. O saldo de cada ponto é o **do motor**: `accountBalanceInCents(conta, transações, { upTo: dia })`
+   não muda de semântica (só liquidadas, ignora as marcadas como ignoradas). Não se escreve
+   uma segunda fórmula de saldo.
+3. **O último ponto tem de ser igual ao `balanceInCents` que o cartão já mostra.** É o
+   teste que apanha o caminho paralelo; se divergir, está errado o cálculo da série.
+4. Sem movimentos nos 30 dias: linha horizontal (a caixa não desaparece, não há salto de
+   layout).
+5. **Privacidade (T46):** a sparkline mostra forma, não números. Sem tooltip, sem eixo, sem
+   `aria-label` com euros; o SVG vai `aria-hidden` com um `sr-only` tipo «tendência dos
+   últimos 30 dias». Com a máscara ativa, a varredura de textos com dígitos de `/contas`
+   tem de continuar a dar **zero montantes**.
+6. Custo: a série sai das transações que `listAccounts` **já** carrega. Nenhuma consulta
+   nova, nenhum `N+1` por conta.
+
+**Ficheiros que pode escrever:** `packages/shared/src/finance/balance.ts` (função de série,
+pura) · `packages/shared/src/finance/__tests__/balance.test.ts` (testes dela) ·
+`apps/web/src/server/accounts.ts` (`AccountView` ganha a série já calculada) · novo
+`apps/web/src/components/account-sparkline.tsx` · `apps/web/src/components/account-card.tsx`
+(render). Mais nada.
+
+**Critério de aceitação (verificável, com números)**
+
+1. Teste unitário: série de 30 pontos para um conjunto conhecido de transações; **último
+   ponto === `accountBalanceInCents` sem `upTo`**; um caso com conta sem movimentos (reta);
+   um caso com transferência entre contas (não a contar duas vezes).
+2. `/contas` com ≥3 contas: todas as sparklines têm 30 pontos e **um só** tamanho medido
+   (largura × altura iguais em todas).
+3. Consultas: o número de queries do Prisma em `/contas` é **o mesmo** antes e depois
+   (provar com o log de queries, não por leitura).
+4. A 360 px: `scrollWidth <= 360` em `/contas`, e a altura do cartão igual entre os cartões
+   da mesma grelha.
+5. Máscara ativa: 0 montantes visíveis em `/contas` e a varredura de textos com dígitos não
+   ganha nenhuma entrada nova em relação à T46.
+6. `format:check`, `lint`, `typecheck`, `test`, `build` verdes; testes **≥ 556** (os novos
+   somam, nenhum antigo se altera sem justificação); zero dependências novas — **não usar
+   `recharts`** para isto (já existe, mas um SVG de 30 pontos custa ~20 linhas e não arrasta
+   o runtime dos gráficos para dentro de cada cartão); zero migrações.
+
+**O que NÃO fazer:** não acrescentar `recharts`/`d3` ao cartão, não ir buscar dados ao
+cliente (nada de `fetch` em `useEffect`), não tocar no motor nem nas regras de saldo, não
+mascarar nem esconder a linha com a máscara ativa (a forma é o que se quer ver), não mexer
+em `e2e/` (é do QA), não fazer commit nem push.
+
+### T47 — correções menores pedidas pelo Revisor (2026-11-17) — **feitas, à espera do gate**
+
+As três estão na árvore: docstring reescrito, `listAccounts({ withSeries: true })` opt-in
+com `balanceSeries?:` (e o `todayInLisbon()` só no ramo que precisa dele), e
+`--color-chart-balance` mapeado com `text-chart-balance` no componente. O cartão não desenha
+`<svg>` quando a série falta. Nada construído ainda: o gate e a prova de payload
+(zero `balanceSeries` nos 8 consumidores, 30 pontos por conta em `/contas`) correm depois do
+relatório do QA.
+
+O Revisor aprovou o comportamento (DEVE: nenhum) e deixou três menores. Verifiquei os três
+no código antes de os aceitar; vão para o Dev **quando o QA fechar**, porque o build está
+congelado a meio da medição.
+
+1. **O comentário promete o que o teste desmente.** `balance.ts:73-75` diz que «o último
+   ponto tem de coincidir com o saldo que o cartão mostra», e `balance.test.ts:264-275`
+   fixa o caso em que não coincide (liquidado com data futura). Reescrever a frase: coincide
+   **exceto** com liquidados de data futura. Quem ler o comentário hoje «corrige» a série
+   para bater com o número e esconde a divergência de propósito.
+2. **A série viaja em 9 páginas; só uma a desenha.** `AccountView` ganhou `balanceSeries` e
+   `listAccounts()` é chamado em `transacoes`, `cartoes`, `objetivos`, `contas-pagar-receber`,
+   `importar`, `recorrencias`, `regras`, `consolidacao-contas` e `contas` — 30 números por
+   conta calculados e serializados no payload de oito páginas que não têm sparkline.
+   Corrigir com um campo opcional preenchido só no caminho de `/contas` (ou
+   `listAccounts({ withSeries: true })`); o resto dos consumidores fica igual.
+3. **A cor da linha é da paleta, não do significado.** `--chart-balance: var(--chart-1)`
+   existe em `globals.css:115` mas não tem `--color-chart-balance` no `@theme`, logo não há
+   classe Tailwind e o componente usa `text-chart-1`. Quando a T50 reescrever `chart-1..5`,
+   a linha do saldo muda de significado por arrasto. Mapear o token e usar
+   `text-chart-balance` — ou apagar o alias morto, mas então a linha não tem nome próprio.
+
+**Ficheiros adicionais autorizados para o ponto 3:** `apps/web/src/app/globals.css` (uma linha
+no `@theme`) e `apps/web/src/app/(app)/contas/page.tsx` (uma linha: `listAccounts({ withSeries: true })`,
+porque `listAccounts()` não sabe quem a chama). Sem mudança de cor visível: o valor continua
+a ser `--chart-1`.
+
+**Regra para o cartão:** desenha a linha **só** quando a série existe. Sem série, nada de
+`<svg>` vazio nem caixa reservada — melhor um cartão sem linha do que uma reta falsa.
+
+### T47 — prova do QA (2026-11-17): PASS, com 2 defeitos herdados
+
+**A linha bate com o número — e o desvio é exatamente o futuro.** Sem lançamentos futuros,
+5/5 contas com o último ponto igual ao saldo impresso (232 655 = 2 326,55 €, 40 000, 100 000,
+20 000, 0), e o `y` do SVG a bater com o valor esperado. Com **um liquidado de −777,77 € com
+data de amanhã**: cartão **1 548,78 €**, último ponto parado em 232 655 → **desvio
+777,77 €**, e o `y` final não se mexe. Na base real, `settled AND date > hoje` dá **0**:
+a divergência de D16 é alcançável por má digitação, não é o estado normal.
+
+| Medida                                  | Resultado                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------------- |
+| Pontos por sparkline                    | 30 em 5/5 contas                                                           |
+| Tamanhos medidos                        | 283×32 (1280) · 192×32 (768) · 296×32 (360) — **um por largura**           |
+| Alturas por linha da grelha             | `[292,292,292]` · `[332,332]` · `[312,312]` — iguais                       |
+| `scrollWidth` a 360 px                  | **360**                                                                    |
+| Máscara ligada                          | 6 montantes → **0** visíveis, **5 sparklines desenhadas**                  |
+| Tema escuro (393×851)                   | `7,25:1`, traço de 1,5 px                                                  |
+| Custo de `/contas` com 2000 lançamentos | 185 → **227 ms** (+42 ms, +23 %), HTML +141 B                              |
+| Gate                                    | format 0 · lint 0 · typecheck 0 · test **563** · build 0 · suite **90/90** |
+
+O custo medido confirma o que o Dev tinha dito por leitura e não conseguia provar: a série
+não acrescenta consultas, acrescenta CPU (30 × movimentos) — e 227 ms com 2000 lançamentos
+numa conta é aceitável para uma página que já fazia 185 ms.
+
+**Dois defeitos que já existiam (não são regressão da T47) → T51:**
+
+1. `axe` dá **3 `color-contrast` serious** em `/contas`, todas no cartão **arquivado**
+   (`opacity-70` → 3,12:1, `#8b9298` sobre `#fefefd`), iguais com e sem máscara. O SVG é
+   `aria-hidden` e não é a causa.
+2. **O nome de uma conta comprida não trunca**: o `h3` tem `truncate`, mas o `clientWidth`
+   mede 853 dentro de um cartão de 328 — o texto sai cortado a seco, sem «…», e o cartão
+   chega a 973 px. O `scrollWidth` da página fica em 360 porque o transbordo é silencioso.
+   É o defeito mais visível dos dois e é uma linha (`min-w-0` no filho flexível).
+
+## T51 — `/contas`: o nome que não trunca e o cartão arquivado que não se lê
+
+**Porque:** dois defeitos que já estavam antes da T47, encontrados ao medir aquele ecrã —
+nenhum dos dois é regressão, os dois são visíveis.
+
+1. **Nome comprido cortado a seco.** O `h3` do cartão tem `truncate`, mas o `clientWidth`
+   mede **853 px dentro de um cartão de 328**, e o cartão chega a **973 px**. O
+   `scrollWidth` da página fica em 360 porque o transbordo é engolido — por isso é que nunca
+   apareceu numa medição de scroll horizontal.
+
+   **O `min-w-0` já lá está** (`account-card.tsx:96`, no `div` do título), e não chega — o
+   diagnóstico do QA («falta `min-w-0` no filho flexível») está incompleto. A cadeia é
+   outra: `truncate` põe `white-space: nowrap`, logo o **min-content** do `h3` é o nome
+   inteiro; o cartão é o `<li>` de uma grelha com colunas `1fr`, cujo mínimo é `auto` — e o
+   `min-content` do item empurra a **track** da grelha para 853 px, independentemente do que
+   se passe dentro do flex. Por isso o remédio tem de estar **acima** do flex (`min-w-0` no
+   `<li>`/cartão, ou `minmax(0,1fr)` nas colunas), não dentro dele.
+
+2. **Cartão arquivado abaixo do contraste mínimo.** `opacity-70` deixa o texto em
+   **3,12:1** (`#8b9298` sobre `#fefefd`) → **3 violações `axe` `color-contrast` serious**,
+   iguais com e sem máscara. O mínimo para texto normal é 4,5:1.
+
+**Critério de aceitação**
+
+1. Com um nome de 60+ caracteres: o cartão fica com a largura da grelha (**≤ 328 px** a
+   360 px), o nome termina em «…», e nenhum cartão passa de `scrollWidth` da janela.
+   Medir `clientWidth` do `h3` **dentro** do cartão **e** a largura do `<li>`, não só o
+   `scrollWidth` da página — foi esse que escondeu o defeito durante três rondas.
+2. O nome completo continua acessível (o texto no DOM não é cortado; só a pintura).
+3. `axe` em `/contas` com uma conta arquivada: **0 violações `color-contrast`**; e a conta
+   arquivada continua a distinguir-se de uma ativa à vista.
+4. Sem mudar mais nada no cartão: mesmas alturas por linha da grelha, mesma sparkline.
+5. `format:check`/`lint`/`typecheck`/`test`/`build` verdes; zero dependências.
+
+**Sobre o defeito 2 (contraste):** o `opacity-70` tem de sair — nenhuma opacidade global
+chega a 4,5:1. A conta arquivada continua a distinguir-se pelo `Badge` «Arquivada», pelo
+fundo mais apagado e/ou pela borda tracejada; a distinção passa a ser **cor de superfície**,
+não transparência.
+
+**O que NÃO fazer:** não trocar a grelha por lista, não mexer na sparkline, não usar
+`opacity` como sinónimo de «inativo» (é o que causa o defeito 2), não tocar em `e2e/` nem
+fazer commit.
+
+### T47 — 2.ª ronda de menores (Revisor, 2026-11-17 14:00): o `undefined` viaja
+
+O Revisor corrigiu-me numa coisa que eu tinha afirmado ao contrário: **um prop `undefined`
+não desaparece do payload** — o React Flight serializa-o como `"$undefined"` (verificado no
+`react-server-dom-webpack`), o que são ~27 B por conta nas 8 páginas que não têm sparkline.
+Ou seja, o opt-in não chegou a poupar o que eu disse que poupava.
+
+Duas correções, ambas no `accounts.ts`/`account-card.tsx`:
+
+1. **Chave fora, não `undefined`:** `...(today === null ? {} : { balanceSeries })`.
+2. **O opt-in a falhar à vista:** com `AccountView` de campo opcional, um
+   `listAccounts()` sem a flag em `/contas` compila e o cartão sai mudo, sem aviso. Duas
+   assinaturas resolvem-no no tipo: `interface AccountWithSeries extends AccountView`
+   (com `balanceSeries` obrigatório), `listAccounts({ withSeries: true }):
+Promise<AccountWithSeries[]>` e `listAccounts(options?: { withSeries?: false }):
+Promise<AccountView[]>`, e o cartão a receber `AccountWithSeries`. Um `undefined` a mais
+   passa a ser erro de compilação.
+
+**Correção minha, também:** o `todayInLisbon()` **já está** içado (`accounts.ts:81`, uma vez
+por pedido, só no ramo que precisa dele). O nit que mandei ao Dev sobre isso estava errado —
+não há nada a içar, e não se toca.
+
+**Consequência para a prova de payload:** procurar `balanceSeries` **e** `$undefined`; um
+grep por `null` dá falso negativo.
+
+### T47 — fecho (2026-11-17): PASS do QA, APROVO do Revisor, gate verde
+
+Última medição antes de fechar, com sessão real e 3 contas — o grep procura as **duas**
+formas (`balanceSeries` e `"$undefined"`), porque um grep por `null` daria falso negativo:
+
+| Rota                                                    | `balanceSeries` | `"balanceSeries":"$undefined"` | sparkline | `data-points="30"` |
+| ------------------------------------------------------- | --------------- | ------------------------------ | --------- | ------------------ |
+| 8 consumidores (`/transacoes` … `/consolidacao-contas`) | **0**           | **0**                          | 0         | 0                  |
+| `/contas`                                               | **3**           | 0                              | 3         | 3                  |
+
+E o custo do meu erro ficou medido ao byte: as 7 páginas que antes levavam a chave
+perderam **99 B cada** (`/transacoes` 104 289 → 104 190, `/cartoes` 67 639 → 67 540,
+`/regras` 74 504 → 74 405). O `undefined` ia mesmo no Flight.
+
+**O que ficou garantido por tipo, não por disciplina:** `AccountWithSeries` com
+`balanceSeries` obrigatório e duas assinaturas de `listAccounts`. Um `listAccounts()`
+esquecido em `/contas` passou a ser **erro de compilação**, e não um cartão mudo que
+ninguém nota.
+
+Gate: `format:check` · `lint` 0 · `typecheck` 0 · `test` **563** (nenhum antigo alterado) ·
+`build` ✓ · suite **90/90**. Zero dependências, zero migrações. `:3100` parada pelo PID,
+base no baseline (2 utilizadores, 5 contas, 52 lançamentos, 0 de teste). Sem commit.
+
+**Dívida que fica:** `/relatorios` a 360 px com 22 px de transbordo (T46), e a T51
+(`/contas`: nome comprido sem reticências e contraste 3,12:1 no cartão arquivado).
+
+### T51 — a causa era outra (nem a do QA, nem a minha) — 2026-11-17
+
+O QA disse «falta `min-w-0` no filho flexível»; eu disse «é a track da grelha da página,
+porque `white-space: nowrap` faz o min-content do `h3` ser o nome inteiro». **Os dois
+estavam errados**, e o Dev mediu a cadeia antes de mexer:
+
+```
+DIV 662  block   (h3, truncate)          ← clientWidth 662 dentro de um cartão de 328
+DIV 662  block   (min-w-0 flex-1)
+DIV 766  flex    (min-width: auto — item da grelha do CardHeader)  ← é aqui que cresce
+DIV 328  grid    (CardHeader)
+DIV 328  flex    (Card, overflow-x: hidden)
+LI  328          (grelha da página)
+```
+
+O `<li>` e o cartão **nunca** cresceram (328 a 360 px, 315 a 1280, mesmo com 120
+caracteres): o `Card` tem `overflow-x: hidden` e, como é um scroll container, o seu
+contributo de min-content é **0** — foi isso que escondeu o transbordo de todos os
+`scrollWidth` que medimos. Quem não encolhia era a **grelha interna do `CardHeader`**, e o
+`h3` ficava com a largura do texto, pelo que o `overflow: hidden` do `truncate` nunca chegou
+a pintar a reticência: via-se um corte a seco na borda do cartão.
+
+**Correção:** `min-w-0` no `div.flex` do `CardHeader`, uma classe. Depois, com um nome de
+**120** caracteres (931 px de texto): `h3` 662 → **192** (360 px) e → **195** (1280), com
+`clientWidth < scrollWidth`, logo a reticência é pintada; alturas inalteradas (304 / 292) e a
+sparkline com 30 pontos. O texto completo continua no DOM.
+
+**Lição para o método:** `scrollWidth` da página **não é** prova de que nada transborda —
+um `overflow: hidden` a meio da árvore engole o defeito. Medir o elemento, e medir a cadeia
+de pais até ao primeiro que tem largura fixa.
+
+### T51 — DEVE do Revisor (14:08): o tracejado não pinta
+
+`border-dashed` sozinho não desenha nada: o `Card` primitivo usa `ring-1 ring-foreground/10`
+e **não** tem `border`, e o preflight do Tailwind põe `border: 0 solid` em `*`. Logo o
+tracejado prometido não aparece em conta nenhuma, nos dois temas — e a única marca a
+distinguir a arquivada fica a ser `bg-muted/40`, que é uma diferença de superfície de
+6/255 (255,255,255 → 249,251,251 no claro; 30,37,44 → 35,42,49 no escuro).
+
+**Dois motivos para isto importar:** o `opacity-70` saiu para ganhar contraste, e sem o
+tracejado a arquivada passa a ser quase indistinguível de uma ativa — trocámos um defeito de
+acessibilidade por um defeito de legibilidade, que é pior porque o `axe` não o vê.
+
+**Correção:** `border border-dashed border-foreground/10 ring-0` (o `ring-0` evita a linha
+dupla com o `ring-1` do primitivo). Prova exigida: `border-top-style: dashed` e
+`border-top-width: 1px` computados, mais uma captura — não basta a classe no ficheiro.
+
+**Achado secundário do mesmo Revisor, que é consequência do `min-w-0`:** a linha
+tipo · instituição (`account-card.tsx:111`) não tem `truncate` nem `break-words`. Antes
+empurrava o cartão; agora, com o `min-w-0`, uma palavra longa sem espaços **pinta por cima
+do botão de ações**. Passa a `break-words` (não `truncate`: a instituição é texto do
+utilizador e cortá-lo em silêncio é pior do que ele ocupar duas linhas).
+
+### T51 — prova do QA (14:12): os dois defeitos fechados
+
+| Medida                           | Antes                      | Depois                                                               |
+| -------------------------------- | -------------------------- | -------------------------------------------------------------------- |
+| `axe` em `/contas` com arquivada | 3 `color-contrast` serious | **0** (com e sem máscara)                                            |
+| `muted-foreground` no cartão     | **3,12:1**                 | **5,68:1** (claro, QA) / 5,75:1 (Revisor) · escuro 5,46:1 (Revisor)  |
+| Título / `Badge`                 | —                          | 16,40:1 (claro) · 15,04:1 (escuro)                                   |
+| Nome de 81 caracteres            | corte a seco               | `clientWidth` 195 e 192 < `scrollWidth` 667 → **reticência pintada** |
+| `textContent` do nome            | —                          | **81 caracteres** (nada perdido no DOM)                              |
+| Altura da arquivada              | 292                        | 294 (**+2 px**, a borda) — ativas iguais                             |
+| Sparkline / `scrollWidth` 360    | 30 pontos / 360            | 30 pontos / **360**                                                  |
+
+Suite **91/91** com a spec nova (`e2e/29-contas-truncagem.spec.ts`, criada e apagada pela interface).
+
+**A ressalva do QA, que aceito e registo:** a borda tracejada tem **1,22:1** (claro) e **1,34:1**
+(escuro) — é **decoração**, não é a marca que distingue. A distinção real é o `Badge`
+«Arquivada» (texto, 16,40:1) e o botão «Travar saldo» desativado, com 8/255 (claro) e 12/255
+(escuro) de diferença de superfície a ajudar.
+
+**É aceitável, e por uma razão de acessibilidade e não de gosto:** uma marca **em texto**
+sobrevive a daltonismo, a ecrã em cinzento e a leitor de ecrã — é mais robusta do que
+qualquer diferença de cor. Subir a borda a 3:1 seria mexer no token `--border`, que é a
+decisão **A4** (pendente do utilizador, 1,31:1). Logo isto não é dívida da T51: é o mesmo
+assunto da A4, e fica lá.
+
+**O que a T51 corrigiu de facto:** o texto deixou de estar escondido atrás de 70% de
+opacidade (3,12:1 → 5,68:1), o nome truncou com reticência, e o texto completo continua a
+existir para quem não vê a pintura.
+
+## T48 — Filtro por valor no extrato (o resto da linha antiga já existe)
+
+**Antes de escrever esta tarefa fui ao código, e a linha antiga da tabela estava errada em
+dois dos três pontos:**
+
+| O que a linha prometia            | Estado real                                                                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chips removíveis                  | **Já existe** — `FilterChips` (`money-filters.tsx:377`), usado em `transaction-filters.tsx:251`, com «Limpar tudo»                                                  |
+| Total do conjunto filtrado        | **Já existe** — rodapé da tabela (`transaction-table.tsx:405`), `count` + `_sum` na mesma consulta (`transactions.ts:105-145`), e inclui ignorados e não liquidados |
+| Operador de valor (`>`, `<`, `=`) | **Falta** — não há `minAmount`, `maxAmount` nem qualquer parâmetro de valor                                                                                         |
+
+Logo a T48 é **só** o operador. Não se reescrevem chips nem totais.
+
+**Semântica, decidida (D19): o filtro é sobre o módulo do valor.** «Acima de 25 €» tem de
+apanhar a compra de −5 000 cêntimos. Se fosse sobre o valor assinado, filtrar «acima de 25»
+devolvia só rendimentos — que é o contrário do que quem procura despesas grandes quer.
+
+**URL:** `valor` (em euros, com vírgula ou ponto) e `valorOp` ∈ `gt` | `lt` | `eq`.
+Os dois têm de existir; um sem o outro é ignorado. Converter com `parseAmountToCents`
+(`packages/shared/src/import/cents.ts:74`) — **não** se escreve um segundo parser de dinheiro.
+
+**Tradução para o Prisma, sem SQL cru** (o `PRISMA` não tem `abs`; usar `OR`/`AND` mantém o
+`count` e o `aggregate` corretos, que é o que o rodapé mostra):
+
+| Operador   | Cláusula                                                             | Nota                               |
+| ---------- | -------------------------------------------------------------------- | ---------------------------------- |
+| `gt` (v>0) | `OR: [{ amountInCents: { gt: v } }, { amountInCents: { lt: -v } }]`  | `v=0` vira `neq: 0`                |
+| `lt` (v>0) | `AND: [{ amountInCents: { lt: v } }, { amountInCents: { gt: -v } }]` | `v=0` → nenhum resultado (correto) |
+| `eq`       | `OR: [{ amountInCents: v }, { amountInCents: -v }]`                  | exato                              |
+
+Limites **estritos**: `gt` e `lt` não incluem o valor; `eq` é igualdade exata em cêntimos.
+
+**Comportamento esperado**
+
+1. Um controlo na barra: operador (`Maior que` / `Menor que` / `Igual a`) + campo de valor. O
+   campo aceita `25`, `25,50`, `25.50` e mostra o valor formatado ao sair.
+2. Chip «Valor: acima de 25,00 €» / «abaixo de 25,00 €» / «igual a 25,00 €», removível, que
+   limpa **os dois** parâmetros. «Limpar tudo» limpa também.
+3. Qualquer alteração volta à **página 1** (é o que o `push` já faz em todos os filtros).
+4. Entrada inválida (`valor=abc`, `valorOp=xx`, `valor=` vazio, valor sem operador): filtro
+   **ignorado**, página normal, sem 500 e sem texto de erro a gritar por causa de um URL.
+5. O rodapé continua a dizer a verdade: contagem e soma do **conjunto filtrado**, com o
+   valor incluído no `where` das três consultas (rows, count, aggregate).
+6. **Privacidade (D15):** o chip mostra o critério que o utilizador escreveu, não um saldo —
+   não se mascara com a máscara ativa.
+
+**Ficheiros:** novo `packages/shared/src/finance/amount-filter.ts` (parser e predicado puros,
+sem Prisma) · `packages/shared/src/finance/__tests__/amount-filter.test.ts` ·
+`apps/web/src/server/transactions.ts` (a cláusula) · `apps/web/src/app/(app)/transacoes/page.tsx`
+(ler os params) · `apps/web/src/components/transaction-filters.tsx` (controlo e chip). Mais nada.
+
+**Porque os testes vão para `packages/shared`:** não existe **nenhum** teste em `apps/web`
+(os 30 ficheiros vivem em `packages/shared`). Pôr o parser a testar em `apps/web` obrigaria a
+inventar uma configuração de testes nova — dependência de infraestrutura que esta tarefa não
+justifica.
+
+**Critério de aceitação**
+
+1. Testes do parser: `25` → 2 500; `25,50` → 2 550; `25.50` → 2 550; `abc` → `null`;
+   `valorOp` fora do conjunto → `null`; `-25` → 2 500 (módulo).
+2. Testes do predicado: com `gt 2 500`, `−5 000` e `+5 000` passam, `2 500` **não** passa,
+   `2 499` não passa; com `lt 2 500`, `2 499` passa e `2 500` não; com `eq 2 500`, `−2 500`
+   e `+2 500` passam e `2 501` não.
+3. Na base: com `?valorOp=gt&valor=25`, o rodapé conta **N** e a soma **S**; o QA reconta a
+   partir da base as linhas com `abs(amountInCents) > 2500` e os dois números têm de bater,
+   um a um. É o critério que apanha a cláusula errada — não a lista de linhas visíveis.
+4. Chip e «Limpar tudo» devolvem a URL sem `valor`/`valorOp`, e a contagem volta ao total.
+5. `?valor=abc`, `?valor=`, `?valorOp=gt` sozinhos: 200, filtro ausente, contagem igual à
+   de `/transacoes` sem parâmetros.
+6. `format:check`, `lint`, `typecheck`, `test` (**≥ 563**, os novos somam), `build` verdes;
+   zero dependências novas; zero migrações.
+
+**O que NÃO fazer:** não usar `$queryRaw` (parte o `aggregate` do rodapé), não escrever um
+parser de dinheiro novo, não mexer nos chips existentes nem no rodapé, não filtrar por valor
+assinado, não tocar em `e2e/` nem fazer commit.
+
+### T48 — a tabela do Dev não prova o limite (verificado por mim, 14:40)
+
+A implementação está certa — o parser usa `parseAmountToCents`, `?valor=25` são **2 500
+cêntimos**, e a cláusula `OR`/`AND` está como pedi. Mas a tabela de integração não exercita o
+limite, e a frase que a acompanha está errada: com `valor=25` (25,00 €), as linhas de
+**±2 500,00 €** estão **dentro** do `gt`, não fora (250 000 > 2 500). O que ele mostrou foi
+«9 de 10», em que o único excluído é `−0,01 €` — o limite nunca esteve em causa.
+
+O caso que falta, e que é o único que prova a rigidez **na base** (as 8 provas unitárias
+provam o predicado em JavaScript, não a cláusula SQL):
+
+| Filtro                   | Esperado com ±2 500,00 € na base         |
+| ------------------------ | ---------------------------------------- |
+| `?valorOp=gt&valor=2500` | 2 500,00 € **fora** (n = 7, não 9)       |
+| `?valorOp=lt&valor=2500` | 2 500,00 € **fora**                      |
+| `?valorOp=eq&valor=2500` | **exatamente 2** linhas (os dois sinais) |
+
+É o critério 3 refeito com o limite à vista. Pedido ao Dev e ao QA.
+
+**Refeita pelo Dev, e a minha previsão estava errada:** a semente só tem **dois** lançamentos
+acima de 2 500,00 €, não sete — os 7/8/2 que eu escrevi não se aplicam a ela. Com `valor=2500`,
+base e rodapé batem um a um:
+
+| Filtro | base (`abs`)        | rodapé             | linhas                |
+| ------ | ------------------- | ------------------ | --------------------- |
+| `gt`   | **2**, soma 0       | **2**, `0,00 €`    | −5 000,00 e +5 000,00 |
+| `lt`   | **6**, soma −10 001 | **6**, `−100,01 €` | os outros seis        |
+| `eq`   | **2**, soma 0       | **2**, `0,00 €`    | −2 500,00 e +2 500,00 |
+
+O `±2 500,00 €` fica fora do `gt` e do `lt` e é exatamente o `eq` — agora provado na base, e
+não só no predicado.
+
+### T48 — prova do QA (semente independente): PASS
+
+O QA não usou a semente do Dev nem a minha previsão — semeou a dele, com o limite em
+**25,00 €**, e voltou a bater base contra rodapé:
+
+| Filtro (`valor=25`) | base (`abs`)        | rodapé              |
+| ------------------- | ------------------- | ------------------- |
+| `gt`                | **30**, +1 105,00 € | **30**, +1 105,00 € |
+| `lt`                | **5**, −0,01 €      | **5**, −0,01 €      |
+| `eq`                | **2**, 0,00 €       | **2**, 0,00 €       |
+| sem filtro          | **37**, +1 104,99 € | 37                  |
+
+30 + 5 + 2 = 37: nenhuma linha ficou de fora nem contada duas vezes. E ele notou a
+ambiguidade que a minha nota deixou no ar: **`valor=25` são 25,00 €, `valor=2500` são
+2 500,00 €** — os dois ensaios (o do Dev com o limite em 2 500,00 € e o dele com o limite em
+25,00 €) provam a mesma coisa com escalas diferentes, e é isso que dá confiança, não o número
+igual.
+
+Também provado: 30 resultados em duas páginas com o rodapé a somar o conjunto e não a página;
+6 URLs inválidos todos a 200 com o par fora dos links de paginação; chip e «Limpar tudo»;
+volta à página 1 (30 → 29 resultados, o `gt` estrito exclui os 30,00 €); a 360 px a barra mede
+328 e o controlo 294, sem transbordo; e com a máscara o chip **mostra** o valor (é critério,
+não saldo — D15) enquanto os 26 montantes ficam ocultos.
+
+Suite **92/92**. Nota de método do QA: a spec nova deixou de limpar o gasto no `afterAll`
+porque contaminava a percentagem do orçamento noutra spec — era a única falha da suite e está
+resolvida.
+
+### T48 — DEVE do Revisor (14:54): o valor do URL entra sem teto de 32 bits
+
+`parseAmountFilter` aceita qualquer montante que `parseAmountToCents` considere inteiro
+seguro (até ~9×10¹⁵ cêntimos) e **não aplica o teto do domínio**. `?valor=30000000&valorOp=gt`
+chega ao `where` como `gt: 3 000 000 000`, e a coluna é `Int` (`schema.prisma:410`) com máximo
+**2 147 483 647** (`MAX_AMOUNT_IN_CENTS`, `schemas/domain/primitives.ts:34`). O parâmetro não
+encaixa em `int4`: no melhor caso a página devolve zero linhas, no caminho normal o Postgres
+recusa (22003) e dá **500**.
+
+É um URL, logo é entrada de qualquer pessoa — e o critério da tarefa diz que um URL mal
+escrito tem de dar a página sem o filtro, nunca um erro.
+
+**Correção:** depois de `parseAmountToCents`, `if (Math.abs(cents) > MAX_AMOUNT_IN_CENTS) return null;`
+— reutilizando a constante do domínio, não um número novo escrito à mão.
+
+**Menor que vai junto, e que é o mesmo problema de prova falsa desta vaga:**
+`matchesAmountFilter` só é usado pelos próprios testes. A regra (módulo + estrito) existe duas
+vezes — no predicado JS e na cláusula SQL — e a que corre é a SQL. Os 8 testes provam a
+implementação que **não** filtra. Ou o predicado passa a ser o que gera a cláusula, ou sai e os
+testes passam a cobrir a cláusula. Decisão: **a cláusula passa a viver no módulo puro**
+(`amount-filter.ts`), devolve o objeto que o Prisma consome, e os testes passam a afirmar sobre
+esse objeto. `transactions.ts` fica só a espalhá-lo no `where` — uma implementação, testada.
+
+**Menor cosmético:** `AmountFilter.amountInCents` diz «nunca negativo» mas o tipo não o
+garante; `Math.abs` na entrada da cláusula (defensivo, uma linha).
+
+### T48 — correção do DEVE (15:05): teto aplicado e a cláusula passou a existir uma só vez
+
+- **Teto:** `parseAmountFilter` recusa `|cents| > MAX_AMOUNT_IN_CENTS`. `?valorOp=gt&valor=30000000`
+  → **200**, sem chip, contagem igual a sem parâmetros. Limites testados: `21 474 836,47` aceite,
+  `21 474 836,48` recusado.
+- **Uma implementação:** `matchesAmountFilter` saiu; `amountWhereClause(filter)` vive em
+  `packages/shared/src/finance/amount-filter.ts` e devolve o objeto que a consulta consome;
+  `transactions.ts` só o espalha no `where`, **sem `as`** — o tipo é estrutural e o `typecheck`
+  passa com o spread direto. Se um dia deixar de passar, parte o gate em vez de ficar escondido
+  num cast.
+- **`Math.abs` à entrada da cláusula**, com um teste a provar que `−2 500` e `2 500` dão a mesma
+  cláusula.
+- Os 10 testes afirmam agora sobre **o objeto da cláusula**, que é o que filtra.
+
+Gate: 573 testes, `format`/`lint`/`typecheck`/`build` verdes. A prova oficial na base volta a ser
+do QA — a cláusula mudou de sítio, e leitura não é prova.
+
+### T48 — re-prova do QA no código atual (15:20): PASS
+
+A cláusula mudou de sítio, por isso a prova foi refeita contra o código que corre — e não
+contra os números da primeira passagem.
+
+| Filtro                | base                   | rodapé           |
+| --------------------- | ---------------------- | ---------------- |
+| sem filtro            | 37 / +1 104,99 €       | 37 / +1 104,99 € |
+| `valor=25&valorOp=gt` | 30 / +110 500 cêntimos | 30 / +1 105,00 € |
+| `lt`                  | 5 / −1 cêntimo         | 5 / −0,01 €      |
+| `eq`                  | 2 / 0                  | 2 / 0,00 €       |
+
+**O teto, nos quatro lados:** `gt=30000000` → 200, 37, sem chip; `eq=21474836.48` (MAX+1) →
+200, 37; `lt=30000000` → 200, 37; `eq=21474836.47` (MAX) → 200, **aceite**, com chip
+«igual a 21 474 836,47 €» e zero resultados. **O 500 não existe.** Os 6 URLs inválidos
+continuam a 200 com a contagem de sem-parâmetros.
+
+Suite 92/92; a spec nova não precisou de alteração (usa 43,21 €, longe do teto). Gate: 573
+testes.
+
+### T48 — fecho (15:25): APROVO do Revisor, com uma ressalva que fica registada
+
+O Revisor confirmou que o tipo estrutural **não é decorativo** mas também não faz o que eu
+perguntei: garante a **forma** (o `AmountComparison` não tem `gte` nem índice, logo uma chave
+inventada não typechecka no sítio onde a cláusula é construída) mas **não garante o sinal** —
+`{lt: 2500}` e `{lt: -2500}` têm o mesmo tipo. Sinal trocado só se apanha com testes, e é por
+isso que a mudança de sítio valeu: agora os testes afirmam sobre o objeto que vai para a
+consulta.
+
+**Ressalvas honestas que ficam escritas:**
+
+- Um campo **acrescentado** a um tipo mais tarde passa por spread (o TS não faz
+  excess-property check em spreads); o erro só apareceria se o tipo fosse incompatível.
+- `amountWhereClause` não tem teto próprio — quem a chamar com um `AmountFilter` montado à mão
+  passa. Hoje não há chamador além do extrato; a garantia do teto vive no parser, que é o único
+  caminho com entrada do exterior.
+
+**O que a tarefa entregou:** filtro por valor com `>`, `<`, `=` sobre o **módulo** (D19), chip
+removível, teto de 32 bits, URLs inválidos ignorados sem 500, rodapé a somar o conjunto
+filtrado, e uma regra que existe uma só vez — no `shared`, testada, sem SQL cru e sem cast.
+
+## T49 — Sugestão de descrição a partir do histórico
+
+**Porque:** quem lança dez movimentos por semana escreve «Continente», «continente» e
+«CONtinente» três vezes. Sugerir o que já existe reduz variantes e torna a pesquisa do extrato
+útil.
+
+**O que já existe (verificado no código, não suposto):**
+
+- `apps/web/src/components/ui/combobox.tsx` — um `Combobox` completo sobre `@base-ui/react`,
+  **sem um único consumidor**. Esta tarefa dá-lhe o primeiro uso, e é isso que o põe à prova.
+- A descrição é um `<Input>` simples em dois sítios: `transaction-quick-add.tsx:655` e
+  `transaction-edit-dialog.tsx:215`. Ambos com `useId()` e `aria-invalid` já montados.
+- `Transaction.description` é `String?` e há índice `[userId, date]`.
+
+**Âmbito:** só os dois sítios onde se escreve a descrição de um **lançamento**. Ficam de fora
+recorrências, regras e o mapeamento da importação — cada um tem o seu campo e a sua validação,
+e alargar agora é como as tarefas crescem até não fechar.
+
+**Comportamento esperado**
+
+1. Ao focar/escrever no campo, aparece uma lista com as descrições **já usadas** pelo
+   utilizador, filtradas pelo que está escrito (`includes`, sem distinguir maiúsculas de
+   minúsculas). **Não** se promete insensibilidade a acentos.
+2. **Texto livre continua a ser aceite**: escrever algo que não está na lista e gravar funciona
+   como hoje. A lista sugere, não restringe.
+3. Escolher uma sugestão preenche o campo; o formulário grava exatamente o texto escolhido.
+4. **Origem dos dados: no servidor**, numa função nova `descriptionSuggestions()` em
+   `server/transactions.ts`, entregue por props a partir de `transacoes/page.tsx`. Sem rota de
+   API nova e **sem `fetch` no cliente**.
+5. Janela de **12 meses**: uma descrição usada só há 13 meses não aparece. Limite de **50**
+   sugestões, ordenadas por número de usos e, em empate, alfabeticamente (a ordem tem de ser
+   determinística, senão a lista muda sem nada mudar).
+6. Teclado: setas percorrem, `Enter` escolhe, `Escape` fecha e **mantém** o que estava escrito,
+   `Tab` não fica preso. O campo mantém o rótulo e o `aria-invalid` que já tem.
+7. Sem histórico: nenhuma lista, nenhum erro, o formulário funciona como hoje.
+
+**Ficheiros:** novo `apps/web/src/components/description-combobox.tsx` · novo
+`packages/shared/src/finance/description-suggestions.ts` (filtro e ordenação puros) + teste ·
+`apps/web/src/server/transactions.ts` (a consulta) · `app/(app)/transacoes/page.tsx` (props) ·
+`components/transaction-quick-add.tsx` · `components/transaction-edit-dialog.tsx` ·
+`components/transaction-table.tsx` (só para passar as props ao diálogo). Mais nada.
+
+**Porque o filtro vai para o `shared`:** é a única forma de o testar — continua a não haver
+testes em `apps/web`.
+
+**Critério de aceitação**
+
+1. Testes do filtro: `['Continente','continente','Pingo Doce']` com `'cont'` devolve as duas
+   variantes; ordem por usos e, em empate, alfabética; lista vazia → vazio; texto vazio →
+   devolve as 50 (as mais usadas).
+2. **Uma consulta a mais, não mais:** o contador de queries em `/transacoes` passa de **N**
+   para **N+1** (medido com log do `pg`, como se fez na T47) e a consulta usa o índice
+   `[userId, date]`.
+3. **Janela:** um lançamento com descrição só de há 13 meses não aparece na lista; um de há 2
+   meses aparece. Provar com dados semeados.
+4. **Limite e ordem:** com 60 descrições distintas, vêm 50, e duas execuções seguidas dão a
+   **mesma** ordem.
+5. Escolher uma sugestão grava esse texto; escrever texto novo grava o texto novo.
+6. Teclado e leitor de ecrã: setas/`Enter`/`Escape` como acima, `axe` 0 nas duas caixas.
+7. 360 px: a lista não sai do ecrã nem cria scroll horizontal.
+8. `format:check`, `lint`, `typecheck`, `test` (**≥ 573**, os novos somam), `build` verdes;
+   **zero dependências novas** (`@base-ui/react` e o `combobox` já lá estão); zero migrações.
+
+**O que NÃO fazer:** não auto-preencher conta/categoria a partir da descrição (é outra
+funcionalidade, e sem dados fiáveis faz adivinhar); não tornar o campo obrigatório; não
+restringir a lista a valores existentes; não criar rota de API; não usar `cmdk` (existe, mas o
+`combobox` já resolve); não tocar em `e2e/` nem fazer commit.
+
+### T49 — decisão do Dev que eu aceito: sem `Popup` (2026-11-17)
+
+O `Combobox` do base-ui, com o input **fora** do popup, é **sempre modal**
+(`focusManagerModal = !inputInsidePopup || modal`, `ComboboxPopup.js:109`): o popup marca o
+resto da página `aria-hidden` e o `axe` acusa **12 `aria-hidden-focus`** (cabeçalho, barra
+lateral, os outros campos do formulário). Uma lista de sugestões não é um diálogo, e um
+formulário marcado como inerte enquanto se escreve é pior do que não ter lista.
+
+Ficou `Combobox` + `ComboboxInput` + `ComboboxList`/`ComboboxItem` com a lista ancorada ao
+campo (`absolute`, sem portal, sem focus manager). O teclado e o ARIA continuam a ser do
+base-ui. **Aceito**, e fica o registo: o primitivo é que tem de servir o ecrã, não o contrário.
+
+**Números do Dev:** 50 itens nas duas leituras com a mesma ordem; «Recente T49» (2 meses)
+presente e «Antiga T49» (13 meses) ausente; `/transacoes` de **19 → 20** consultas (N+1);
+`axe` 0 no estado limpo, com a lista aberta e no diálogo de edição; 360 px com a lista de
+32 a 328; `test` 581.
+
+**Achado fora do âmbito, a não perder:** depois de gravar, o `axe` acusa 1 `color-contrast` no
+**toast do `sonner`** («Gasto registado.»), não no campo. É anterior a esta tarefa e vai para a
+lista de contraste (A4/T50).
+
+### T49 — dois DEVE do Revisor (15:24)
+
+**1. A lista é cortada no Lançamento rápido.** O cartão é um `<Card>` e o `Card` primitivo
+tem `overflow-hidden` (`ui/card.tsx:14`); a lista é `absolute` **na mesma subárvore**, com
+`max-h-56` (224 px), mas só há ~80 px até à borda do cartão (abaixo ficam o `FieldError`, a
+fila de botões e os dois `16 px` de padding). Resultado: a lista aparece cortada a 2–3 linhas
+e o resto das sugestões é **inalcançável com o rato**. É exatamente o risco da solução sem
+portal, e só não aparece no diálogo de edição porque o `DialogContent` não tem
+`overflow-hidden`.
+
+**Correção:** `overflow-visible` no `<Card>` do lançamento rápido. Se partir os cantos
+arredondados de algum conteúdo, diz — então a lista vai para um portal e o problema volta a ser
+o do `Popup`.
+
+**2. Sugestões em branco.** `description: { not: null }` não exclui a **string vazia**, e a
+string vazia é gravável: o diálogo de edição manda `description: trimmed`
+(`transaction-edit-dialog.tsx:149`) e o servidor escreve-a tal e qual
+(`transactions-actions.ts:538`). Limpar a descrição de um lançamento cria uma sugestão em
+branco — uma linha clicável vazia, e um dos 50 lugares gasto.
+
+**Correção, nos dois lados:** (a) descartar descrições em que `trim()` é vazio no
+`rankDescriptionSuggestions` (é lá que se pode testar, e cobre também as só-espaços);
+(b) o diálogo de edição passa a mandar `null` em vez de `''`, como o lançamento rápido já faz —
+senão voltamos a criar o problema na próxima gravação.
+
+**Confirmado pelo Revisor e não é preciso mexer:** o `role="combobox"`, `aria-expanded` e
+`aria-controls` funcionam sem `Popup` (vêm do `AriaCombobox`); não há filtragem a dobrar; a
+janela usa o índice `[userId, date]`; e a lista é calculada **uma vez** e desce por referência.
+
+### T49 — primeira metade do QA (15:40): o que já está provado
+
+Medido no build **anterior** às correções, onde ainda é válido:
+
+- **`aria-hidden-focus` não voltou:** com a lista aberta, cabeçalho, barra lateral, `main` e
+  formulário não estão `aria-hidden` nem `inert`; nenhum `[inert]` na página. Só ficam
+  escondidos 3 `<select>` nativos e um input interno do base-ui. A decisão de dispensar o
+  `Popup` está validada.
+- **Janela de 12 meses:** a descrição de há 13 meses não aparece (a lista nem abre); a de há
+  2 meses aparece.
+- **Ordem determinística:** 50 itens nas duas leituras, ordem idêntica; topo por usos
+  (5 → 3 → 2).
+- **Consultas:** 20 statements por `/transacoes`, estáveis em 3 pedidos, e **exatamente um**
+  é o `GROUP BY description` — N+1, como pedido.
+- **Teclado e rato:** setas percorrem, `Enter` escolhe **sem submeter** (contagem na base
+  inalterada), `Escape` fecha e mantém o escrito, o rato escolhe. `Tab` não prende o foco, mas
+  a lista fica aberta com o foco fora — fecha ao clicar fora.
+- **`axe`:** 0 no estado limpo, 0 com a lista aberta, 0 no diálogo com lista.
+- **O `color-contrast` é anterior:** 1 no toast do `sonner` (`div[data-title]`, **4,25:1**) e o
+  mesmo 1 no toast «Conta criada.» de `/contas` — não é desta tarefa.
+- **Máscara (D15):** «T49 compra 07» continua visível, 0 itens dentro de `[data-amount]`, e os
+  26 montantes ocultos.
+
+### T49 — correções provadas pelo Dev (15:55)
+
+**A lista já não é cortada.** Caixas medidas com a lista aberta: cartão de 184 a **714**, campo
+de 618 a 650, lista de 654 a **888** — sai **174 px abaixo do fundo do cartão**, com os 234 px
+inteiros. O item 50 foi alcançado com a roda (`scrollTop` 1184 de 1408) e clicado; o campo
+passou a `T49b compra 49`. O `overflow-visible` não mexeu em nada visível.
+
+**Sugestões em branco:** gravação com descrição vazia → na base a linha ficou `description is
+null`; a lista seguinte ficou com **50 itens, sem linha em branco**. A única `''` na base foi
+inserida de propósito, por SQL, para provar que o `trim()` a descarta. Extrato: 61 → 62, só o
+lançamento novo — com descrição `null` a linha aparece normalmente, como antes.
+
+Gate: **582** testes, tudo verde.
+
+**Nota honesta do Dev, que agradeço:** a base **não** está no baseline — há um terceiro
+utilizador, a semente do QA (`qa.t49…`, 71 lançamentos), criada às 15:25. Total: 3 utilizadores,
+7 contas, 123 lançamentos. Tem de voltar a 2 / 5 / 52 antes de a vaga fechar.
+
+### T49 — FAIL do QA (16:05): a lista cobre o botão «Lançar»
+
+O `overflow-visible` resolveu o corte e criou outro defeito, no mesmo sítio: a lista
+(654 → 888) fica **por cima da fila de botões** (666 → 698). O primeiro clique em «Lançar»
+atinge um `role="option"` («T49 mercado semanal») em vez do botão, e o percurso que cria a
+descrição e depois tenta gravar fica preso — é o que deixa a suite em **92/93** (spec
+`70-exportar` vermelha).
+
+É a segunda vez na mesma tarefa que o problema é o **espaço**: o `Card` cortava a lista, e a
+lista tapa os controlos. Fechar o `overflow` foi o remendo errado; a saída é o sítio onde a
+lista é desenhada.
+
+**Hipótese a testar primeiro (e a razão pela qual o `Popup` pode voltar):**
+`focusManagerModal = !inputInsidePopup || modal`. O Dev dispensou o `Popup` porque pôs o input
+**fora** dele. Com o `ComboboxInput` **dentro** do `Popup` (`inputInsidePopup = true`) e
+`modal={false}`, a expressão dá `false` — sem focus manager modal, sem `aria-hidden` na página
+—, e o popup passa a ser posicionado pela biblioteca (portal, com flip), o que resolve o corte
+**e** a sobreposição dos botões de uma vez.
+
+Se essa variante voltar a acusar `aria-hidden-focus`, a alternativa é a lista abrir para
+**cima** no lançamento rápido (a fila de botões é o único controlo que não pode ficar debaixo
+da lista).
+
+**Critério que fecha a regressão:** com a lista aberta, **um** clique em «Lançar» grava o
+lançamento (não escolhe sugestão, não fica à espera de um segundo clique), e a spec
+`70-exportar` volta a verde.
+
+### T49 — terceira via: a lista entra no fluxo (16:20)
+
+O Dev não seguiu a minha hipótese, e fez bem: com o `ComboboxInput` **dentro** do `Popup`, o
+input passa a ser o filtro do popup e o controlo visível no formulário é o **`Trigger`** (um
+botão). A descrição deixava de se escrever — derruba o requisito de texto livre, e não é um
+assunto de acessibilidade.
+
+Ficou a lista **no fluxo**: campo 618–650, lista 662–896, botão «Lançar» **912–944** — a lista
+empurra os botões em vez de os tapar; o `overflow-visible` no cartão saiu porque já não é
+preciso. O cartão cresce de 530 para 776 px quando a lista abre.
+
+Provado pelo Dev: item 50 com o rato (`scrollTop` 1184/1408) → `T49c compra 49`; **um só**
+clique em «Lançar» com a lista aberta grava (base 60 → 61, descrição correta, campo limpo);
+`axe` sem `aria-hidden-focus`; 360 px com `scrollWidth` 360. Suite **93/93** com a
+`70-exportar` verde, e a base de volta a 2 / 5 / 52.
+
+Decisão registada em `DECISOES.md` (D20), com a regra que faltava: uma camada flutuante sobre
+um formulário tem de provar **três** coisas — não é cortada, não tapa outro controlo, e o
+controlo de baixo continua a receber o clique. A T49 falhou a terceira porque ninguém a mediu
+até o QA clicar no botão.
+
+### T49 — FAIL do QA outra vez, e agora por uma razão mais fina (16:40)
+
+**1. O botão foge debaixo do dedo.** A lista já não tapa o botão: aberta ocupa 662–708 e o
+botão está em **723,75–755,75**. Mas no **`mousedown`** a lista fecha, o botão **salta para
+666,2** e o `mouseup` cai fora dele — **um clique não grava** (base 5 → 5, sem toast). O
+segundo clique grava. Escape + um clique grava.
+
+É a quarta variante do mesmo problema, e a mais instrutiva: o alvo do clique **mexeu-se entre
+o press e o release**. Uma lista no fluxo não tapa nada, mas **empurra** — e empurrar durante o
+clique é tão mau como tapar.
+
+**2. A suite dá verde sem provar o cenário.** `esperarAviso` apanha o toast **anterior**
+(309 ms na primeira gravação, **3 ms** na segunda — é o velho), e as expectativas saem do
+ficheiro exportado, por isso **uma** linha satisfaz o teste. O `70-exportar` passa e o cenário
+de duas gravações seguidas deixou de ser provado. Prova falsa dentro da própria suite — a mesma
+classe que já nos custou a T46, agora no instrumento de medida.
+
+**Provado e não se repete:** lista inteira e item 50 com o rato (1280 e 360), salto de
+**+246 px** no cartão com o **campo parado** (y 618 nos dois) e foco a ficar no campo; `axe` 0
+com a lista aberta (o `color-contrast` do toast é anterior e dá o mesmo em `/contas`); 360 sem
+transbordo; suite **93/93** confirmada pelo QA; base de volta a **2 / 5 / 52**.
+
+### T49 — fecho (16:35): PASS do QA
+
+| Prova                                    | Resultado                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Um clique em «Lançar» com a lista aberta | alvo `BUTTON` no `pointerdown` **e** no `mouseup`, lista fecha **depois** do clique, base 5 → 6 |
+| Outros campos com a lista aberta         | «Conta» fecha a lista e abre o select; «Data» recebe o foco                                     |
+| Duas gravações seguidas                  | `antes=0 · 1.ª=1 (562 ms) · 2.ª=2 (580 ms)` — a segunda esperou um aviso **novo**               |
+| O instrumento falha quando deve          | espera sem gravação → **timeout de 20 019 ms**                                                  |
+| `Escape` (diálogo · lista)               | aberta `1·1 → 1·0` (texto mantido) · sem sugestões `1·0 → 0·0` · fechada `1·0 → 0·0`            |
+| `pointercancel` real                     | lista não fica órfã: tocar fora fecha, reabre e escolhe                                         |
+| Gate                                     | format 0 · lint 0 · typecheck 0 · **582** testes · build 0 · suite **93/93**                    |
+| Base                                     | **2 utilizadores / 5 contas / 52 lançamentos**, 0 `qa.*`/`e2e-*`                                |
+
+**Custo aceite (D20):** a lista entra no fluxo e o cartão cresce ~246 px ao abrir; o campo não mexe
+de sítio e o foco fica onde estava.
+
+**Limitação registada, anterior à tarefa:** a 568 px de altura a barra de scroll do diálogo de
+edição é _overlay_ e não se vê; quem não tentar rolar vê o formulário cortado. Sem a lista o
+conteúdo já tem 541 px para 483.
+
+**Três correções que só apareceram por se medir, não por se ler:** o `preventDefault` do `Escape`
+incondicional (do Revisor), o listener a depender de `aberta` em vez de `listaVisivel` (do QA) e
+o `if (!aberta) return` que **não bastava** porque o Radix ouve o `keydown` em captura no
+documento, antes do React.
+
+## T50 — Cores de dinheiro com significado (o sistema já existe; falta quem o use)
+
+**Fui ao código antes de escrever isto, e a linha antiga da tabela estava errada outra vez.** Os
+tokens semânticos **já existem** em `app/globals.css`, com variantes claras e escuras declaradas
+ao lado:
+
+- `--income` · `--expense` · `--goal` · `--success` · `--warning` (e `--destructive` do shadcn),
+  todos mapeados em `@theme` (`--color-income` …).
+- Nos gráficos: `--chart-income: var(--income)` · `--chart-expense: var(--expense)` ·
+  `--chart-savings: var(--goal)` · `--chart-balance: var(--chart-1)` · `--chart-grid` ·
+  `--chart-axis`.
+- O `<Amount>` já usa `text-income` / `text-expense`.
+
+O que **não** está feito é o resto do produto usá-los. Há **8 sítios** em dois ficheiros a escrever
+cores da paleta do Tailwind à mão, que não seguem o tema:
+
+| Ficheiro                                     | O que está                        | Deve ser                                  |
+| -------------------------------------------- | --------------------------------- | ----------------------------------------- |
+| `app/(app)/contas-pagar-receber/page.tsx:58` | `text-amber-600` (por pagar)      | **`text-warning-foreground`**             | `--warning` como texto dá **3,20:1**; a foreground dá **4,98:1** |
+| `…:62`                                       | `text-green-600` (pagas)          | `text-success`                            | aqui o **base** é o token de texto: **7,35:1**                   |
+| `…:69`                                       | `text-amber-600` (valor pendente) | **`text-warning-foreground`**             | mesmo par do «por pagar»                                         |
+| `components/receivable-payable-list.tsx:196` | `text-red-600` (vencido)          | **`text-expense`**                        | é estado financeiro, não erro de sistema                         |
+| `…:205`                                      | `text-green-600` (recebido)       | `text-success`                            | —                                                                |
+| `…:144`                                      | `bg-red-50` + `border-red-200`    | **`bg-expense/10` + `border-expense/30`** | `--color-expense` está mapeado no `@theme`                       |
+
+E os gráficos com significado a usar a **paleta** em vez do token de domínio:
+
+- `components/cashflow-chart.tsx:21-22` — `entradas: var(--chart-4)`, `saidas: var(--chart-5)`;
+  deviam ser `var(--chart-income)` e `var(--chart-expense)`. Hoje, mudar a paleta de séries muda
+  o significado de «Entradas».
+- `components/category-donut.tsx` — **fica como está**: uma categoria não tem cor com
+  significado, a paleta cíclica é o uso correto.
+
+**Comportamento esperado:** nenhuma cor de dinheiro escrita à mão em `.tsx`. Toda a cor de
+significado vem de um token que tem variante escura declarada. Isto é o que faz o modo escuro
+estar certo **por construção** e não por alguém ter escolhido dois matizes.
+
+**Opcional, só se for limpo:** o `color-contrast` de **4,25:1** no toast do `sonner` (achado do
+QA, anterior a estas tarefas). Se se resolver em `components/ui/sonner.tsx` com as variáveis que
+o `sonner` já expõe, entra; se obrigar a estilos frágeis, fica registado e não se faz.
+
+**Ficheiros:** `app/(app)/contas-pagar-receber/page.tsx` · `components/receivable-payable-list.tsx` ·
+`components/cashflow-chart.tsx` · (opcional) `components/ui/sonner.tsx`. Mais nada — **não** se
+mexe no `globals.css`, porque não falta lá nada.
+
+**Critério de aceitação**
+
+1. `grep -rE "(text|bg|border|ring|fill|stroke)-(emerald|green|red|rose|amber|yellow|blue|sky|violet|purple)-[0-9]{2,3}" apps/web/src --include=*.tsx` → **0**.
+2. Cada sítio trocado, com rácio **medido** no claro e no escuro: texto ≥ **4,5:1**, superfícies
+   e bordas ≥ **3:1**. Colar o antes/depois.
+3. `axe` **0** em `/contas-pagar-receber` nos dois temas (era onde estavam estas cores).
+4. Os dois gráficos: as séries de entradas/saídas passam a ler `--chart-income`/`--chart-expense`
+   — provar pelo estilo computado e que o valor **muda** entre temas.
+5. Sem regressão de forma: alturas e larguras dos dois ecrãs iguais às de antes (as cores mudam,
+   o layout não).
+6. `--chart-balance` (T47) continua a funcionar e a linha do saldo não muda de cor.
+7. `format:check`, `lint`, `typecheck`, `test` (**≥ 582**), `build` verdes; zero dependências,
+   zero migrações.
+
+**O que NÃO fazer:** não reescrever a paleta, não acrescentar um segundo sistema de cores, não
+recolorir os gráficos por gosto, não usar `--success` para dinheiro (sucesso é um estado,
+`--income` é dinheiro que entra — são significados diferentes), não tocar em `e2e/` nem fazer
+commit.
+
+**Os pares de tokens não são simétricos, e este é o erro que quase passou:** em `success` o token
+de **texto** é o base (`--success`, 7,35:1 no claro) e o `-foreground` é branco, para usar por
+cima do fundo; em `warning` é ao contrário — o base é fundo e o **`-foreground`** é o texto
+(4,98:1). Copiar «`text-success` + `text-warning`» dava meio certo e meio errado, e o erro só
+apareceria num ecrã que ninguém mede.
+
+**Nota de significado:** `--destructive` e `--expense` são **literalmente a mesma cor** no claro
+(`oklch(0.55 0.2 25)`) e quase iguais no escuro — por isso a escolha é só de significado, e uma
+conta vencida é estado financeiro. `--destructive` fica para as ações destrutivas (apagar,
+arquivar).
+
+### T50 — a minha tabela reprovou o meu próprio critério (16:55)
+
+Aplicada à letra, `bg-expense/10` + `border-expense/30` na linha vencida **falhava o critério da
+própria tarefa**: o tint escurece a superfície e come o contraste do que está lá dentro.
+
+```
+fundo do cartão vencido    #f7e7e5
+montante dentro            text-income    4,35:1   ✗
+data vencida               text-expense   4,49:1   ✗
+borda (30% de --expense)                  1,63:1   ✗
+axe em /contas-pagar-receber              2 violações
+```
+
+**Troca aceite: `border-expense` sólido, sem tint** — borda **5,24:1** (claro) e **6,99:1**
+(escuro), texto sobre a superfície normal do cartão, `axe` **0** nos dois temas. Mesma família de
+tokens, nenhum token novo, `globals.css` intocado.
+
+**Padrão que já vai em três:** uma prescrição escrita por quem leu o código (eu incluído) tem de
+ser **medida por quem a aplica**. O `text-warning`, o `if (!aberta) return` e agora o
+`bg-expense/10` — os três eram sensatos no papel e falharam no ecrã.
+
+**Rácios medidos (claro | escuro), antes → depois:**
+
+| Sítio                  | claro           | escuro           |
+| ---------------------- | --------------- | ---------------- |
+| «Contas Pendentes»     | 3,20 → **4,97** | 4,84 → **8,75**  |
+| «Contas Pagas»         | 3,22 → **7,30** | 4,81 → **8,17**  |
+| «Valor Pendente»       | 3,20 → **4,97** | 4,84 → **8,75**  |
+| Data vencida           | 4,36 → **5,39** | 4,36 → **5,85**  |
+| Cartão vencido (borda) | 1,41 → **5,24** | 12,73 → **6,99** |
+| `axe` na página        | **2 → 0**       | **6 → 0**        |
+
+O Dev também corrigiu o **próprio medidor** (compunha sobre branco e mentia no escuro) antes de
+tirar os números. Sem isso, a coluna do escuro era ficção.
+
+**`sonner` fica como está:** o par vem de `--popover-foreground` sobre `--popover` (4,25:1);
+resolver em `sonner.tsx` obrigaria a fixar uma cor à mão ou a mexer no `globals.css`. Registado
+como limitação, não como dívida da T50.
+
+### T50 — DEVE do Revisor: a borda da linha vencida não pinta nada (16:44)
+
+`'border-expense'` só define **`border-color`**. O `Card` primitivo **não tem `border`** (desenha
+com `ring-1 ring-foreground/10`, `ui/card.tsx:14`) e o preflight põe `border: 0 solid`. Logo a
+linha vencida ficou **igual a todas as outras**: as 5,24:1 que o Dev mediu são a cor do token, não
+pixéis — e o `axe` não vê uma borda de largura 0.
+
+**Fix:** `'border border-expense'`.
+
+**Terceira vez na vaga com o mesmo erro de classe:** a T51 (`border-dashed` no cartão arquivado) e
+agora a T50. **Regra de projeto:** no Tailwind, `border-<cor>` sem `border` não desenha nada, e a
+classe no ficheiro não é prova — a prova é `border-top-width` **computado**. Vale para `border`,
+`ring`, `outline` e `divide`.
+
+**O que estava certo e não se mexe:**
+
+- **A WCAG 1.4.1 está coberta por texto:** o badge diz `Vencida` (`:149-153`) e a data está em
+  `text-expense`. A cor não é o único portador, e era assim antes da troca.
+- A troca do tint pela borda sólida: 1 px a 100% é mais discreto do que o `bg-expense/10`, que
+  reprovava o contraste do que está lá dentro.
+- Legenda e linhas de projeção seguem os tokens (`--chart-income`, `--chart-expense`,
+  `--chart-forecast`, `--chart-axis`), e o swatch da legenda vem do próprio `fill` da série.
+
+**Dívida de tokens registada (não é deste diff, o `globals.css` não foi tocado):** a polaridade de
+`warning` está **invertida** em relação a `success`/`expense` — nesses o **base** é a cor de texto e
+a foreground serve para por cima do fundo; em `warning` é o contrário, e por isso se usa
+`--warning-foreground` como texto sobre o cartão. Resolve-se com um `--warning-text` ou com uma
+`--warning-surface`, numa tarefa que possa tocar no `globals.css`.
+
+**Dois pontos de gráficos para a próxima:** o `<CartesianGrid>` do fluxo de caixa não tem `stroke`
+e pinta com o cinzento do recharts nos dois temas, apesar de `--chart-grid` existir; e o donut usa
+`--chart-1`, que é a mesma cor de `--chart-balance` — inofensivo, mas é o sítio a rever quando a
+paleta de séries ganhar significado.
+
+### T50 — a borda pinta, e a minha hipótese da grelha estava errada (17:10)
+
+**Borda:** `border border-expense` → `border-top-width: 0px → 1px`, `solid`, nos dois temas.
+Custo: o cartão vencido cresce **2 px** (192 → 194), inevitável com uma borda real, e é o único
+movimento de layout. `axe` 0 nos dois temas — agora com a borda a render, não com 0 px.
+
+**A grelha do fluxo de caixa: não se mexe, e a razão é boa.** Eu supus que o `<CartesianGrid>` sem
+`stroke` pintava com o cinzento do recharts nos dois temas. **Não pinta**: tem `stroke="#ccc"` no
+DOM, mas o `ChartContainer` reescreve-o com
+`[&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50` — ou seja, o que se vê é
+`--border` a 50%, que já muda com o tema.
+
+Trocar por `--chart-grid` piorava nos dois sentidos: no claro a mesma luminosidade mas **opaca**
+(metade do peso a dobrar) e no escuro mais apagada (21% opaca contra 32% a 50% sobre o fundo). O
+Dev mediu antes de aplicar e não aplicou — correto.
+
+**Quarta vez na vaga em que uma hipótese minha ou do Revisor foi desmentida pela medição** (o
+`text-warning`, o `if (!aberta) return`, o `bg-expense/10` e agora a grelha). Regra que fica: uma
+hipótese sobre o que um componente pinta tem de ser confirmada no **estilo computado**, porque as
+bibliotecas reescrevem o que o JSX declara.
+
+**Fica registado:** `--chart-grid` e `--chart-axis` existem e a grelha não os usa (o eixo da
+projeção usa `--chart-axis`). É dívida de consistência de tokens, não defeito visível.
+
+### T50 — fecho (17:20): PASS do QA
+
+| Medida                           | Antes                  | Depois                       |
+| -------------------------------- | ---------------------- | ---------------------------- |
+| `axe` em `/contas-pagar-receber` | 2 (claro) · 6 (escuro) | **0 · 0**                    |
+| Pendentes / Valor Pendente       | 3,20                   | **4,97** claro · 8,75 escuro |
+| Pagas / recebido                 | 3,22                   | **7,30** · 8,17              |
+| Data vencida                     | 4,36                   | **5,39** · 5,85              |
+| Borda do vencido                 | 0 px (não pintava)     | **1 px**, 5,24 · 6,99        |
+| Cores de paleta em `.tsx`        | 8 sítios               | **0**                        |
+
+A linha vencida tem **três** marcas — borda, data a vermelho e o texto «• Vencida» no badge —, por
+isso não depende da cor (WCAG 1.4.1). O QA reproduziu os rácios do Dev (a diferença era
+arredondamento da conversão `lab`; o canvas do browser dá o mesmo). Fluxo 547×256 e donut na paleta
+categórica, como devia. Base **2 / 5 / 52**, suite **93/93**, 582 testes.
+
+**Lacuna de cobertura que o QA levantou e eu aceito corrigir:** a spec `80-acessibilidade` só falha
+em violações **critical**, e esta era **serious** (`color-contrast`) — ou seja, a suite **não
+protege** a correção da T50: uma regressão de contraste passaria verde. Pedida uma spec dirigida a
+`/contas-pagar-receber` com uma vencida criada pela interface.
+
+**O toast do `sonner` continua a 4,25:1** em `/transacoes` e igual em `/contas`: anterior, registado,
+não é desta vaga.
+
+---
+
+# Fecho da vaga 1 — "barato e visível"
+
+| ID  | Tarefa                                               | Estado      |
+| --- | ---------------------------------------------------- | ----------- |
+| T46 | Modo privacidade com máscara e cookie no servidor    | **fechada** |
+| T47 | Sparkline de 30 dias por conta                       | **fechada** |
+| T48 | Filtro por valor no extrato                          | **fechada** |
+| T49 | Sugestão de descrição a partir do histórico          | **fechada** |
+| T50 | Cores de dinheiro com significado                    | **fechada** |
+| T51 | `/contas`: truncagem e contraste do cartão arquivado | **fechada** |
+
+**Zero tabelas, zero colunas, zero migrações, zero dependências novas** — a promessa da vaga foi
+cumprida. Gate final: `format:check` · `lint` 0 · `typecheck` 0 · **582** testes · `build` ✓ ·
+suite **93/93**. Base no baseline (2 utilizadores, 5 contas, 52 lançamentos, 0 de teste).
+
+**O que a vaga deixou por fechar, escrito para não se perder:**
+
+1. `/relatorios` a 360 px com 22 px de transbordo (T46).
+2. Barra de scroll do diálogo de edição invisível a 568 px de altura (overlay, anterior à T49).
+3. Toast do `sonner` a 4,25:1 (anterior a tudo isto).
+4. Polaridade de `warning` invertida face a `success`/`expense` — pede `--warning-text` e uma
+   passagem pelo `globals.css`.
+5. `--chart-grid` sem consumidor (a grelha do fluxo usa `border/50`, que já é temática).
+6. A decisão **A4** (contraste de `--border`/`--input`, 1,31:1 contra o mínimo 3:1) continua do
+   utilizador.
+
+**Método que esta vaga provou, e vale mais do que as seis tarefas:** uma correção prescrita por
+quem leu o código tem de ser medida por quem a aplica — o `text-warning`, o `if (!aberta) return`,
+o `bg-expense/10`, a grelha do recharts e o `border-dashed` caíram todos contra medições, e nenhum
+desses erros seria apanhado pela suite.
