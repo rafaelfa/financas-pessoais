@@ -135,10 +135,13 @@ export async function listTransactions(
   return {
     items: rows.map((row) => ({
       id: row.id,
-      kind: row.kind,
-      // Prisma devolve o enum em maiúsculas (CONFIRMED, PENDING, IGNORED). A UI
-      // e os esquemas usam minúsculas; normaliza aqui para não ter que converter
-      // em cada componente.
+      /*
+       * Prisma devolve os enum em maiúsculas (EXPENSE, CONFIRMED, …). A UI, os
+       * esquemas e as tabelas de rótulos usam minúsculas; normaliza-se aqui, nos
+       * dois campos, para não haver um `.toLowerCase()` por componente a adivinhar
+       * qual deles vem em que caixa.
+       */
+      kind: row.kind.toLowerCase(),
       status: row.status.toLowerCase(),
       amountInCents: row.amountInCents,
       date: toIsoDate(row.date),
