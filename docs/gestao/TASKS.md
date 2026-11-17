@@ -2586,3 +2586,58 @@ final (`6fe5444`).
 - `/importar`: `color-contrast` **4,42:1** no gatilho de um *tab* Radix — anterior a esta tarefa,
   mesmo nó a 360 e a 1280. Candidato a tarefa nova, não aberto.
 - O `target-size` com o menu aberto ficou decidido acima e não reabre.
+
+## T53 — Ações em massa no extrato
+
+**Porque:** o extrato filtra bem e depois não deixa fazer nada com o resultado. Categorizar os
+lançamentos de uma importação, ou confirmar uma dúzia de uma vez, é hoje uma dúzia de idas ao
+diálogo de edição — e é o passo que sobra entre a T47 (que importa) e o dia-a-dia.
+
+**Comportamento esperado**
+
+1. Cada linha ganha uma caixa de seleção. A do cabeçalho seleciona **os da página atual** — não
+   «todos os resultados do filtro» — e o nome acessível tem de dizer exatamente isso.
+2. Com pelo menos uma selecionada aparece uma barra de ações acima da tabela: a contagem, as
+   ações, e «Limpar».
+3. Ações: **marcar efetivada**, **marcar por liquidar**, **mudar categoria**, **apagar**.
+   - **Categoria:** só se aplica às compatíveis com o tipo. Seleção que mistura despesa e receita
+     desativa a ação, e a razão fica visível — não se aplica uma categoria de receita a despesas.
+   - **Apagar:** passa pelo diálogo de confirmação, com o **número** e o **total em euros** da
+     seleção, no formato de dinheiro do resto da app. Nunca apaga sem confirmar.
+4. **Transferências:** apagar uma perna apaga o par, como na ação individual; na confirmação o par
+   conta como **um** lançamento, não como dois.
+5. Mudar de página, filtro, ordenação ou tamanho de página **limpa a seleção**: nunca se age sobre
+   linhas que já não estão à vista.
+6. Idempotente: aplicar «efetivada» a quem já está efetivada não muda nada e não dá erro.
+7. Servidor: as ações validam o `userId` de **todas** as linhas e correm numa só transacção; teto
+   de **200** ids por pedido, acima disso recusa com mensagem. Um id que não é do utilizador não
+   pode arrastar os outros para o sucesso.
+8. Teclado e leitor de ecrã: `Escape` limpa a seleção; a contagem é anunciada quando muda; cada
+   caixa de linha tem nome acessível com a descrição e o valor do lançamento.
+
+**Ficheiros:** `components/transaction-table.tsx` · `components/transaction-bulk-actions.tsx` (novo)
+· `server/transactions-actions.ts` · `app/(app)/transacoes/page.tsx` (só se precisar de passar
+algo) · `e2e/` (é do QA).
+
+**Critério de aceitação**
+
+1. Selecionar 3 e marcar efetivada: as 3 mudam **sem refresh manual**, e o total de pendentes
+   bate com a nova realidade.
+2. Categoria: duas despesas recebem a categoria; seleção mista desativa a ação com a razão à
+   vista.
+3. Apagar 2: a confirmação diz «2 lançamentos» e o total; cancelar não apaga nada, confirmar apaga
+   os 2.
+4. Transferência: selecionar **uma** perna e apagar faz desaparecer **as duas**.
+5. Mudar de página ou de filtro faz **desaparecer a barra** e a seleção voltar a zero.
+6. Servidor: um pedido com 201 ids é recusado; um id de outro utilizador **não** apaga os válidos
+   (prova no servidor, não na interface).
+7. `axe` **0** com 3 selecionados, a 1280 e a 360; a barra não transborda a 360 e os alvos de toque
+   cumprem 44 px.
+8. Gate: `format:check`, `lint`, `typecheck`, `test` (**≥582**), `build`; suite com a spec nova, e
+   essa spec tem de falhar quando deve (tirar a limpeza ao mudar de página tem de a fazer vermelho).
+9. Zero dependências novas, zero migrações.
+
+**O que NÃO fazer:** nada de «selecionar todos os resultados do filtro» (é outra conversa, e é a
+maneira mais fácil de apagar um ano de extrato); não mexer nas ações individuais que já existem;
+não apagar em cascata contas ou categorias; não tocar em `e2e/` sem combinar com o QA; não fazer
+commit nem push.
