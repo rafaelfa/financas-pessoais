@@ -2840,3 +2840,61 @@ junto de `server/transactions.ts` se ficarem melhor lá) · `lib/nav.ts` (a entr
 a porta é o Painel); não afrouxar a spec da paleta; **não pôr o extrato dentro de `/revisao`** — a
 página conta e salta, e a correção vive onde já vive; não criar filtros novos para além do
 `semCategoria`; não commitar nem empurrar.
+
+## T58 — A árvore de dependências: tirar a CLI do runtime e fechar o zod
+
+**Porque:** a auditoria à árvore **de produção** (`pnpm audit --prod`, 17/11) devolve **34 avisos**,
+e a subida do Next da T56 só fecha **5**. Medido: 2 críticos e 1 alto no `next`, e o resto em 23
+pacotes que entram por três portas.
+
+```
+critical  next      x2   (fecha com a T56)
+high      next      x1   (fecha com a T56)
+moderate  next      x2   (fecha com a T56)
+high      zod        x1   ← é nosso, e está em uso
+high      systeminformation, undici x4, body-parser, hono, qs, minimatch, ip-address, fast-uri  ← entram por `shadcn`
+high      deepmerge-ts, mysql2, picomatch, fast-uri  ← entram por `better-auth`
+```
+
+**A descoberta que vale mais:** `shadcn` é uma **CLI de geração de código**, está em
+`dependencies` do `apps/web`, não é importada em sítio nenhum do código (`grep` vazio) e não é
+usada por nenhum script. Ainda assim arrasta para a instalação de produção um servidor MCP, o
+`hono`, o `express`, o `undici` e o `express-rate-limit` — **~20 dos 34 avisos e a maior parte da
+superfície que ninguém executa.** Um gerador de código não pertence ao runtime da aplicação.
+
+**O que se faz (sem subir nenhuma versão de framework e sem dependências novas):**
+
+1. `shadcn` passa de `dependencies` para `devDependencies`. Continua disponível para gerar
+   componentes em desenvolvimento e no build; deixa de ser instalado em produção.
+2. `zod` **4.6.5 → 4.6.6** (patch). O aviso é alto e o `zod` **é** nosso: valida o `input` de todas
+   as Server Actions. O aviso é exaustão de memória a validar colecções com limites grandes — isto
+   é, input de fora.
+3. `pnpm-lock.yaml` re-resolvido; nada mais sobe.
+
+**O que fica de fora, e porquê (registar, não corrigir aqui):**
+
+- `mysql2` — entra como peer opcional do `better-auth`, e a base é **PostgreSQL**. Os avisos são do
+  protocolo MySQL: não são alcançáveis. Sair exige mexer no `better-auth`; não se faz por um aviso
+  que não se pode atingir.
+- `deepmerge-ts` (<8) — vem do `better-auth`; a correção exige subir o `better-auth` (minor), que é
+  outra conversa.
+- `picomatch` — o aviso diz que não há versão corrigida (`patched: <0.0.0`). Fica registado como
+  **sem correção disponível**, não como esquecido.
+
+**Critério de aceitação**
+
+1. `pnpm audit --prod` **depois**: os avisos de `shadcn` (systeminformation, undici, body-parser,
+   hono, qs, minimatch, ip-address, fast-uri, @hono/node-server) **desaparecem**; o de `zod` também.
+   Cola o antes/depois com os números, não a conclusão.
+2. `pnpm audit --prod` mostra a árvore **sem** `shadcn`: `pnpm why shadcn` explica-o, e
+   `pnpm why shadcn --prod` já não o encontra.
+3. `zod` instalado diz **4.6.6**; nenhuma alteração de código de aplicação.
+4. Os avisos que **ficam** estão listados um a um no relatório, cada um com a razão de não se
+   corrigir (não alcançável / exige subida de minor / sem correção disponível).
+5. Gate completo: `format:check`, `lint`, `typecheck`, `test` (**582**), `build`, suíte **101/101**.
+6. `git diff` toca em `apps/web/package.json` e `pnpm-lock.yaml`. **Zero** ficheiros de código.
+7. Zero dependências novas, zero migrações.
+
+**O que NÃO fazer:** não subir `better-auth`, não remover o `mysql2` à força, não acrescentar
+`overrides` no `pnpm-workspace.yaml` para calar avisos, não mexer em versões que não estão na
+lista, e não commitar nem empurrar.
