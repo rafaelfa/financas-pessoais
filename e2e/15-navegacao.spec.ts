@@ -30,32 +30,35 @@ interface Destino {
   readonly consulta: string;
 }
 
-/** Os dois destinos novos, na ordem acordada para a secção «Dia a dia». */
-const NOVOS_DESTINOS: readonly Destino[] = [
+/**
+ * Os dois destinos novos da T38, agora com portas diferentes (T52): um continua
+ * na barra lateral, o outro vive num separador de `/contas`.
+ */
+const NOVOS_DESTINOS: readonly (Destino & { readonly via: 'barra' | 'separador' })[] = [
   {
     rotulo: 'Contas a pagar/receber',
     url: /\/contas-pagar-receber$/,
     titulo: 'Contas a Pagar / Receber',
     consulta: 'contas a pagar',
+    via: 'barra',
   },
   {
     rotulo: 'Consolidação',
     url: /\/consolidacao-contas$/,
     titulo: 'Consolidação de Contas',
     consulta: 'consolida',
+    via: 'separador',
   },
 ];
 
-/** A secção inteira, pela ordem em que aparece na barra lateral. */
-const SECAO_DIA_A_DIA = [
-  'Painel',
-  'Transações',
-  'Contas',
-  'Contas a pagar/receber',
-  'Consolidação',
-  'Património',
-  'Cartões',
-];
+/**
+ * A secção «Dia a dia», pela ordem em que aparece na barra lateral.
+ *
+ * Desde a T52 a barra tem oito destinos: «Consolidação» e «Cartões» saíram para
+ * os separadores de `/contas`, e os quatro ecrãs de análise para o menu «Mais»
+ * de `/transacoes`. As rotas não mudaram.
+ */
+const SECAO_DIA_A_DIA = ['Painel', 'Transações', 'Contas', 'Contas a pagar/receber'];
 
 /** A barra lateral de secretária (no telemóvel a navegação é o `MobileNav`). */
 function barraLateral(page: Page) {
@@ -115,14 +118,26 @@ test.describe('Percurso 15 — navegação da barra lateral', () => {
     }) => {
       await entrar(page);
 
-      const item = itemDoMenu(page, destino.rotulo);
+      let item;
 
-      await expect(item).toBeVisible();
-      await item.click();
+      if (destino.via === 'barra') {
+        item = itemDoMenu(page, destino.rotulo);
+        await expect(item).toBeVisible();
+        await item.click();
+      } else {
+        /* «Consolidação» passou a ser um separador de `/contas` (T52). */
+        await itemDoMenu(page, 'Contas').click();
+        const separador = page
+          .getByRole('navigation', { name: 'Secções de contas' })
+          .getByRole('link', { name: destino.rotulo, exact: true });
+        await expect(separador).toBeVisible();
+        item = separador;
+        await separador.click();
+      }
 
       await expect(page).toHaveURL(destino.url);
       await expect(page.getByRole('heading', { level: 1, name: destino.titulo })).toBeVisible();
-      await expect(itemDoMenu(page, destino.rotulo)).toHaveAttribute('aria-current', 'page');
+      await expect(item).toHaveAttribute('aria-current', 'page');
     });
   }
 });
