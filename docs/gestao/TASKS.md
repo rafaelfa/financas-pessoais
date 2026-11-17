@@ -2380,6 +2380,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | aberta (handoff 2026-11-17) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
+| T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | aberta (depois da T53, antes da T56) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | aberta (bloqueada pela T53) |
 
@@ -2641,3 +2642,63 @@ algo) · `e2e/` (é do QA).
 maneira mais fácil de apagar um ano de extrato); não mexer nas ações individuais que já existem;
 não apagar em cascata contas ou categorias; não tocar em `e2e/` sem combinar com o QA; não fazer
 commit nem push.
+
+## T57 — Dois defeitos herdados do extrato
+
+Aberto a pedido do utilizador (17/11), a seguir à T53 e **antes** da T56. Os dois vieram à luz
+durante a T52/T53 e nenhum deles é daquelas tarefas: são anteriores e ficam aqui, como a T51 fez
+com os dois de `/contas`. **Um commit por defeito**; um só ciclo de QA para os dois.
+
+### 1. O `kind` não é normalizado — e esconde o campo Categoria
+
+`server/transactions.ts:138` normaliza o `status` (`row.status.toLowerCase()`, com um comentário a
+explicar porquê) e **não** faz o mesmo ao `kind`, que sai do Prisma em maiúsculas. Duas
+consequências visíveis hoje:
+
+- `TRANSACTION_KIND_LABELS` tem as chaves em minúsculas (`expense: 'Gasto'`), por isso o selo cai
+  no `?? kind` e o ecrã mostra **«EXPENSE»**, «INCOME», «TRANSFER» em vez de «Gasto», «Ganho»,
+  «Transferência».
+- `transaction-edit-dialog.tsx:133` decide `showCategory` por `kind === 'expense' || kind ===
+  'income'`. Com maiúsculas é **sempre falso**: o diálogo de edição **esconde o campo Categoria em
+  todos os lançamentos**. É o defeito que importa — o mais grave dos dois.
+
+**Correção mínima:** normalizar na origem, no mesmo sítio e com o mesmo critério do `status`, e
+**uma** spec que guarde as duas coisas: o selo mostra o rótulo humano e o diálogo de edição tem o
+campo Categoria numa despesa e num ganho.
+
+**Armadilha a evitar:** comparar em minúsculas em cada componente. A T53 já o faz no código novo e
+continua certo quando a origem for corrigida — mas a origem é o sítio, e é lá que se corrige.
+
+### 2. O gatilho do separador de `/importar` não chega ao contraste mínimo
+
+`color-contrast` **4,42:1** (`#6c7276` sobre `#eff5f5`), medido pelo `axe` no gatilho de um *tab*
+Radix em `/importar`. Falta 0,08 para o mínimo AA de 4,5:1. Anterior à T52, mesmo nó e mesmos
+valores a 360 e a 1280, num ficheiro intocado por aquelas tarefas.
+
+**Correção mínima:** subir o contraste do gatilho inativo ao mínimo, no token ou na classe — não
+inventar uma cor nova se um token existente servir. Depois desta tarefa a **exceção registada no
+fecho da T52 deixa de ser precisa**: `axe` tem de dar **0** em `/importar`, sem exceções escritas.
+
+**Não fazer:** não mexer na paleta global para resolver um gatilho; se o token não chegar, corrige
+só o que este controlo usa e diz porquê.
+
+### Critério de aceitação
+
+1. `/transacoes` mostra «Gasto», «Ganho», «Transferência» — nunca o valor cru do enum. Prova a 1280
+   e a 360.
+2. O diálogo de edição mostra o campo **Categoria** numa despesa e num ganho, e continua a
+   escondê-lo onde não se aplica (transferência) — os dois lados, não só o que faltava.
+3. `/importar`: `color-contrast` no gatilho ≥ **4,5:1** nos dois temas, e `axe` **0** na rota sem
+   nenhuma exceção no relatório.
+4. Spec que protege as duas coisas e que **falha quando deve** (repor o `kind` cru tem de a fazer
+   vermelha; repor a cor antiga também).
+5. Gate: `format:check`, `lint`, `typecheck`, `test` (**≥582**), `build`; suíte verde.
+6. Zero dependências novas, zero migrações, zero alterações de rotas.
+
+**Ficheiros:** `apps/web/src/server/transactions.ts` · `apps/web/src/components/transaction-edit-dialog.tsx`
+(só se o `showCategory` precisar de ficar robusto à origem) · o que define a cor do gatilho do
+separador em `/importar` · `e2e/` (é do QA).
+
+**O que NÃO fazer:** não commitar nem empurrar; não tocar em `nav.ts`, no shell nem na barra
+lateral; não alargar a normalização a outros campos "por simetria" sem provar que estão errados; não
+abrir exceções novas no `axe`.
