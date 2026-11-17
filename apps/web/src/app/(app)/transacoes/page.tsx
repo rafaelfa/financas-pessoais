@@ -1,3 +1,4 @@
+import { parseAmountFilter } from '@repo/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -16,6 +17,7 @@ import { listAccounts } from '@/server/accounts';
 import { listCards } from '@/server/cards';
 import { listCategories } from '@/server/categories';
 import {
+  descriptionSuggestions,
   listTransactions,
   type TransactionFilters as TransactionFiltersInput,
 } from '@/server/transactions';
@@ -67,8 +69,20 @@ function readPage(params: SearchParams): number {
   return Number.isInteger(value) && value > 0 ? value : 1;
 }
 
+/**
+ * Filtros do URL, mais o par do valor.
+ *
+ * `valor`/`valorOp` não fazem parte do esquema Zod dos filtros (a consulta
+ * recebe-os já convertidos, ver `parseAmountFilter`), mas têm de viajar no URL
+ * para os links de paginação e para a barra os mostrar.
+ */
+type FilterQuery = TransactionFiltersInput & {
+  readonly valor?: string;
+  readonly valorOp?: string;
+};
+
 /** Query do URL com os filtros atuais e, opcionalmente, outra página. */
-function buildHref(filters: TransactionFiltersInput, limit: number, page: number): string {
+function buildHref(filters: FilterQuery, limit: number, page: number): string {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
@@ -105,7 +119,12 @@ export default async function TransacoesPage({
   const params = await searchParams;
   const today = todayInLisbon();
 
-  const filters: TransactionFiltersInput = {
+  const valor = readText(params, 'valor');
+  const valorOp = readText(params, 'valorOp');
+  // Um par inválido (ou meio par) não entra na consulta nem no URL dos links.
+  const amountFilter = parseAmountFilter({ valor, valorOp });
+
+  const filters: FilterQuery = {
     from: readDate(params, 'from'),
     to: readDate(params, 'to'),
     accountId: readText(params, 'accountId'),
@@ -113,16 +132,19 @@ export default async function TransacoesPage({
     kind: readOption(params, 'kind', TRANSACTION_KIND_LABELS),
     status: readOption(params, 'status', TRANSACTION_STATUS_LABELS),
     search: readText(params, 'search'),
+    ...(amountFilter === null ? {} : { valor, valorOp }),
   };
 
   const limit = readLimit(params);
   const page = readPage(params);
 
-  const [accounts, cards, categories, firstAttempt] = await Promise.all([
+  const [accounts, cards, categories, descriptions, firstAttempt] = await Promise.all([
     listAccounts(),
     listCards(),
     listCategories(),
-    listTransactions({ ...filters, limit, offset: (page - 1) * limit }),
+    // Uma consulta a mais, e só aqui: as sugestões do campo de descrição.
+    descriptionSuggestions(),
+    listTransactions({ ...filters, limit, offset: (page - 1) * limit }, amountFilter),
   ]);
 
   /*
@@ -143,7 +165,10 @@ export default async function TransacoesPage({
 
   if (page > 1 && transactions.items.length === 0 && transactions.total > 0) {
     const lastPage = Math.max(1, Math.ceil(transactions.total / limit));
-    transactions = await listTransactions({ ...filters, limit, offset: (lastPage - 1) * limit });
+    transactions = await listTransactions(
+      { ...filters, limit, offset: (lastPage - 1) * limit },
+      amountFilter,
+    );
   }
 
   const hasActiveFilters = Object.values(filters).some((value) => value !== undefined);
@@ -161,6 +186,7 @@ export default async function TransacoesPage({
 
       <div className="space-y-6">
         <TransactionQuickAdd
+          descriptions={descriptions}
           accounts={accounts}
           cards={cards}
           categories={categories}
@@ -181,6 +207,7 @@ export default async function TransacoesPage({
           sumInCents={transactions.sumInCents}
           accounts={accounts}
           categories={categories}
+          descriptions={descriptions}
           hasActiveFilters={hasActiveFilters}
         />
 

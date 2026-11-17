@@ -24,3 +24,5 @@ export * from './invoice';
 export * from './goal';
 export * from './netWorth';
 export * from './rules';
+export * from './amount-filter';
+export * from './description-suggestions';

@@ -1,5 +1,13 @@
 import { prisma, TransactionKind, TransactionStatus, type Prisma } from '@repo/db/client';
-import { transactionFiltersSchema } from '@repo/shared';
+import {
+  amountWhereClause,
+  rankDescriptionSuggestions,
+  transactionFiltersSchema,
+  type AmountFilter,
+  type DescriptionUsage,
+} from '@repo/shared';
+
+import { todayInLisbon } from '@/lib/today';
 
 import { toIsoDate } from './mapping';
 import { requireUser } from './session';
@@ -71,7 +79,10 @@ const STATUS_BY_INPUT: Record<string, TransactionStatus> = {
 };
 
 /** Lista paginada do extrato, com o total de registos e a soma líquida. */
-export async function listTransactions(filters: TransactionFilters = {}): Promise<TransactionPage> {
+export async function listTransactions(
+  filters: TransactionFilters = {},
+  amountFilter: AmountFilter | null = null,
+): Promise<TransactionPage> {
   const user = await requireUser();
   const parsed = transactionFiltersSchema.safeParse(filters);
   const value = parsed.success ? parsed.data : { limit: 50, offset: 0 };
@@ -97,6 +108,8 @@ export async function listTransactions(filters: TransactionFilters = {}): Promis
     ...(value.search !== undefined && value.search.length > 0
       ? { description: { contains: value.search, mode: 'insensitive' } }
       : {}),
+    // O mesmo `where` alimenta as três consultas — linhas, contagem e soma.
+    ...(amountFilter === null ? {} : amountWhereClause(amountFilter)),
   };
 
   const [rows, total, aggregate] = await Promise.all([
