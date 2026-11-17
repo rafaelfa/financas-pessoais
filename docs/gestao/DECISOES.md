@@ -332,6 +332,36 @@ clique: o alvo fugiu. Fechar no `pointerdown` é aceitável para uma lista flutu
 se mexe); numa lista no fluxo, o fecho tem de acontecer **depois** do clique, ou o botão tem de
 estar fora da zona que se desloca.
 
+### D21 — O Next sobe de 16.4.0 para 16.4.6 depois da T53 — **decisão do utilizador (2026-11-17)**
+
+O `apps/web/package.json` fixa `next: 16.4.0` (sem `^`). O registo de avisos do npm, consultado
+em 2026-11-17, devolve para 16.4.0: duas falhas **críticas** de execução remota de código
+(`GHSA-2464-fhr4-w9xw`, otimização de imagens com SVG; `GHSA-673q-mjm6-r5xr`, funções
+`use cache` a devolver typed arrays), uma **alta** de negação de serviço em Server Actions
+(`GHSA-p3m5-59mp-jv5r`) e duas moderadas de fuga de cache entre root params. Para 16.4.6 o mesmo
+registo não devolve nada.
+
+**Porque não é teórico neste projeto:** a app não usa `next/image` nem `use cache`, mas o
+endpoint `/_next/image` é servido por omissão e responde **sem autenticação** — a via do RCE
+está aberta mesmo sem uso de `next/image`. Server Actions são usadas nas mutações, portanto a
+de DoS também é alcançável.
+
+**Decidido: subir para 16.4.6 (T56), logo a seguir à T53, na mesma vaga.** A alternativa
+rejeitada foi subir já, antes da T53: custaria ~30 min e interrompia o encadeamento para
+resolver um risco que não cresce com o código desta vaga. Subir **depois** da T53 e **antes de
+qualquer produção**.
+
+**O que a torna irreversível:** o pin sem `^` é deliberado e a subida é de patch (16.4.0 →
+16.4.6, sem mudança de API), por isso reverte-se num commit. O irreversível é o contrário: um
+deploy para produção a partir de 16.4.0 expõe um RCE sem autenticação. **Regra que fica: uma
+versão de framework com aviso crítico aberto não vai para produção, e o aviso verifica-se no
+registo do npm, não na memória de quem o leu.**
+
+**Nota de ambiente, para não voltar a assustar ninguém:** `next build` corrido diretamente
+falha com `SecurityFatalError` nesta máquina; `pnpm build` (turbo) passa, porque o `nudge` do
+Next só corre quando `config.experimental.agentUpgrade` ou `__NEXT_AGENT_UPGRADE` estão
+definidos, e o turbo não propaga essa variável ao filho. Não é configuração do repositório.
+
 ### A4 — Contraste de `--border`/`--input`
 
 **Trava:** nada. **Decide:** utilizador.

@@ -2377,10 +2377,11 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
-| T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | aberta (handoff 2026-11-17) |
-| T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | aberta (bloqueada pela T52) |
+| T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
+| T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | aberta (handoff 2026-11-17) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
+| T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | aberta (bloqueada pela T53) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -2448,3 +2449,140 @@ Cada vaga escreve as suas tarefas em detalhe quando abre. O que **já está fixa
 **Duas coisas que não se fazem sem o utilizador:** a migração de desenvolvimento na vaga 3
 (base Neon, aditiva mas real) e a migração de **produção**, no fim das vagas 4 e 5, sempre
 por mão dele (D11). As passkeys (T64) trazem a tabela do `better-auth` — não é desenho nosso.
+
+### T52 — DEVE do Revisor (17:22): os separadores só existem numa das três páginas
+
+A barra de secções é renderizada **só** em `/contas`, e `Cartões`/`Consolidação` saíram da barra
+lateral. Logo, quem entra em `/cartoes` ou `/consolidacao-contas` **perde a barra**: não há
+separador para voltar a Contas nem para saltar para o irmão, e a barra lateral não destaca nada —
+a única saída é a paleta ou o botão «voltar».
+
+O mesmo padrão nos quatro do «Mais»: de `/regras` não há menu para `/categorias`.
+
+**É o mesmo defeito da tarefa, do outro lado:** o critério «nenhum ecrã órfão» foi cumprido a
+medir **ligações de entrada**; faltava medir **ligações de saída**. Uma rota pode ser alcançável
+e ainda assim ser um beco sem saída.
+
+**Correção:** a barra de secções passa a componente com `pathname` e é renderizada nas **três**
+páginas; o menu «Mais» nas **quatro**; e o item `Contas` da barra lateral passa a estar ativo
+também em `/cartoes` e `/consolidacao-contas`.
+
+**Menor do mesmo parecer:** envolver a lista do `<details>` em
+`<nav aria-label="Ferramentas do extrato">` — hoje não é uma região de navegação para o leitor de
+ecrã.
+
+**Duplicação das listas: melhor do que a guarda que eu ia pedir.** O Revisor notou que não há
+teste de navegação em `apps/web` (o vitest só existe em `packages/shared`, e um runner novo seria
+dependência contra a regra da vaga). A solução certa é **eliminar** a duplicação: um mapa
+`const NAV = { painel: PAINEL, … }` com as quatro listas a referenciar chaves e
+`ALL_NAV_ITEMS = Object.values(NAV)`. Um ecrã novo entra uma vez e a paleta deriva-o.
+
+### T52 — DEVE do Revisor (17:35): o menu «Mais» fica aberto depois de navegar
+
+Ao passar as portas para o `AppShell`, o `<details>` deixou de viver dentro da página e passou a
+viver no layout — **que não remonta entre rotas irmãs**. O `open` é estado do DOM, não do React:
+abrir «Mais» e clicar em «Regras» deixa o menu aberto **por cima da página nova**, e como
+`TRANSACTION_MENU_ROUTES` inclui `/regras`, ele continua lá.
+
+Antes não acontecia por acidente feliz: o `<details>` morria com a página. Mover código para o
+sítio certo cria defeitos que só existem nesse sítio.
+
+**Correção:** `key={pathname}` no `<details>` (remonta fechado a cada rota).
+
+**Menor do mesmo parecer, que também é uma correção de coerência:** em `/cartoes` e
+`/consolidacao-contas` a barra lateral não destaca «Contas» — `isActiveRoute` compara o caminho
+exato. E o `includes` exato usado nas listas de secções desaparece no dia em que um destes ecrãs
+ganhe uma sub-rota (`/cartoes/123`).
+
+**Correção única para os dois:** subir o `isActiveRoute` de `app-sidebar.tsx:23-25` para
+`lib/nav.ts` (raiz exata + prefixo com barra — e **não** `startsWith('/contas')`, que apanharia
+`/contas-pagar-receber`) e usá-lo nas duas listas e no destaque da barra lateral.
+
+E um comentário no `NAV` a dizer que a ordem do objeto **é** a ordem de apresentação da paleta:
+`Object.values` mantém a inserção, por isso mover uma chave reordena o `Ctrl+K` em silêncio.
+
+### T52 — FAIL do QA (17:50): o cabeçalho a 360 px transborda 19 px
+
+Cinco rotas com o menu (`/transacoes`, `/recorrencias`, `/regras`, `/categorias`, `/importar`)
+mediam `scrollWidth` **379** a 360 px; as rotas sem menu mediam 360. O culpado não era o menu: o
+grupo direito do cabeçalho tinha passado a **246 px** com o botão «Mais» (76 px, com rótulo) e o
+último controlo acabava em x = 379. Ficou 379 com o `<details>` fechado **e** aberto.
+
+**Correção:** o rótulo «Mais» passa a `sr-only` abaixo de `sm` (`<span className="sr-only
+sm:not-sr-only">Mais</span>`): fica o ícone, o nome acessível não se perde, e o rótulo volta a
+partir de 640. Botão 76 → 38 px, grupo 246 → 208, e as cinco rotas fecham a **360**.
+
+Proibido, e cumprido: `overflow-x: hidden` para esconder o sintoma, alvos abaixo de 44 px, e
+esconder o menu (deixaria `/regras` sem porta para `/categorias`).
+
+### T52 — FAIL do QA (18:0x): alvo de 36 px e painel cortado pela esquerda
+
+Duas coisas na medição seguinte:
+
+1. O trigger «Mais» media **38×36** a 360 — abaixo do critério 5 desta tarefa («alvos de toque ≥
+   44 px a 360»). Subir a altura não mexe na largura, logo não desfazia o fecho do overflow.
+2. O painel do menu, aberto a 360, ancorava em `right-0` do `<details>` e começava em **x = −34**
+   (itens em x = −29): borda e ícones cortados. O `scrollWidth` continuava 360 **porque
+   transbordava para a esquerda** — o defeito escapou ao critério do overflow por estar do lado
+   que ninguém mediu.
+
+**Correção:** `min-h-11 sm:min-h-9` no `<summary>` (44 a 360, 36 a partir de 640) e
+`max-sm:right-auto max-sm:left-0` no painel (abaixo de `sm` ancora à esquerda do trigger). A 360:
+trigger 38×44, painel 136→344, `minX` 136, margem 16. A 1279: painel 824,8→1032,8 (o grupo largo
+não corta). A 1280: 826→1034, **exactamente onde estava** antes desta volta.
+
+### T52 — decisão do Lead: `target-size` com um overlay aberto não é critério deste projeto
+
+Última medição: 14 das 15 células de `axe` limpas; a que sobra é **nova** — a 393 px em
+`/recorrencias`, com o menu aberto, o painel tapa parcialmente um botão de filtro de 127×28
+(sobra 127,4×13,5), e o `axe` marca `target-size`. O QA provou a causa: repondo a geometria
+anterior por CSS injectado, a mesma página dá 0 — mas com o painel em x = −1→207, isto é, **o
+zero anterior vinha do painel estar fora do ecrã**, não de ser inofensivo.
+
+A norma (WCAG 2.2, SC 2.5.8) tem cinco exceções — Spacing, Equivalent, Inline, User agent
+control, Essential — e **nenhuma para alvo tapado**: não há argumento normativo para declarar a
+célula conforme. O que há é isto: qualquer menu, popover ou paleta sobre conteúdo tapa alvos
+abaixo dele, e nenhuma posição do painel evita os botões da página que fica por baixo. As duas
+saídas que restam são piores — encolher os links do menu abaixo de 44 px (quebra o critério 5) ou
+voltar a pôr o painel fora do ecrã (era o defeito).
+
+**Decisão:** o `axe 0` mede-se no **estado por omissão** da página, que é a convenção das
+varreduras de acessibilidade; com um overlay invocado pelo utilizador aberto, `target-size` não é
+bloqueio. Registado aqui e no relatório do QA. Não é decisão irreversível nem muda contrato
+nenhum — fica como linha, não como D-número.
+
+**Fora do âmbito, para tarefa nova (não aberta):** `/importar` tem `color-contrast` **4,42:1** no
+trigger de um *tab* Radix — mesmo nó, mesmos valores a 360 e a 1280, num ficheiro que a T52 não
+tocou. Anterior a esta tarefa. Só abre com autorização do utilizador.
+
+### T52 — prova de fecho (QA, build final de 17/11 18:09)
+
+Medido no código que vai a commit, não num build anterior:
+
+| O que                                                    | Números                                                          |
+| -------------------------------------------------------- | ---------------------------------------------------------------- |
+| Barra lateral                                             | **8** ligações nos três grupos, a 1280 e a 360 (0 ligações a 360) |
+| Rotas com porta                                           | **15/15**; `foraDoContrato: []`, `semPorta: []`                   |
+| `Ctrl+K`                                                  | **15** itens, cada rótulo uma vez                                 |
+| Barra de secções                                          | nas **3** páginas, `aria-current` no separador certo              |
+| «Contas» aceso                                            | `/contas`, `/cartoes`, `/consolidacao-contas`; **null** em `/contas-pagar-receber` |
+| Menu «Mais»                                               | abre por clique/Enter/Espaço, `Tab` entra nos links, fecha ao navegar (`marcado: null` prova a remontagem) |
+| A 360                                                     | trigger 38×44, painel 136→344, margem 16, `scrollWidth` 360 nas 20 células |
+| A 1280                                                    | painel 826→1034, igual ao `HEAD` deste ecrã                       |
+| `axe`                                                     | 0 em `/`, `/transacoes`, `/cartoes`, `/consolidacao-contas`, 360/393/1280 |
+| Gate                                                      | `format:check` · `lint` 0 · `typecheck` 0 · `test` **582** · `build` ✓ · suite **96/96** |
+| Base                                                      | 2 utilizadores · 5 contas · 52 movimentos · 0 `qa.*` · 0 `e2e-*`   |
+
+Prova e medições em `relatorios/T52.md` e `relatorios/.qa-t52{d,c,b}/`. Revisor sem DEVE no delta
+final (`6fe5444`).
+
+**O que a T52 não resolve, e fica escrito:**
+
+- O `<details>` nativo não fecha com `Escape` nem com clique fora — só no próprio gatilho ou ao
+  navegar. É comportamento de *disclosure*, não defeito de implementação; acrescentar handlers
+  reabriria a classe de defeitos da T49. Fora do âmbito.
+- Na fronteira 639→640 o painel salta ~135 px para a esquerda ao trocar de âncora e ao reaparecer
+  o rótulo. Só se vê a arrastar a janela; não há corte nem overflow.
+- `/importar`: `color-contrast` **4,42:1** no gatilho de um *tab* Radix — anterior a esta tarefa,
+  mesmo nó a 360 e a 1280. Candidato a tarefa nova, não aberto.
+- O `target-size` com o menu aberto ficou decidido acima e não reabre.
