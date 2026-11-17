@@ -2384,7 +2384,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (escrita, depois da T54) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
-| T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | aberta (handoff) |
+| T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | **fechada** (PASS QA; avisos 29 → 8; CSS compilado verificado) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3078,3 +3078,23 @@ são `globals@16.4.0`, o pacote de globais do ESLint. Coincidência de número, 
 transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a maior parte; o
 `mysql2` (MySQL num projeto PostgreSQL), o `deepmerge-ts` (exige subir o `better-auth`) e o
 `picomatch` (sem correção publicada) ficam com a razão escrita.
+
+### T58 — prova de fecho (QA)
+
+| O que                        | Números                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| Avisos únicos (`--prod`)     | **29 → 8** (instâncias 31 → 8) · dependências de produção **704 → 470**       |
+| `shadcn` fora do runtime     | `why shadcn -r` → `devDependencies 4.21.4`; `why shadcn --prod -r` → **vazio**; versão inalterada |
+| `zod`                        | **4.6.6** instalado e no lockfile; o aviso desapareceu                        |
+| Lockfile                     | 1158 chaves de cada lado; as 10 que entram e as 10 que saem são **todas** `zod@4.6.5→4.6.6` ou peers com essa versão |
+| `shadcn` no lockfile         | entrada **byte a byte igual** (mesma `integrity`, mesma linha) — mudou de secção, não foi re-resolvido |
+| **O CSS não se perdeu**      | o compilado tem `.data-open\:animate-in…`, `data-open:bg-accent`, `[data-state=open]`; menu e diálogo com `animationName: enter` 0,1 s; separadores de `/importar` trocam de aba |
+| Suíte                        | **104 passed (5,9 m)**, sem morte de worker                                  |
+| `axe` `/importar`            | **0** no claro e no escuro                                                   |
+| Diff                         | `apps/web/package.json` (2+/2−) e `pnpm-lock.yaml` (39+/39−) — zero código    |
+
+**Correção ao número do Dev, que eu também repeti:** os avisos não eram «31 instâncias» — são **29 avisos únicos** antes e **8** depois. E os oito que ficam **não** vêm todos do `better-auth` como ele disse: vêm por `prisma>@prisma/config` (`deepmerge-ts`), `prisma>@prisma/dev>…>ajv` (`fast-uri`), `mysql2` e `vitest` (`picomatch`). A atribuição errada teria escondido três caminhos de origem diferentes.
+
+**Decisão sobre o piso do `zod` (menor proposto pelo Revisor, não feito):** o `packages/shared` continua a declarar `^4.6.5`. Subir para `^4.6.6` não mudaria nada do que é instalado — `^4.6.5` **nunca** resolve para 4.6.5 enquanto existir 4.6.6, porque o range pede a versão mais alta que o satisfaça. O piso só valeria contra um **downgrade deliberado**, que é o mesmo risco de qualquer dependência. Registado, não feito, e a razão é esta e não «falta de tempo».
+
+**O que fica dito no contrato e se confirma:** o `shadcn` continua **necessário no build** (o `globals.css` importa o CSS dele). Não é problema de deploy — o build já precisa de `tailwindcss` e `@tailwindcss/postcss`, que também são devDependencies. O cenário que partiria isto (um stage Docker com `install --prod` **antes** do `next build`) não existe neste repositório, e fica escrito para o dia em que alguém o criar.
