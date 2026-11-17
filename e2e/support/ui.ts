@@ -50,11 +50,29 @@ export function formularioDeLancamentoRapido(page: Page): Locator {
   return page.locator('form').filter({ has: page.getByLabel('Valor', { exact: true }) });
 }
 
-/** Espera pelo aviso (toast) com o texto indicado. */
+/**
+ * Atributo que marca um aviso (toast) já consumido por um `esperarAviso`.
+ *
+ * Um toast do sonner vive ~4 s e não tem `data-id`: dois avisos com o mesmo
+ * texto são indistinguíveis. Sem marca, um `esperarAviso` a seguir a uma ação
+ * que **não** gravou encontra o toast da ação anterior e passa em 3 ms — foi o
+ * que aconteceu na T49 (segunda gravação seguida não acontecia e o teste dizia
+ * que sim). O primeiro a ver o toast marca-o; as esperas seguintes ignoram-no.
+ */
+const AVISO_CONSUMIDO = 'data-qa-aviso-consumido';
+
+/** Espera por um aviso (toast) **novo** com o texto indicado. */
 export async function esperarAviso(page: Page, texto: string | RegExp): Promise<void> {
-  await expect(page.locator('[data-sonner-toast]').filter({ hasText: texto }).first()).toBeVisible({
-    timeout: 20_000,
-  });
+  const aviso = page
+    .locator(`[data-sonner-toast]:not([${AVISO_CONSUMIDO}])`)
+    .filter({ hasText: texto })
+    .first();
+
+  await expect(aviso).toBeVisible({ timeout: 20_000 });
+  await aviso.evaluate(
+    (elemento, atributo) => elemento.setAttribute(atributo, '1'),
+    AVISO_CONSUMIDO,
+  );
 }
 
 /** Escolhe uma opção num `Select` (Radix) pelo nome. */
