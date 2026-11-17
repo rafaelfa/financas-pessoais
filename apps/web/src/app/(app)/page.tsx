@@ -55,8 +55,6 @@ function formatDay(date: string): string {
   );
 }
 
-const euro = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
-
 /** Identificador do aviso de âmbito recusado, ligado à secção que ele explica. */
 const SCOPE_NOTICE_ID = 'painel-ambito-aviso';
 
@@ -162,15 +160,24 @@ export default async function PainelPage({
   }
 
   /** Rótulo da nota do primeiro indicador, que muda com o âmbito. */
-  function firstKpiHint(): string {
+  function firstKpiHint(): React.ReactNode {
     if (isCardScope) {
       if (card === null) {
         return 'Dívida do cartão';
       }
 
-      return card.creditLimitInCents === null || card.availableLimitInCents === null
-        ? 'Faturas por pagar deste cartão'
-        : `Limite disponível: ${euro.format(card.availableLimitInCents / 100)}`;
+      return card.creditLimitInCents === null || card.availableLimitInCents === null ? (
+        'Faturas por pagar deste cartão'
+      ) : (
+        <>
+          Limite disponível:{' '}
+          <Amount
+            amountInCents={card.availableLimitInCents}
+            tone="neutral"
+            className="text-inherit normal-nums"
+          />
+        </>
+      );
     }
 
     if (isAccountScope) {
@@ -277,9 +284,18 @@ export default async function PainelPage({
         <KpiCard
           label={accrualFirst ? 'Compras do mês' : 'Entradas do mês'}
           hint={
-            accrualFirst
-              ? 'Por competência: contam na data da compra, e não quando a fatura é paga.'
-              : `Por competência: ${euro.format(data.accrual.incomeInCents / 100)}`
+            accrualFirst ? (
+              'Por competência: contam na data da compra, e não quando a fatura é paga.'
+            ) : (
+              <>
+                Por competência:{' '}
+                <Amount
+                  amountInCents={data.accrual.incomeInCents}
+                  tone="neutral"
+                  className="text-inherit normal-nums"
+                />
+              </>
+            )
           }
         >
           {accrualFirst ? (
@@ -292,9 +308,18 @@ export default async function PainelPage({
         <KpiCard
           label={accrualFirst ? 'Já liquidado' : 'Saídas do mês'}
           hint={
-            accrualFirst
-              ? 'Só o que foi marcado como pago; uma compra a crédito liquida-se quando pagas a fatura.'
-              : `Por competência: ${euro.format(data.accrual.expenseInCents / 100)}`
+            accrualFirst ? (
+              'Só o que foi marcado como pago; uma compra a crédito liquida-se quando pagas a fatura.'
+            ) : (
+              <>
+                Por competência:{' '}
+                <Amount
+                  amountInCents={data.accrual.expenseInCents}
+                  tone="neutral"
+                  className="text-inherit normal-nums"
+                />
+              </>
+            )
           }
         >
           <Amount amountInCents={data.cash.expenseInCents} tone="expense" />

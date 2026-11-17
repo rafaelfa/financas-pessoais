@@ -204,6 +204,16 @@
   .font-numeric {
     font-variant-numeric: tabular-nums;
   }
+  /*
+   * Rede de segurança do modo privacidade: quando o `localStorage` diz «ativa»
+   * mas o servidor não o soube (cookie apagado), o script inline do layout põe
+   * o atributo antes da primeira pintura e os valores ficam invisíveis até a
+   * hidratação os trocar pela máscara. `visibility` guarda o espaço, por isso a
+   * página não salta.
+   */
+  html[data-privacidade='ativa'] [data-amount='visivel'] {
+    visibility: hidden;
+  }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }

@@ -2,6 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from 'recharts';
 
+import { usePrivacy } from '@/components/privacy-mode';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 /**
@@ -34,6 +35,8 @@ const euroCompact = new Intl.NumberFormat('pt-PT', {
 });
 
 export function DashboardForecastChart({ data }: { readonly data: readonly ForecastPoint[] }) {
+  const { hidden } = usePrivacy();
+
   return (
     <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">
       <AreaChart data={[...data]} accessibilityLayer margin={{ top: 8, right: 8 }}>
@@ -57,10 +60,10 @@ export function DashboardForecastChart({ data }: { readonly data: readonly Forec
           tickLine={false}
           axisLine={false}
           width={52}
-          tickFormatter={(value: number) => euroCompact.format(value)}
+          tickFormatter={(value: number) => (hidden ? '•••' : euroCompact.format(value))}
         />
 
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip content={<ChartTooltipContent masked={hidden} />} />
 
         <ReferenceLine
           y={0}

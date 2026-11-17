@@ -20,7 +20,8 @@ export function KpiCard({
 }: {
   readonly label: string;
   readonly children: React.ReactNode;
-  readonly hint?: string;
+  /** Nota curta; aceita marcação porque algumas notas contêm um `<Amount>`. */
+  readonly hint?: React.ReactNode;
   readonly icon?: ComponentType<{ className?: string }>;
   /** O valor é o herói do ecrã: um degrau acima dos restantes indicadores. */
   readonly prominent?: boolean;

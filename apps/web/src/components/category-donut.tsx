@@ -10,6 +10,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { maskAmount } from '@/components/amount';
+import { usePrivacy } from '@/components/privacy-mode';
 import { formatCurrency } from '@repo/shared';
 
 export interface DonutSlice {
@@ -37,6 +39,8 @@ const SERIES = [
  */
 export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }) {
   const total = useMemo(() => data.reduce((sum, slice) => sum + slice.valor, 0), [data]);
+  const { hidden } = usePrivacy();
+  const totalText = formatCurrency(Math.round(total * 100), 'EUR');
 
   const config = useMemo(
     () =>
@@ -52,7 +56,7 @@ export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }
   return (
     <ChartContainer config={config} className="mx-auto h-48 w-full sm:h-64">
       <PieChart accessibilityLayer>
-        <ChartTooltip content={<ChartTooltipContent nameKey="categoria" />} />
+        <ChartTooltip content={<ChartTooltipContent nameKey="categoria" masked={hidden} />} />
         <Pie
           data={[...data]}
           dataKey="valor"
@@ -75,9 +79,11 @@ export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }
                   <tspan
                     x={viewBox.cx}
                     y={viewBox.cy}
+                    data-amount={hidden ? 'oculto' : 'visivel'}
+                    aria-hidden={hidden}
                     className="fill-foreground text-lg font-semibold"
                   >
-                    {formatCurrency(Math.round(total * 100), 'EUR')}
+                    {hidden ? maskAmount(totalText) : totalText}
                   </tspan>
                   <tspan
                     x={viewBox.cx}

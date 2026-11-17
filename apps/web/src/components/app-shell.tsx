@@ -2,6 +2,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { MobileNav } from '@/components/mobile-nav';
 import { ModeToggle } from '@/components/mode-toggle';
+import { PrivacyToggle } from '@/components/privacy-mode';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-medium md:hidden">Finanças Pessoais</span>
           <div className="ml-auto flex items-center gap-2">
             <CommandPalette />
+            <PrivacyToggle />
             <ModeToggle />
             {/*
               Em telemóvel a barra lateral está escondida, por isso a saída tem de

@@ -5,6 +5,8 @@ import { cn } from 'cn';
 import * as RechartsPrimitive from 'recharts';
 import type { TooltipValueType } from 'recharts';
 
+import { maskAmount } from '@/components/amount';
+
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: '', dark: '.dark' } as const;
 
@@ -121,6 +123,7 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
+  masked = false,
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
   React.ComponentProps<'div'> & {
     hideLabel?: boolean;
@@ -128,6 +131,8 @@ function ChartTooltipContent({
     indicator?: 'line' | 'dot' | 'dashed';
     nameKey?: string;
     labelKey?: string;
+    /** Com o modo privacidade ativo, o valor sai como máscara. */
+    masked?: boolean;
   } & Omit<
     RechartsPrimitive.DefaultTooltipContentProps<TooltipValueType, TooltipNameType>,
     'accessibilityLayer'
@@ -230,9 +235,22 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
-                          {typeof item.value === 'number'
-                            ? item.value.toLocaleString()
-                            : String(item.value)}
+                          {masked ? (
+                            <>
+                              <span aria-hidden="true">
+                                {maskAmount(
+                                  typeof item.value === 'number'
+                                    ? item.value.toLocaleString()
+                                    : String(item.value),
+                                )}
+                              </span>
+                              <span className="sr-only">montante oculto</span>
+                            </>
+                          ) : typeof item.value === 'number' ? (
+                            item.value.toLocaleString()
+                          ) : (
+                            String(item.value)
+                          )}
                         </span>
                       )}
                     </div>
