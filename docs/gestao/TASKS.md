@@ -2866,10 +2866,23 @@ superfície que ninguém executa.** Um gerador de código não pertence ao runti
 
 1. `shadcn` passa de `dependencies` para `devDependencies`. Continua disponível para gerar
    componentes em desenvolvimento e no build; deixa de ser instalado em produção.
+   **Não sai da árvore** — ver a nota abaixo: o CSS dele é usado pela aplicação.
 2. `zod` **4.6.5 → 4.6.6** (patch). O aviso é alto e o `zod` **é** nosso: valida o `input` de todas
    as Server Actions. O aviso é exaustão de memória a validar colecções com limites grandes — isto
    é, input de fora.
 3. `pnpm-lock.yaml` re-resolvido; nada mais sobe.
+
+**Porque o pacote não sai de vez (achado do Dev, verificado):** `apps/web/src/app/globals.css:3`
+faz `@import 'shadcn/tailwind.css'`, e esse ficheiro não são só dois `@keyframes` de acordeão —
+define **nove `@custom-variant`** (`data-open`, `data-closed`, `data-checked`, `data-unchecked`,
+`data-selected`, `data-disabled`, `data-active`, `data-horizontal`, `data-vertical`) que a
+interface usa **158 vezes** (`data-open:` 53, `data-closed:` 46, `data-active:` 19, …). Copiar
+isso para o `globals.css` é trabalho de outra tarefa, com prova visual; aqui só se muda a
+**categoria da dependência**.
+
+E não é uma restrição nova: `tailwindcss`, `@tailwindcss/postcss` e `typescript` **já** estão em
+`devDependencies` — o projeto já precisa das dependências de desenvolvimento para construir. Um
+`install --prod` antes do build já falhava por outras razões.
 
 **O que fica de fora, e porquê (registar, não corrigir aqui):**
 
@@ -2898,3 +2911,13 @@ superfície que ninguém executa.** Um gerador de código não pertence ao runti
 **O que NÃO fazer:** não subir `better-auth`, não remover o `mysql2` à força, não acrescentar
 `overrides` no `pnpm-workspace.yaml` para calar avisos, não mexer em versões que não estão na
 lista, e não commitar nem empurrar.
+
+### T58 — o `shadcn` sai do runtime **depois** desta tarefa? Não: fica registado
+
+Fica escrito para não se repetir a pergunta. Tirar o pacote da árvore exige portar o
+`shadcn/tailwind.css` para o `globals.css`: 9 `@custom-variant` e 2 `@keyframes`, usados 158 vezes
+na interface. É uma tarefa própria, com prova visual em todos os componentes que usam `data-open:`
+e `data-closed:` (menus, diálogos, separadores, caixas), e **não** um efeito colateral desta.
+
+O que esta tarefa entrega é o que interessa ao risco: com o pacote em `devDependencies`, ele sai da
+árvore **de produção** e leva consigo ~20 avisos e um servidor MCP que ninguém executa.
