@@ -17,12 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { NAV_SECTIONS } from '@/lib/nav';
-
-/** Marca um destino como ativo. A raiz só é ativa exatamente em `/`. */
-function isActiveRoute(pathname: string, href: string): boolean {
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
-}
+import { isActiveRoute, isNavItemActive, NAV_SECTIONS, PROFILE_MENU_ITEMS } from '@/lib/nav';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -57,7 +52,7 @@ export function AppSidebar() {
                    * sozinha não é informação para quem não a vê (WCAG 1.4.1).
                    * O menu de baixo, no telemóvel, já o fazia.
                    */
-                  const active = isActiveRoute(pathname, item.href);
+                  const active = isNavItemActive(pathname, item.href);
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -77,6 +72,26 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        {/*
+          Definições saiu da lista de destinos (D7) e passou para o rodapé do
+          utilizador, onde se procura o que é da conta e não do trabalho diário.
+        */}
+        <SidebarMenu>
+          {PROFILE_MENU_ITEMS.map((item) => {
+            const active = isActiveRoute(pathname, item.href);
+
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                  <Link href={item.href} aria-current={active ? 'page' : undefined}>
+                    <item.icon aria-hidden />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
         {/*
           Terminar a sessão fica no fundo, onde se procura: fora do percurso de
           trabalho diário, mas sempre à vista.

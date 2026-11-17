@@ -128,21 +128,136 @@ const DEFINICOES: NavItem = {
   icon: Settings,
 };
 
-/** Barra lateral, agrupada por intenção do utilizador. */
+/**
+ * Todos os ecrãs, uma vez cada.
+ *
+ * As listas abaixo referenciam **chaves deste objecto**: um ecrã novo entra
+ * aqui uma vez e a paleta deriva-o. Era esta a duplicação que não se podia
+ * vigiar com testes (não há runner de testes em `apps/web`).
+ */
+const NAV = {
+  /*
+   * A **ordem deste objecto é a ordem da paleta de comandos**: `ALL_NAV_ITEMS`
+   * sai de `Object.values(NAV)`, que mantém a inserção. Mover uma chave muda a
+   * ordem do `Ctrl+K` em silêncio — a intenção é que mude, mas convém saber.
+   */
+  painel: PAINEL,
+  transacoes: TRANSACOES,
+  contas: CONTAS,
+  contasAPagarReceber: CONTAS_A_PAGAR_RECEBER,
+  consolidacao: CONSOLIDACAO,
+  cartoes: CARTOES,
+  patrimonio: PATRIMONIO,
+  orcamento: ORCAMENTO,
+  objetivos: OBJETIVOS,
+  recorrencias: RECORRENCIAS,
+  regras: REGRAS,
+  categorias: CATEGORIAS,
+  relatorios: RELATORIOS,
+  importar: IMPORTAR,
+  definicoes: DEFINICOES,
+} as const;
+
+/**
+ * Barra lateral: **oito** destinos em três grupos (decisão D7).
+ *
+ * Os sete que saíram continuam a existir como ecrãs, com outra porta — ver
+ * `ACCOUNT_SECTION_ITEMS`, `TRANSACTION_MENU_ITEMS` e `PROFILE_MENU_ITEMS`.
+ * As rotas não mudaram: um favorito antigo abre o mesmo sítio.
+ */
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     title: 'Dia a dia',
-    items: [PAINEL, TRANSACOES, CONTAS, CONTAS_A_PAGAR_RECEBER, CONSOLIDACAO, PATRIMONIO, CARTOES],
+    items: [NAV.painel, NAV.transacoes, NAV.contas, NAV.contasAPagarReceber],
   },
-  { title: 'Planeamento', items: [ORCAMENTO, OBJETIVOS, RECORRENCIAS, REGRAS] },
-  { title: 'Análise', items: [CATEGORIAS, RELATORIOS, IMPORTAR, DEFINICOES] },
+  { title: 'Planeamento', items: [NAV.orcamento, NAV.objetivos, NAV.patrimonio] },
+  { title: 'Análise', items: [NAV.relatorios] },
 ];
+
+/**
+ * Sub-navegação de contas: a própria Contas, Cartões e Consolidação.
+ *
+ * Aparece nas **três** páginas: quem entra em Cartões por um favorito antigo
+ * tem de conseguir voltar, e não pode ficar num beco sem saída.
+ */
+export const ACCOUNT_SECTION_ITEMS: readonly NavItem[] = [
+  NAV.contas,
+  NAV.cartoes,
+  NAV.consolidacao,
+];
+
+/** Rotas onde a barra de secções de contas aparece. */
+export const ACCOUNT_SECTION_ROUTES: readonly string[] = [
+  '/contas',
+  '/cartoes',
+  '/consolidacao-contas',
+];
+
+/** Menu «Mais» do extrato: os quatro ecrãs que vivem ao lado das transações. */
+export const TRANSACTION_MENU_ITEMS: readonly NavItem[] = [
+  NAV.recorrencias,
+  NAV.regras,
+  NAV.categorias,
+  NAV.importar,
+];
+
+/** Rotas onde o menu «Mais» aparece — as quatro portas e a própria transações. */
+export const TRANSACTION_MENU_ROUTES: readonly string[] = [
+  '/transacoes',
+  '/recorrencias',
+  '/regras',
+  '/categorias',
+  '/importar',
+];
+
+/** Rodapé do utilizador (barra lateral): definições da conta. */
+export const PROFILE_MENU_ITEMS: readonly NavItem[] = [NAV.definicoes];
 
 /**
  * Navegação inferior do telemóvel: cinco destinos, os que se usam a olhar para
  * o telemóvel na fila do supermercado.
  */
-export const MOBILE_NAV: readonly NavItem[] = [PAINEL, TRANSACOES, ORCAMENTO, OBJETIVOS, CONTAS];
+export const MOBILE_NAV: readonly NavItem[] = [
+  NAV.painel,
+  NAV.transacoes,
+  NAV.orcamento,
+  NAV.objetivos,
+  NAV.contas,
+];
 
-/** Todos os destinos, para a paleta de comandos. */
-export const ALL_NAV_ITEMS: readonly NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
+/**
+ * Todos os destinos, para a paleta de comandos.
+ *
+ * A paleta **não** lê a barra lateral: se lesse, encolher a barra encolhia o
+ * `Ctrl+K` e a simplificação passava a ser esconderijo.
+ */
+export const ALL_NAV_ITEMS: readonly NavItem[] = Object.values(NAV);
+
+/**
+ * Um destino está ativo na sua rota ou numa sub-rota dela.
+ *
+ * Raiz exata **mais** prefixo com barra: `startsWith('/contas')` apanharia
+ * `/contas-pagar-receber`, que é outro destino.
+ */
+export function isActiveRoute(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** A rota pertence a alguma das secções (raiz exata ou sub-rota). */
+export function matchesAnyRoute(pathname: string, routes: readonly string[]): boolean {
+  return routes.some((route) => isActiveRoute(pathname, route));
+}
+
+/**
+ * Destaque na barra lateral.
+ *
+ * «Contas» representa a secção toda — Cartões e Consolidação incluídos —, por
+ * isso fica ativa nas três rotas; os separadores dizem qual está aberta.
+ */
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (isActiveRoute(pathname, href)) {
+    return true;
+  }
+
+  return href === '/contas' && matchesAnyRoute(pathname, ACCOUNT_SECTION_ROUTES);
+}

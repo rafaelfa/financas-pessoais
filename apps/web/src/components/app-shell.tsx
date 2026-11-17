@@ -1,3 +1,9 @@
+'use client';
+
+import { Ellipsis } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
 import { AppSidebar } from '@/components/app-sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import { MobileNav } from '@/components/mobile-nav';
@@ -7,6 +13,15 @@ import { SignOutButton } from '@/components/sign-out-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import {
+  ACCOUNT_SECTION_ITEMS,
+  ACCOUNT_SECTION_ROUTES,
+  isActiveRoute,
+  matchesAnyRoute,
+  TRANSACTION_MENU_ITEMS,
+  TRANSACTION_MENU_ROUTES,
+} from '@/lib/nav';
+import { cn } from '@/lib/utils';
 
 /**
  * Estrutura da aplicação autenticada: barra lateral em ecrã grande, navegação
@@ -16,6 +31,10 @@ import { Toaster } from '@/components/ui/sonner';
  * nunca tape o último elemento de uma lista.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const mostrarSecoesDeContas = matchesAnyRoute(pathname, ACCOUNT_SECTION_ROUTES);
+  const mostrarMenuDoExtrato = matchesAnyRoute(pathname, TRANSACTION_MENU_ROUTES);
+
   return (
     <SidebarProvider>
       {/*
@@ -38,6 +57,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Separator orientation="vertical" className="mr-1 !h-5" />
           <span className="text-sm font-medium md:hidden">Finanças Pessoais</span>
           <div className="ml-auto flex items-center gap-2">
+            {/*
+              Recorrências, Regras, Categorias e Importar saíram da barra
+              lateral (D7). O menu vive aqui, no cabeçalho, e aparece também nas
+              páginas deles: quem entra por um favorito tem de poder ir ao
+              vizinho sem voltar atrás. `<details>` nativo — teclado e rato, sem
+              estado a sincronizar.
+            */}
+            {!mostrarMenuDoExtrato ? null : (
+              /*
+                `key={pathname}`: o `<details>` vive no layout, e o layout não
+                remonta entre rotas irmãs. O `open` é estado do DOM, não do
+                React — sem a chave, escolher «Regras» deixava o menu aberto por
+                cima da página nova.
+              */
+              <details key={pathname} className="relative">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground sm:min-h-9 [&::-webkit-details-marker]:hidden">
+                  <Ellipsis className="size-4" aria-hidden />
+                  {/*
+                    A 360 px o grupo do cabeçalho não cabe com o rótulo. Fica o
+                    ícone, com o texto em `sr-only` — o nome acessível não se
+                    perde — e o rótulo volta a aparecer a partir de `sm`.
+                  */}
+                  <span className="sr-only sm:not-sr-only">Mais</span>
+                </summary>
+                {/*
+                  Ancorado à direita do `<details>` a partir de `sm`. Abaixo
+                  disso o gatilho está a 136 px do bordo e um painel de 208 px
+                  sairia pela esquerda (x = −34): passa a crescer para a direita
+                  do gatilho, com 16 px de margem no bordo do ecrã.
+                */}
+                <nav aria-label="Ferramentas do extrato">
+                  <ul className="absolute right-0 z-50 mt-1 w-52 rounded-lg border bg-popover p-1 shadow-md max-sm:right-auto max-sm:left-0">
+                    {TRANSACTION_MENU_ITEMS.map((item) => {
+                      const ativo = isActiveRoute(pathname, item.href);
+
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            aria-current={ativo ? 'page' : undefined}
+                            className={cn(
+                              'flex min-h-11 items-center gap-2 rounded-md px-2 text-sm hover:bg-muted sm:min-h-8',
+                              ativo ? 'font-medium text-foreground' : 'text-popover-foreground',
+                            )}
+                          >
+                            <item.icon className="size-4" aria-hidden />
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </details>
+            )}
             <CommandPalette />
             <PrivacyToggle />
             <ModeToggle />
@@ -54,6 +128,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           um alvo focável, o foco ficava no próprio link e a leitura continuava na
           navegação. O `main` é o destino e o marco de conteúdo principal.
         */}
+        {/*
+          Secções de contas: a própria Contas, Cartões e Consolidação. Fica
+          acima do conteúdo e aparece nas **três** páginas — em Cartões e
+          Consolidação não havia como voltar sem a paleta.
+        */}
+        {!mostrarSecoesDeContas ? null : (
+          <nav aria-label="Secções de contas" className="border-b px-4 pt-3 md:px-6">
+            <ul className="flex flex-wrap gap-1">
+              {ACCOUNT_SECTION_ITEMS.map((item) => {
+                const ativo = isActiveRoute(pathname, item.href);
+
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={ativo ? 'page' : undefined}
+                      className={cn(
+                        'flex min-h-11 items-center gap-2 rounded-t-lg border-b-2 px-3 text-sm font-medium transition-colors sm:min-h-9',
+                        ativo
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <item.icon className="size-4" aria-hidden />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        )}
+
         <main
           id="conteudo-principal"
           tabIndex={-1}
