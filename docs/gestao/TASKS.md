@@ -2378,7 +2378,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
-| T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | aberta (handoff 2026-11-17) |
+| T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | aberta (depois da T53, antes da T56) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
@@ -2684,8 +2684,9 @@ só o que este controlo usa e diz porquê.
 
 ### Critério de aceitação
 
-1. `/transacoes` mostra «Gasto», «Ganho», «Transferência» — nunca o valor cru do enum. Prova a 1280
-   e a 360.
+1. `/transacoes` mostra «Gasto», «Ganho», «Transferência» — nunca o valor cru do enum — **e com o
+   ícone da natureza**: o `TransactionKindIcon` também compara em minúsculas, por isso hoje o selo
+   sai em inglês e sem ícone. Prova a 1280 e a 360.
 2. O diálogo de edição mostra o campo **Categoria** numa despesa e num ganho, e continua a
    escondê-lo onde não se aplica (transferência) — os dois lados, não só o que faltava.
 3. `/importar`: `color-contrast` no gatilho ≥ **4,5:1** nos dois temas, e `axe` **0** na rota sem
@@ -2702,3 +2703,46 @@ separador em `/importar` · `e2e/` (é do QA).
 **O que NÃO fazer:** não commitar nem empurrar; não tocar em `nav.ts`, no shell nem na barra
 lateral; não alargar a normalização a outros campos "por simetria" sem provar que estão errados; não
 abrir exceções novas no `axe`.
+
+### T53 — prova de fecho (QA, build final de 17/11 20:0x)
+
+| O que                                        | Números                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| Apagar um par de transferência               | par criado pela interface (77,00 €), **uma** perna selecionada → 2 → **0**, diálogo «1 lançamento» |
+| Mudar de página / filtro / limite            | 30 linhas, paginação 25 → barra **ausente** nos três                       |
+| 201 ids                                      | recusado antes de tocar na base                                            |
+| Id de outro utilizador                       | recusado, linha válida intacta; id já apagado: recusado, nada aplicado     |
+| Efetivar duas vezes                          | `false→true` e `true`, data igual, **0** erros                             |
+| Categoria mista                              | ação desativada com a razão visível; servidor recusa nos quatro caminhos   |
+| Alvo de toque a 360                          | **44×44**; quatro cantos e centro marcam e desmarcam                        |
+| Alvo de toque a 1280                         | **32×44**, x 288→320; x=323 e a coluna de datas dão 0→0                     |
+| `aria-live`                                  | nó montado antes da seleção, «1 selecionado» → «3 selecionados»            |
+| `axe`                                        | **0** com 3 selecionados a 360 e a 1280                                     |
+| Gate                                         | `format:check` · `lint` 0 · `typecheck` 0 · `test` **582** · `build` ✓ · suíte **101/101** |
+
+Prova em `relatorios/T53.md` (três voltas, cada uma com o número que a motivou) e
+`relatorios/T53-dev.md`. Revisor sem DEVE no delta final.
+
+**As três voltas falharam todas no alvo de toque, por três razões diferentes**, e nenhuma foi
+apanhada por leitura de código:
+
+1. As classes de toque caíram no `Checkbox` e a **caixa desenhada** cresceu para 44 (28 no
+   desktop): alvo certo, desenho errado, coluna alargada.
+2. A moldura de 44 em volta era um `div`: media 44 e **não recebia o clique**. Alvo decorativo. O
+   `axe` não marca porque a regra isenta alvos com espaço à volta — **passa no axe e falha no dedo**.
+3. O alvo de 44 numa coluna de **40** invadia 6 px da coluna de datas: clicar perto da data marcava
+   a linha.
+
+**Regra que fica:** um alvo de toque mede-se **com cliques**, em sítios onde não deve haver clique e
+nos bordos. Um rect de CSS e um `axe` verde não provam que o dedo acerta.
+
+**Menores registados (nenhum bloqueia):**
+
+- `logicalCount` e a família de categoria estão escritos duas vezes (cliente e servidor). **É
+  partilhável** em `packages/shared` — que já está importado nesse ficheiro — com uma assinatura
+  `readonly { transferGroupId: string | null }[] → number`. Não se corrigiu por âmbito, não por
+  impossibilidade: a justificação inicial («precisava de um módulo novo») era falsa.
+- `transactions-actions.ts` · o `affected` do toast vem de `logicalCount(rows)`, não do `count` da
+  escrita; com duas abas o toast pode dizer «3 apagados» e a base ter apagado 2.
+- `transaction-table.tsx` · `sm:after:-inset-x-2` está acoplado a `w-10` + `sm:min-w-8`; se a
+  coluna mudar de largura, o alvo invade a coluna de datas ou encolhe abaixo do mínimo, em silêncio.
