@@ -2380,6 +2380,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
+| T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | aberta (depois da T58) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | aberta (bloqueada pela T53) |
@@ -2956,3 +2957,44 @@ linhas. É um beco sem saída para o utilizador, e não é da T57: antes era igu
 **Menores registados:** o comentário de `transaction-bulk-actions.tsx:43` ainda diz que o `kind` chega
 em maiúsculas (desactualizado, sem efeito) · `ui/tabs.tsx:58` ficou com um `dark:text-muted-foreground`
 redundante com a base · tipar `TransactionView.kind` como união impediria a repetição do defeito.
+
+## T59 — Editar uma transferência falha sempre
+
+**Aberto a pedido do utilizador (17/11), depois da T58.** Achado do Revisor durante a T57;
+**anterior** a todas as tarefas desta vaga — antes era igual.
+
+**O defeito, medido por leitura:** o diálogo «Editar lançamento» é oferecido em **todas** as linhas
+(`transaction-table.tsx:528`) e envia **sempre** `accountId` (`transaction-edit-dialog.tsx:157`); o
+servidor recusa **qualquer** `accountId` numa transferência (`transactions-actions.ts:511`). Resultado:
+abrir «Editar» numa transferência e gravar **falha sempre**, seja qual for o campo que o utilizador
+mudou. Não há caminho nenhum para corrigir a descrição ou a data de uma transferência pela interface.
+
+**Comportamento esperado**
+
+1. Editar uma transferência **grava**: descrição, data e valor.
+2. O valor continua a ser **espelhado na outra perna** — a nota «O valor é espelhado automaticamente
+   na outra conta» (`transaction-edit-dialog.tsx:203`) existe para isso e passa a ser alcançável.
+3. A conta **não** é editável numa transferência: mudar a conta de uma perna é outra operação, e é
+   por isso que o servidor a recusa. A interface deixa de a oferecer (ou de a enviar) em vez de
+   deixar o utilizador preencher um campo que vai ser rejeitado no fim.
+4. Editar uma despesa, um ganho ou uma linha de fatura continua a funcionar **exactamente** como hoje.
+5. A recusa do servidor mantém-se: uma transferência com `accountId` continua a ser rejeitada. O
+   defeito está em quem envia, não em quem recusa — **não abras a porta do servidor para o tapar**.
+
+**Critério de aceitação**
+
+1. Numa transferência, mudar a **descrição** grava e aparece na lista; mudar o **valor** grava e a
+   outra perna fica com o sinal oposto e o mesmo montante.
+2. O campo **Conta** não é oferecido (ou não é enviado) numa transferência, e o utilizador vê porquê.
+3. Despesa e ganho: guardar continua a funcionar, com a conta a ser actualizada como hoje.
+4. Uma spec que **falha quando deve**: com o `accountId` a voltar a ser enviado numa transferência,
+   a spec fica vermelha com a mensagem real da recusa (não um timeout).
+5. `axe` 0 no diálogo aberto numa transferência, a 1280 e a 360.
+6. Gate completo e suíte; zero dependências novas, zero migrações, zero alterações de rotas.
+
+**Ficheiros:** `components/transaction-edit-dialog.tsx` · `server/transactions-actions.ts` (só se a
+mensagem de recusa precisar de ser mais clara) · `e2e/` (é do QA).
+
+**O que NÃO fazer:** não abras a validação do servidor para aceitar `accountId` numa transferência;
+não transformes a edição de uma transferência numa edição do par inteiro sem falar comigo (é outra
+decisão); não mexas no diálogo de criação; não commites nem empurres.
