@@ -223,6 +223,21 @@ export async function definirStatusDoLancamento(
   });
 }
 
+/** Quantos lançamentos têm exatamente esta descrição (o par de uma transferência dá 2). */
+export async function contarPorDescricao(email: string, descricao: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT count(*)::int AS total
+         FROM "transaction" t
+         JOIN "user" u ON u.id = t."userId"
+        WHERE u.email = $1 AND t.description = $2`,
+      [email, descricao],
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
 /** Conta as transações de um utilizador (por e-mail) numa conta com dado nome. */
 export async function contarTransacoes(email: string, nomeDaConta?: string): Promise<number> {
   return withClient(async (client) => {
@@ -236,6 +251,66 @@ export async function contarTransacoes(email: string, nomeDaConta?: string): Pro
     );
 
     return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
+/* ------------------------------------------------------------------------- *
+ * Preparação de cenário da T53 (ações em massa)
+ *
+ * A paginação do extrato só tem 25/50/100 linhas: para provar que mudar de
+ * página limpa a seleção são precisos mais de 25 lançamentos, e criá-los todos
+ * pela interface punha o spec a depender de 30 gravações. Estas linhas são
+ * **cenário**, não o caminho medido — o spec confirma sempre as escritas da
+ * interface na base, e a limpeza usa o mesmo prefixo.
+ * ------------------------------------------------------------------------- */
+
+/** Cria lançamentos manuais do spec e devolve os ids. Prefixo obrigatório. */
+export async function criarLancamentosDoSpec(
+  email: string,
+  prefixo: string,
+  quantidade: number,
+  opcoes: { readonly settled?: boolean; readonly valorEmCentimos?: number } = {},
+): Promise<string[]> {
+  const { randomUUID } = await import('node:crypto');
+
+  return withClient(async (client) => {
+    const user = await client.query('SELECT id FROM "user" WHERE email = $1', [email]);
+    const userId = user.rows[0]?.id;
+
+    if (typeof userId !== 'string') {
+      throw new Error(`Não encontrei o utilizador ${email}.`);
+    }
+
+    const conta = await client.query(
+      'SELECT id FROM financial_account WHERE "userId" = $1 ORDER BY "createdAt" ASC LIMIT 1',
+      [userId],
+    );
+    const contaId = conta.rows[0]?.id;
+
+    if (typeof contaId !== 'string') {
+      throw new Error(`O utilizador ${email} não tem conta financeira.`);
+    }
+
+    const ids: string[] = [];
+    const valor = opcoes.valorEmCentimos ?? -1234;
+
+    for (let i = 0; i < quantidade; i += 1) {
+      const id = randomUUID();
+      const descricao = `${prefixo} ${String(i + 1).padStart(2, '0')}`;
+
+      await client.query(
+        `INSERT INTO "transaction"
+           (id, "userId", kind, "amountInCents", date, description,
+            "financialAccountId", settled, "settledOn", "updatedAt")
+         VALUES ($1, $2, 'EXPENSE'::"TransactionKind", $3, CURRENT_DATE - $4::int,
+                 $5, $6, $7, CASE WHEN $7 THEN CURRENT_DATE - $4::int END, now())`,
+        [id, userId, valor, i, descricao, contaId, opcoes.settled ?? false],
+      );
+
+      ids.push(id);
+    }
+
+    return ids;
   });
 }
 
