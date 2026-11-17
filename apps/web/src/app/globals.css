@@ -22,6 +22,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  /* O saldo de uma conta é um significado; a paleta é que vai buscar a cor. */
+  --color-chart-balance: var(--chart-balance);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);

@@ -52,6 +52,49 @@ export function accountBalanceInCents(
   return account.openingBalanceInCents + movement;
 }
 
+/** Um ponto da série diária: o saldo ao fim desse dia. */
+export interface AccountBalancePoint {
+  /** Data de calendário `YYYY-MM-DD`. */
+  readonly date: string;
+  readonly balanceInCents: number;
+}
+
+/** Desloca uma data de calendário `YYYY-MM-DD` em dias, sem passar por fusos. */
+function shiftDay(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number];
+
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * Série diária do saldo de uma conta: um ponto por dia, do `days`-1.º dia atrás
+ * até `today`, inclusive.
+ *
+ * Cada ponto é o **motor**, com `upTo` nesse dia — não há aqui uma segunda
+ * fórmula de saldo. O último ponto coincide com o saldo que o cartão mostra
+ * **exceto** quando há lançamentos liquidados com data futura: esses ficam fora
+ * da série, que acaba hoje, e o saldo do cartão soma-os. As duas metades estão
+ * fixadas em teste; se um dia deixarem de bater, o problema é da data — não se
+ * «corrige» a série para dar o número.
+ *
+ * Custo: `days × movimentos da conta`. A lista de transações é a mesma que a
+ * página já carrega, por isso não há consultas novas.
+ */
+export function accountBalanceSeries(
+  account: FinanceAccount,
+  transactions: readonly FinanceTransaction[],
+  args: { readonly today: string; readonly days?: number },
+): AccountBalancePoint[] {
+  const days = args.days ?? 30;
+  const fromAccount = transactions.filter((transaction) => transaction.accountId === account.id);
+
+  return Array.from({ length: days }, (_, index) => {
+    const date = shiftDay(args.today, index - (days - 1));
+
+    return { date, balanceInCents: accountBalanceInCents(account, fromAccount, { upTo: date }) };
+  });
+}
+
 /** Saldo de cada conta não arquivada. */
 export function balanceByAccount(
   accounts: readonly FinanceAccount[],

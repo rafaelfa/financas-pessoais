@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: 'Contas' };
  * página não guarda nem recalcula saldos: mostra o que o motor financeiro diz.
  */
 export default async function ContasPage() {
-  const accounts = await listAccounts();
+  const accounts = await listAccounts({ withSeries: true });
   const today = todayInLisbon();
 
   const active = accounts.filter((account) => !account.archived);

@@ -1,5 +1,11 @@
 import { prisma } from '@repo/db/client';
-import { accountBalanceInCents } from '@repo/shared';
+import {
+  accountBalanceInCents,
+  accountBalanceSeries,
+  type AccountBalancePoint,
+} from '@repo/shared';
+
+import { todayInLisbon } from '@/lib/today';
 
 import { toFinanceAccount, toFinanceTransaction, type TransactionRow } from './mapping';
 import { requireUser } from './session';
@@ -24,6 +30,17 @@ export interface AccountView {
   readonly transactionCount: number;
 }
 
+/**
+ * Conta com a série do saldo, para quem desenha a sparkline.
+ *
+ * É um tipo à parte e não um campo opcional em `AccountView`: assim quem
+ * desenha a linha tem de pedir a série (`withSeries: true`) e o TypeScript não
+ * deixa passar um `listAccounts()` esquecido — o cartão sairia mudo, sem aviso.
+ */
+export interface AccountWithSeries extends AccountView {
+  readonly balanceSeries: readonly AccountBalancePoint[];
+}
+
 /** Campos de transação que o motor financeiro precisa — usado por todas as consultas. */
 export const TRANSACTION_SELECT = {
   id: true,
@@ -45,8 +62,18 @@ export const TRANSACTION_SELECT = {
   installmentAmountInCents: true,
 } as const satisfies Record<keyof TransactionRow, true>;
 
-/** Contas do utilizador, com saldo calculado. Arquivadas vêm no fim. */
-export async function listAccounts(): Promise<AccountView[]> {
+/**
+ * Contas do utilizador, com saldo calculado. Arquivadas vêm no fim.
+ *
+ * `withSeries` é opt-in: só o ecrã que desenha a sparkline a pede — e recebe
+ * `AccountWithSeries`. Sem ele, a chave `balanceSeries` não existe no objecto
+ * (não vai como `undefined`, que o React Flight serializava em cada conta).
+ */
+export function listAccounts(options: { readonly withSeries: true }): Promise<AccountWithSeries[]>;
+export function listAccounts(options?: { readonly withSeries?: false }): Promise<AccountView[]>;
+export async function listAccounts(
+  options: { readonly withSeries?: boolean } = {},
+): Promise<AccountView[]> {
   const user = await requireUser();
 
   const [accounts, transactions] = await Promise.all([
@@ -58,23 +85,32 @@ export async function listAccounts(): Promise<AccountView[]> {
   ]);
 
   const financeTransactions = transactions.map(toFinanceTransaction);
+  const today = options.withSeries === true ? todayInLisbon() : null;
   const countByAccount = new Map<string, number>();
 
   for (const transaction of financeTransactions) {
     countByAccount.set(transaction.accountId, (countByAccount.get(transaction.accountId) ?? 0) + 1);
   }
 
-  return accounts.map((account) => ({
-    id: account.id,
-    name: account.name,
-    institution: account.institution,
-    type: account.type,
-    openingBalanceInCents: account.openingBalanceInCents,
-    isPrimary: account.id === user.primaryAccountId,
-    archived: account.archivedAt !== null,
-    balanceInCents: accountBalanceInCents(toFinanceAccount(account), financeTransactions),
-    transactionCount: countByAccount.get(account.id) ?? 0,
-  }));
+  return accounts.map((account) => {
+    const financeAccount = toFinanceAccount(account);
+
+    return {
+      id: account.id,
+      name: account.name,
+      institution: account.institution,
+      type: account.type,
+      openingBalanceInCents: account.openingBalanceInCents,
+      isPrimary: account.id === user.primaryAccountId,
+      archived: account.archivedAt !== null,
+      balanceInCents: accountBalanceInCents(financeAccount, financeTransactions),
+      // A série sai das mesmas transações já carregadas: nenhuma consulta a mais.
+      ...(today === null
+        ? {}
+        : { balanceSeries: accountBalanceSeries(financeAccount, financeTransactions, { today }) }),
+      transactionCount: countByAccount.get(account.id) ?? 0,
+    };
+  });
 }
 
 /** Soma dos saldos das contas ativas. Contas arquivadas ficam de fora. */

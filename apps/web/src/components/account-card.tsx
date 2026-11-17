@@ -10,6 +10,7 @@ import {
   ACCOUNT_TYPE_LABELS,
 } from '@/components/account-dialog';
 import { AccountLockDialog } from '@/components/account-lock-dialog';
+import { AccountSparkline } from '@/components/account-sparkline';
 import { Amount } from '@/components/amount';
 import {
   AlertDialog,
@@ -33,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { setAccountArchived } from '@/server/accounts-actions';
-import type { AccountView } from '@/server/accounts';
+import type { AccountWithSeries } from '@/server/accounts';
 import { cn } from '@/lib/utils';
 
 /**
@@ -51,7 +52,7 @@ export function AccountCard({
   account,
   today,
 }: {
-  readonly account: AccountView;
+  readonly account: AccountWithSeries;
   readonly today: string;
 }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -149,6 +150,7 @@ export function AccountCard({
               ? '1 movimento.'
               : `${account.transactionCount} movimentos.`}
         </p>
+        <AccountSparkline series={account.balanceSeries} className="pt-3" />
       </CardContent>
 
       <div className="flex flex-wrap gap-2 px-(--card-spacing)">

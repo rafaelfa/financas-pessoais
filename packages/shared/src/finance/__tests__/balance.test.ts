@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   accountBalanceInCents,
+  accountBalanceSeries,
   balanceAdjustmentInCents,
   balanceByAccount,
   hasMatchingAdjustment,
@@ -188,5 +189,103 @@ describe('ajuste de saldo ("travar saldo")', () => {
         amountInCents: 20_000,
       }),
     ).toBe(false);
+  });
+});
+
+describe('série diária do saldo', () => {
+  it('dá um ponto por dia, do 30.º dia atrás até hoje', () => {
+    const series = accountBalanceSeries(CHECKING, [], { today: '2026-11-15' });
+
+    expect(series).toHaveLength(30);
+    expect(series[0]?.date).toBe('2026-10-17');
+    expect(series[29]?.date).toBe('2026-11-15');
+  });
+
+  it('o último ponto é o saldo do motor, sem caminho paralelo', () => {
+    const transactions: FinanceTransaction[] = [
+      transaction({ id: 't1', kind: 'income', amountInCents: 350_000, date: '2026-10-20' }),
+      transaction({ id: 't2', amountInCents: -70_000, date: '2026-11-02' }),
+      transaction({ id: 't3', amountInCents: -12_500, date: '2026-11-14' }),
+      transaction({ id: 't4', amountInCents: -9_900, date: '2026-11-15', settled: false }),
+    ];
+
+    const series = accountBalanceSeries(CHECKING, transactions, { today: '2026-11-15' });
+
+    expect(series[series.length - 1]?.balanceInCents).toBe(
+      accountBalanceInCents(CHECKING, transactions),
+    );
+  });
+
+  it('cada ponto é o saldo até esse dia, não o saldo de hoje', () => {
+    const transactions: FinanceTransaction[] = [
+      transaction({ id: 't1', amountInCents: -50_000, date: '2026-10-20' }),
+      transaction({ id: 't2', amountInCents: -25_000, date: '2026-11-10' }),
+    ];
+
+    const series = accountBalanceSeries(CHECKING, transactions, { today: '2026-11-15' });
+    const porData = new Map(series.map((point) => [point.date, point.balanceInCents]));
+
+    expect(porData.get('2026-10-19')).toBe(200_000);
+    expect(porData.get('2026-10-20')).toBe(150_000);
+    expect(porData.get('2026-11-09')).toBe(150_000);
+    expect(porData.get('2026-11-10')).toBe(125_000);
+  });
+
+  it('uma conta sem movimentos é uma reta no saldo inicial', () => {
+    const series = accountBalanceSeries(SAVINGS, [], { today: '2026-11-15' });
+
+    expect(new Set(series.map((point) => point.balanceInCents))).toEqual(new Set([500_000]));
+  });
+
+  it('uma transferência entre contas move cada lado uma vez, na data dela', () => {
+    // O par de uma transferência são duas linhas, uma por conta, com sinais opostos.
+    const transactions: FinanceTransaction[] = [
+      transaction({
+        id: 'ida',
+        kind: 'transfer',
+        amountInCents: -80_000,
+        date: '2026-11-05',
+        accountId: CHECKING.id,
+      }),
+      transaction({
+        id: 'volta',
+        kind: 'transfer',
+        amountInCents: 80_000,
+        date: '2026-11-05',
+        accountId: SAVINGS.id,
+      }),
+    ];
+
+    const origem = accountBalanceSeries(CHECKING, transactions, { today: '2026-11-15' });
+    const destino = accountBalanceSeries(SAVINGS, transactions, { today: '2026-11-15' });
+
+    expect(origem[origem.length - 1]?.balanceInCents).toBe(120_000);
+    expect(destino[destino.length - 1]?.balanceInCents).toBe(580_000);
+    // Nem uma conta conta o lado da outra, nem o par se soma duas vezes.
+    expect(origem[origem.length - 1]?.balanceInCents).toBe(
+      accountBalanceInCents(CHECKING, transactions),
+    );
+    expect(destino[destino.length - 1]?.balanceInCents).toBe(
+      accountBalanceInCents(SAVINGS, transactions),
+    );
+  });
+
+  it('um movimento liquidado com data futura fica fora da série, que acaba hoje', () => {
+    // O motor sem `upTo` soma tudo o que está liquidado, mesmo com data à frente;
+    // a série pára em `today`. Fica escrito para não surpreender ninguém.
+    const transactions: FinanceTransaction[] = [
+      transaction({ id: 'futuro', amountInCents: -10_000, date: '2026-12-01' }),
+    ];
+
+    const series = accountBalanceSeries(CHECKING, transactions, { today: '2026-11-15' });
+
+    expect(series[series.length - 1]?.balanceInCents).toBe(200_000);
+    expect(accountBalanceInCents(CHECKING, transactions)).toBe(190_000);
+  });
+
+  it('aceita um número de dias diferente para os testes', () => {
+    const series = accountBalanceSeries(CHECKING, [], { today: '2026-11-15', days: 3 });
+
+    expect(series.map((point) => point.date)).toEqual(['2026-11-13', '2026-11-14', '2026-11-15']);
   });
 });
