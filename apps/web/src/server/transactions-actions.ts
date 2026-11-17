@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma, TransactionKind, TransactionStatus } from '@repo/db/client';
+import type { Prisma } from '@repo/db/client';
 import {
   addMonths,
   createTransactionSchema,
@@ -646,4 +647,261 @@ export async function deleteTransaction(input: unknown): Promise<ActionResult> {
   revalidateTransactionViews();
 
   return ok(undefined);
+}
+
+/**
+ * Ações em massa.
+ *
+ * A seleção vem do extrato e é o único sítio onde o `userId` de todos os ids é
+ * confirmado **na mesma transação** que escreve: uma linha de outra pessoa (ou
+ * já apagada) cancela a ação inteira, em vez de deixar passar as válidas. Sem
+ * isso, um id inválido no meio da seleção dava um "sucesso" parcial que ninguém
+ * via.
+ */
+
+/** Teto de ids por pedido. Acima disto a seleção é recusada, não truncada. */
+const BULK_MAX_IDS = 200;
+
+/** Recusa de uma ação em massa; lançar dentro do `$transaction` desfaz o que já lá está. */
+class BulkRefusal extends Error {}
+
+interface BulkRow {
+  readonly id: string;
+  readonly kind: TransactionKind;
+  readonly date: Date;
+  readonly transferGroupId: string | null;
+}
+
+/** Lê e normaliza a lista de ids: strings não vazias, sem repetidos, até ao teto. */
+function readBulkIds(input: unknown): { readonly ids: string[] } | { readonly error: string } {
+  const raw = typeof input === 'object' && input !== null && 'ids' in input ? input.ids : undefined;
+
+  if (!Array.isArray(raw)) {
+    return { error: 'Seleção inválida.' };
+  }
+
+  const ids = [
+    ...new Set(raw.filter((id): id is string => typeof id === 'string').map((id) => id.trim())),
+  ].filter((id) => id !== '');
+
+  if (ids.length === 0) {
+    return { error: 'Não há nenhum lançamento selecionado.' };
+  }
+
+  if (ids.length > BULK_MAX_IDS) {
+    return {
+      error: `Podes agir sobre ${BULK_MAX_IDS} lançamentos de cada vez. Esta seleção tem ${ids.length}.`,
+    };
+  }
+
+  return { ids };
+}
+
+/**
+ * Família de categoria de um lançamento.
+ *
+ * A mesma regra do diálogo de edição: só gastos e ganhos recebem categoria. Um
+ * ajuste de saldo ou uma transferência não se classificam à mão.
+ */
+function categoryFamily(kind: TransactionKind): 'expense' | 'income' | null {
+  if (kind === TransactionKind.EXPENSE) {
+    return 'expense';
+  }
+
+  return kind === TransactionKind.INCOME ? 'income' : null;
+}
+
+/** Quantas operações a seleção representa: o par de uma transferência conta como uma. */
+function logicalCount(rows: readonly BulkRow[]): number {
+  const groups = new Set(
+    rows.flatMap((row) => (row.transferGroupId === null ? [] : [row.transferGroupId])),
+  );
+
+  return groups.size + rows.filter((row) => row.transferGroupId === null).length;
+}
+
+/**
+ * Divisão da seleção por dia do lançamento, com as transferências agrupadas.
+ *
+ * `settledOn` acompanha a data do movimento (usar «hoje» punha-o no dia errado na
+ * visão de caixa) e o par de uma transferência partilha a data, o que permite uma
+ * escrita por dia em vez de uma por linha.
+ */
+function bulkBuckets(rows: readonly BulkRow[]) {
+  const buckets = new Map<string, { date: Date; singles: string[]; groups: Set<string> }>();
+
+  for (const row of rows) {
+    const day = row.date.toISOString().slice(0, 10);
+    const bucket = buckets.get(day) ?? { date: row.date, singles: [], groups: new Set<string>() };
+
+    if (row.transferGroupId === null) {
+      bucket.singles.push(row.id);
+    } else {
+      bucket.groups.add(row.transferGroupId);
+    }
+
+    buckets.set(day, bucket);
+  }
+
+  return buckets;
+}
+
+/**
+ * Corre uma ação em massa: valida a propriedade de todas as linhas, executa
+ * dentro de uma só transação e devolve quantas operações foram afetadas.
+ */
+async function runBulk(
+  input: unknown,
+  execute: (
+    tx: Prisma.TransactionClient,
+    rows: readonly BulkRow[],
+    userId: string,
+  ) => Promise<number>,
+): Promise<ActionResult<{ affected: number }>> {
+  const user = await requireUser();
+  const selection = readBulkIds(input);
+
+  if ('error' in selection) {
+    return fail(selection.error);
+  }
+
+  try {
+    const affected = await prisma.$transaction(async (tx) => {
+      const rows = await tx.transaction.findMany({
+        where: { id: { in: selection.ids }, userId: user.id },
+        select: { id: true, kind: true, date: true, transferGroupId: true },
+      });
+
+      if (rows.length !== selection.ids.length) {
+        throw new BulkRefusal(
+          'Um dos lançamentos escolhidos já não existe ou não é teu. Nada foi alterado.',
+        );
+      }
+
+      return execute(tx, rows, user.id);
+    });
+
+    revalidateTransactionViews();
+
+    return ok({ affected });
+  } catch (error) {
+    if (error instanceof BulkRefusal) {
+      return fail(error.message);
+    }
+
+    return failFromWriteError(error, {
+      fallback: 'Não foi possível concluir a ação. Nada foi alterado.',
+    });
+  }
+}
+
+/** Marca (ou desmarca) a liquidação de vários lançamentos. */
+export async function bulkSetSettled(input: unknown): Promise<ActionResult<{ affected: number }>> {
+  const settled =
+    typeof input === 'object' && input !== null && 'settled' in input ? input.settled : undefined;
+
+  if (typeof settled !== 'boolean') {
+    return fail('Diz se os lançamentos ficam liquidados ou por liquidar.');
+  }
+
+  return runBulk(input, async (tx, rows, userId) => {
+    for (const bucket of bulkBuckets(rows).values()) {
+      const data = { settled, settledOn: settled ? bucket.date : null };
+
+      if (bucket.singles.length > 0) {
+        await tx.transaction.updateMany({
+          where: { userId, id: { in: bucket.singles } },
+          data,
+        });
+      }
+
+      if (bucket.groups.size > 0) {
+        await tx.transaction.updateMany({
+          where: { userId, transferGroupId: { in: [...bucket.groups] } },
+          data,
+        });
+      }
+    }
+
+    return logicalCount(rows);
+  });
+}
+
+/** Muda a categoria de vários lançamentos do mesmo tipo. */
+export async function bulkSetCategory(input: unknown): Promise<ActionResult<{ affected: number }>> {
+  const raw =
+    typeof input === 'object' && input !== null && 'categoryId' in input
+      ? input.categoryId
+      : undefined;
+  const categoryId =
+    raw === null ? null : typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : undefined;
+
+  if (categoryId === undefined) {
+    return fail('Escolhe uma categoria.');
+  }
+
+  return runBulk(input, async (tx, rows, userId) => {
+    const first = rows[0];
+    const family = first === undefined ? null : categoryFamily(first.kind);
+    const mixed = rows.some((row) => categoryFamily(row.kind) !== family);
+
+    /*
+     * A interface já desativa esta ação numa seleção mista; o servidor recusa-a
+     * na mesma. Uma categoria de receita aplicada a despesas ficaria gravada e
+     * só se veria no relatório do mês.
+     */
+    if (family === null || mixed) {
+      throw new BulkRefusal(
+        'Mudar a categoria só se aplica a gastos ou ganhos, e nunca a uma seleção que mistura os dois.',
+      );
+    }
+
+    if (categoryId !== null) {
+      const category = await tx.category.findFirst({
+        where: { id: categoryId, userId },
+        select: { id: true, kind: true },
+      });
+
+      if (category === null) {
+        throw new BulkRefusal('Categoria não encontrada.');
+      }
+
+      if (category.kind.toLowerCase() !== family) {
+        throw new BulkRefusal(
+          family === 'expense'
+            ? 'Essa categoria é de ganhos: não se aplica a gastos.'
+            : 'Essa categoria é de gastos: não se aplica a ganhos.',
+        );
+      }
+    }
+
+    await tx.transaction.updateMany({
+      where: { userId, id: { in: rows.map((row) => row.id) } },
+      data: { categoryId },
+    });
+
+    return logicalCount(rows);
+  });
+}
+
+/** Apaga vários lançamentos. Numa transferência, apaga o par inteiro. */
+export async function bulkDelete(input: unknown): Promise<ActionResult<{ affected: number }>> {
+  return runBulk(input, async (tx, rows, userId) => {
+    const groups = [
+      ...new Set(
+        rows.flatMap((row) => (row.transferGroupId === null ? [] : [row.transferGroupId])),
+      ),
+    ];
+    const singles = rows.filter((row) => row.transferGroupId === null).map((row) => row.id);
+
+    if (singles.length > 0) {
+      await tx.transaction.deleteMany({ where: { userId, id: { in: singles } } });
+    }
+
+    if (groups.length > 0) {
+      await tx.transaction.deleteMany({ where: { userId, transferGroupId: { in: groups } } });
+    }
+
+    return logicalCount(rows);
+  });
 }

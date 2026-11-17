@@ -12,10 +12,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 import { Amount } from '@/components/amount';
+import { TransactionBulkActions } from '@/components/transaction-bulk-actions';
 import { EmptyState } from '@/components/empty-state';
 import {
   TRANSACTION_KIND_LABELS,
@@ -23,6 +24,7 @@ import {
   TransactionStatusBadge,
 } from '@/components/transaction-kind-badge';
 import type { DescriptionUsage } from '@repo/shared';
+import { formatCurrency } from '@repo/shared';
 import { TransactionEditDialog } from '@/components/transaction-edit-dialog';
 import {
   AlertDialog,
@@ -38,6 +40,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +65,8 @@ import {
 import type { AccountView } from '@/server/accounts';
 import type { CategoryView } from '@/server/categories';
 import type { TransactionView } from '@/server/transactions';
+import { usePrivacy } from '@/components/privacy-mode';
+import { cn } from '@/lib/utils';
 
 /**
  * Extrato denso.
@@ -77,6 +82,30 @@ import type { TransactionView } from '@/server/transactions';
 /** Alvo de toque: 44 px em telemóvel, denso a partir de `sm`. */
 const TOUCH = 'min-h-11 sm:min-h-8';
 const ICON_TOUCH = 'min-h-11 min-w-11 sm:min-h-7 sm:min-w-7';
+
+/**
+ * Moldura da caixa de seleção: centra a caixa e fixa a largura da coluna.
+ *
+ * **Não é o alvo de toque** — um `div` à volta não recebe o clique da caixa; é
+ * só espaço, e foi esse o erro de uma volta anterior. O alvo é o pseudo-elemento
+ * `::after` do próprio `Checkbox`, cujas utilidades vêm de `ui/checkbox.tsx:13`
+ * (`after:-inset-x-3 after:-inset-y-2`, 40×32) e são aqui alargadas. A caixa de
+ * 16 px (`size-4`, no mesmo sítio) é a premissa desta aritmética: quem mexer no
+ * tamanho da caixa tem de rever os insets de `CAIXA_TOQUE`, abaixo.
+ */
+const CAIXA_ALVO = 'flex min-h-11 min-w-11 items-center sm:min-h-8 sm:min-w-8';
+
+/**
+ * Área clicável em volta da caixa de 16 px, sem mexer no desenho.
+ *
+ * A 360 a coluna tem 52 px: 14 px de cada lado dão os 44 do contrato (44 × 44).
+ * A partir de `sm` a coluna é `w-10` (40 px) e a caixa está centrada na moldura
+ * de 32, por isso 14 px de cada lado invadiam 6 px da coluna de datas — uma
+ * faixa invisível onde clicar selecionava a linha. Com 8 px o alvo fica
+ * **32 × 44** (16 + 8 + 8 de largura, 16 + 14 + 14 de altura: o `-inset-y-3.5`
+ * não é reposto em `sm`) e acaba exatamente no bordo da coluna.
+ */
+const CAIXA_TOQUE = 'after:-inset-x-3.5 after:-inset-y-3.5 sm:after:-inset-x-2';
 
 export function TransactionTable({
   items,
@@ -108,6 +137,73 @@ export function TransactionTable({
    * O valor do servidor sobrescreve este estado no próximo refresh.
    */
   const [optimisticStatuses, setOptimisticStatuses] = useState<Record<string, string>>({});
+
+  /**
+   * Seleção do extrato. Vive aqui porque só aqui se sabe o que está à vista: o
+   * `key` do componente no `page.tsx` muda com a página e os filtros, e isso
+   * remonta a tabela — a seleção nunca sobrevive a uma mudança de vista.
+   */
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const { hidden: amountsHidden } = usePrivacy();
+
+  const selectedOnPage = items.filter((transaction) => selectedIds.has(transaction.id));
+  const allOnPageSelected = items.length > 0 && selectedOnPage.length === items.length;
+  const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
+      return next;
+    });
+  }
+
+  /** A caixa do cabeçalho age sobre a **página**, não sobre o filtro inteiro. */
+  function togglePage(checked: boolean) {
+    setSelectedIds(checked ? new Set(items.map((transaction) => transaction.id)) : new Set());
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  /**
+   * `Escape` limpa a seleção — quando a tecla é premida **dentro** da tabela.
+   *
+   * O ouvido é nativo e vive no nó da moldura, não num `onKeyDown` do React: os
+   * diálogos e menus do Radix são portais, e um evento de portal sobe pela
+   * árvore React (chegaria ao `onKeyDown` daqui) mas não pela árvore do DOM. Foi
+   * isso que fez a primeira versão limpar a seleção ao fechar o diálogo de
+   * apagar com `Escape`; com o ouvido no DOM, o que vem de um portal não passa
+   * por aqui e o Radix fecha-o sozinho. A seleção fica, como deve.
+   */
+  const moldura = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = moldura.current;
+
+    if (node === null) {
+      return;
+    }
+
+    function aoPremirEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      setSelectedIds((previous) => (previous.size === 0 ? previous : new Set()));
+    }
+
+    node.addEventListener('keydown', aoPremirEscape);
+
+    return () => node.removeEventListener('keydown', aoPremirEscape);
+  }, []);
 
   /** Estado effectivamente exibido: optimismo local ou valor do servidor. */
   function visibleStatus(transaction: TransactionView): string {
@@ -236,12 +332,44 @@ export function TransactionTable({
   }
 
   return (
-    <>
+    <div ref={moldura} className="space-y-3">
+      {/*
+        Anúncio permanente: nasce vazio e já montado, para que a passagem de zero
+        a um lançamento seja lida. Dentro da barra não servia — a barra só existe
+        a partir de uma seleção, e um `aria-live` criado já com texto não anuncia
+        a primeira mudança.
+      */}
+      <p aria-live="polite" className="sr-only">
+        {selectedOnPage.length === 0
+          ? 'Nenhum lançamento selecionado.'
+          : `${selectedOnPage.length} selecionado${selectedOnPage.length === 1 ? '' : 's'}`}
+      </p>
+
+      {selectedOnPage.length === 0 ? null : (
+        <TransactionBulkActions
+          selected={selectedOnPage}
+          categories={categories}
+          onClear={clearSelection}
+        />
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10 pr-0">
+                  <div className={cn(CAIXA_ALVO, 'justify-center')}>
+                    <Checkbox
+                      checked={
+                        allOnPageSelected ? true : someOnPageSelected ? 'indeterminate' : false
+                      }
+                      onCheckedChange={(value) => togglePage(value === true)}
+                      className={CAIXA_TOQUE}
+                      aria-label="Selecionar os lançamentos desta página"
+                    />
+                  </div>
+                </TableHead>
                 <TableHead className="w-24">Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className="hidden md:table-cell">Conta</TableHead>
@@ -260,6 +388,19 @@ export function TransactionTable({
 
                 return (
                   <TableRow key={transaction.id} data-status={visibleStatus(transaction)}>
+                    <TableCell className="w-10 pr-0">
+                      <div className={cn(CAIXA_ALVO, 'justify-center')}>
+                        <Checkbox
+                          checked={selectedIds.has(transaction.id)}
+                          onCheckedChange={(value) =>
+                            toggleSelected(transaction.id, value === true)
+                          }
+                          className={CAIXA_TOQUE}
+                          aria-label={selectionLabel(transaction, amountsHidden)}
+                        />
+                      </div>
+                    </TableCell>
+
                     <TableCell className="font-numeric text-muted-foreground tabular-nums">
                       {formatDay(transaction.date)}
                     </TableCell>
@@ -402,7 +543,7 @@ export function TransactionTable({
 
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={6} className="whitespace-normal">
+                <TableCell colSpan={7} className="whitespace-normal">
                   <span className="block font-medium">Soma de tudo o que está filtrado</span>
                   <span className="block text-xs font-normal text-muted-foreground">
                     {total === 1 ? '1 movimento' : `${total} movimentos`} no total
@@ -469,13 +610,28 @@ export function TransactionTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
 
 /** Descrição legível, mesmo quando o campo está vazio. */
 function displayDescription(description: string | null): string {
   return description === null || description.trim() === '' ? 'Sem descrição' : description;
+}
+
+/** Nome acessível da caixa de uma linha: descrição, valor e data. */
+function selectionLabel(transaction: TransactionView, amountsHidden: boolean): string {
+  const parts = ['Selecionar', displayDescription(transaction.description)];
+
+  // Em modo privacidade o valor não entra no nome: o leitor de ecrã não pode
+  // dizer em voz alta aquilo que o ecrã esconde.
+  if (!amountsHidden) {
+    parts.push(formatCurrency(transaction.amountInCents, 'EUR'));
+  }
+
+  parts.push(`de ${formatDay(transaction.date)}`);
+
+  return parts.join(' ');
 }
 
 /** Se a categoria do lançamento é interna (nunca conta para os totais). */

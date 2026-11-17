@@ -201,7 +201,14 @@ export default async function TransacoesPage({
           categories={categories}
         />
 
+        {/*
+          `key` pela vista visível (filtros + página + tamanho): mudar de página
+          ou de filtro é outra vista, e a seleção de linhas não pode sobreviver
+          — agir sobre linhas que já não estão à vista é o defeito que a T53
+          fecha (critério 5).
+        */}
         <TransactionTable
+          key={buildHref(filters, limit, safePage)}
           items={transactions.items}
           total={transactions.total}
           sumInCents={transactions.sumInCents}
