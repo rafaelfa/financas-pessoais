@@ -80,9 +80,20 @@ export function AccountCard({
   }
 
   return (
-    <Card data-archived={account.archived} className={cn(account.archived && 'opacity-70')}>
+    <Card
+      data-archived={account.archived}
+      className={cn(
+        'h-full',
+        // Arquivada distingue-se por superfície e borda tracejada — não por
+        // opacidade: a 70% o texto cinzento desce a 3,12:1 e reprova o axe.
+        // O `border` explícito é preciso: o Card desenha com `ring-1` e o
+        // preflight põe `border: 0 solid`, por isso um `border-dashed` sozinho
+        // não pintava nada. `ring-0` evita duas linhas no mesmo sítio.
+        account.archived && 'border border-dashed border-foreground/10 bg-muted/40 ring-0',
+      )}
+    >
       <CardHeader>
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden
             className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
@@ -92,7 +103,7 @@ export function AccountCard({
 
           <div className="min-w-0 flex-1 space-y-1">
             <CardTitle className="truncate">{account.name}</CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm break-words text-muted-foreground">
               {ACCOUNT_TYPE_LABELS[account.type] ?? account.type}
               {account.institution === null || account.institution === '' ? null : (
                 <> · {account.institution}</>
