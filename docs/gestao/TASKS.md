@@ -2380,7 +2380,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
-| T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | aberta (depois da T53, antes da T56) |
+| T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | aberta (bloqueada pela T53) |
 
@@ -2552,9 +2552,9 @@ varreduras de acessibilidade; com um overlay invocado pelo utilizador aberto, `t
 bloqueio. Registado aqui e no relatório do QA. Não é decisão irreversível nem muda contrato
 nenhum — fica como linha, não como D-número.
 
-**Fora do âmbito, para tarefa nova (não aberta):** `/importar` tem `color-contrast` **4,42:1** no
-trigger de um *tab* Radix — mesmo nó, mesmos valores a 360 e a 1280, num ficheiro que a T52 não
-tocou. Anterior a esta tarefa. Só abre com autorização do utilizador.
+**Fora do âmbito, resolvido depois:** `/importar` tinha `color-contrast` **4,42:1** no gatilho de
+um *tab* Radix. Foi corrigido na **T57** (5,45:1 no claro, 4,94:1 no escuro) e o `axe` dá **0** na
+rota — a exceção que aqui estava registada **saiu**.
 
 ### T52 — prova de fecho (QA, build final de 17/11 18:09)
 
@@ -2921,3 +2921,38 @@ e `data-closed:` (menus, diálogos, separadores, caixas), e **não** um efeito c
 
 O que esta tarefa entrega é o que interessa ao risco: com o pacote em `devDependencies`, ele sai da
 árvore **de produção** e leva consigo ~20 avisos e um servidor MCP que ninguém executa.
+
+### T57 — prova de fecho (QA, build final; mutações repetidas por mim)
+
+| O que                                       | Números                                                                    |
+| ------------------------------------------- | -------------------------------------------------------------------------- |
+| Rótulos a 1280 e 360                        | **0** ocorrências de `EXPENSE`/`INCOME`/`TRANSFER`/`GOAL_*`; «Gasto», «Ganho», «Transferência» |
+| Ícone                                       | «Transferência» com `lucide-arrow-left-right`; gasto e ganho sem ícone **por desenho** |
+| Diálogo de edição                           | Categoria: despesa **1**, ganho **1**, transferência **0**                  |
+| Contraste do gatilho                        | **5,45:1** claro · **4,94:1** escuro; `axe` **0** em `/importar` nos dois temas |
+| Mutação 1 — `kind: row.kind` cru            | **2 failed, 1 passed**: «o texto não pode conter «EXPENSE»» e «Expected: 1, Received: 0» (Categoria) |
+| Mutação 2 — `text-foreground/60` de volta   | **1 failed, 2 passed**: `victoria /importar` «light: color-contrast (1)»    |
+| Suíte                                       | **104/104** (corrida por mim — a do QA morreu com `code=3221226091`)        |
+| Gate                                        | `format:check` · `lint` 0 · `typecheck` 0 · `test` **582** · `build` ✓      |
+
+Depois das mutações, o `git diff` voltou a **8+/5− nos mesmos dois ficheiros** — provado por
+comparação byte a byte com as cópias, não por memória.
+
+**Porque o defeito viveu tanto tempo (menor, e o mais útil do parecer):** `TransactionView.kind` é
+`string`, não união. Com `'expense' | 'income' | …` o compilador apanhava o enum cru na hora. O
+`status`, ao lado, sempre foi normalizado — a diferença entre os dois campos é que um tinha o
+comentário a lembrar e o outro era `string` para todos os efeitos.
+
+**Nenhum consumidor dependia das maiúsculas.** O Revisor seguiu os dois únicos chamadores de
+`listTransactions` e as comparações que restam em `'EXPENSE'`/`'TRANSFER'` (`reports.ts`, `export.ts`)
+comem linhas do Prisma, não `TransactionView` — comparação correcta antes e depois.
+
+**Achado do Revisor, anterior a esta tarefa e não corrigido (candidato a T59, precisa de autorização
+do utilizador):** abrir «Editar» numa **transferência** e gravar **falha sempre** — o diálogo envia
+`sempre` `accountId` e o servidor recusa qualquer `accountId` numa transferência
+(`transaction-edit-dialog.tsx:157` + `transactions-actions.ts:511`). O botão é oferecido em todas as
+linhas. É um beco sem saída para o utilizador, e não é da T57: antes era igual.
+
+**Menores registados:** o comentário de `transaction-bulk-actions.tsx:43` ainda diz que o `kind` chega
+em maiúsculas (desactualizado, sem efeito) · `ui/tabs.tsx:58` ficou com um `dark:text-muted-foreground`
+redundante com a base · tipar `TransactionView.kind` como união impediria a repetição do defeito.
