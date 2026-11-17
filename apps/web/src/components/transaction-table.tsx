@@ -22,6 +22,7 @@ import {
   TransactionKindBadge,
   TransactionStatusBadge,
 } from '@/components/transaction-kind-badge';
+import type { DescriptionUsage } from '@repo/shared';
 import { TransactionEditDialog } from '@/components/transaction-edit-dialog';
 import {
   AlertDialog,
@@ -83,6 +84,7 @@ export function TransactionTable({
   sumInCents,
   accounts,
   categories,
+  descriptions,
   hasActiveFilters,
 }: {
   readonly items: readonly TransactionView[];
@@ -90,6 +92,7 @@ export function TransactionTable({
   readonly sumInCents: number;
   readonly accounts: readonly AccountView[];
   readonly categories: readonly CategoryView[];
+  readonly descriptions: readonly DescriptionUsage[];
   readonly hasActiveFilters: boolean;
 }) {
   const router = useRouter();
@@ -421,6 +424,7 @@ export function TransactionTable({
           transaction={editing}
           accounts={accounts}
           categories={categories}
+          descriptions={descriptions}
           open
           onOpenChange={(open) => {
             if (!open) {

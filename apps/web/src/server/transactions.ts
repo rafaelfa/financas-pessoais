@@ -160,3 +160,39 @@ export async function listTransactions(
     sumInCents: aggregate._sum.amountInCents ?? 0,
   };
 }
+
+/** Primeiro dia da janela de sugestões: o mesmo dia, doze meses antes. */
+function twelveMonthsAgo(today: string): Date {
+  const [year, month, day] = today.split('-').map(Number) as [number, number, number];
+
+  // `Date.UTC` trata do 29 de fevereiro como o resto do JavaScript: um dia de
+  // diferença na janela não muda a lista, e inventar aqui uma regra seria pior.
+  return new Date(Date.UTC(year - 1, month - 1, day));
+}
+
+/**
+ * Descrições já usadas, para sugerir no campo.
+ *
+ * **Uma consulta** (`groupBy` sobre a descrição, dentro da janela de 12 meses):
+ * o `where` usa o índice `[userId, date]` e a contagem vem do próprio grupo. A
+ * ordenação é feita no `shared`, porque é lá que se pode testar.
+ */
+export async function descriptionSuggestions(): Promise<DescriptionUsage[]> {
+  const user = await requireUser();
+
+  const rows = await prisma.transaction.groupBy({
+    by: ['description'],
+    where: {
+      userId: user.id,
+      description: { not: null },
+      date: { gte: twelveMonthsAgo(todayInLisbon()) },
+    },
+    _count: { _all: true },
+  });
+
+  return rankDescriptionSuggestions(
+    rows.flatMap((row) =>
+      row.description === null ? [] : [{ description: row.description, uses: row._count._all }],
+    ),
+  );
+}

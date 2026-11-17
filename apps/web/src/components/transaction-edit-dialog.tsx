@@ -3,6 +3,9 @@
 import { useId, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
+import type { DescriptionUsage } from '@repo/shared';
+
+import { DescriptionCombobox } from '@/components/description-combobox';
 import { MoneyInput } from '@/components/money-input';
 import { buildCategoryOptions } from '@/components/transaction-quick-add';
 import { TRANSACTION_STATUS_LABELS } from '@/components/transaction-kind-badge';
@@ -53,18 +56,26 @@ export function TransactionEditDialog({
   transaction,
   accounts,
   categories,
+  descriptions,
   open,
   onOpenChange,
 }: {
   readonly transaction: TransactionView;
   readonly accounts: readonly AccountView[];
   readonly categories: readonly CategoryView[];
+  readonly descriptions: readonly DescriptionUsage[];
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      {/*
+        `max-h` + `overflow-y-auto`: a lista de sugestões entra no fluxo do
+        formulário (são mais 234 px) e, sem isto, num ecrã de 568 px o rodapé
+        saía da janela — e o Radix bloqueia o scroll do `body`, por isso não
+        havia como lá chegar.
+      */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar lançamento</DialogTitle>
           <DialogDescription>
@@ -77,6 +88,7 @@ export function TransactionEditDialog({
           transaction={transaction}
           accounts={accounts}
           categories={categories}
+          descriptions={descriptions}
           onDone={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -88,11 +100,13 @@ function EditTransactionForm({
   transaction,
   accounts,
   categories,
+  descriptions,
   onDone,
 }: {
   readonly transaction: TransactionView;
   readonly accounts: readonly AccountView[];
   readonly categories: readonly CategoryView[];
+  readonly descriptions: readonly DescriptionUsage[];
   readonly onDone: () => void;
 }) {
   const amountFieldId = useId();
@@ -136,9 +150,10 @@ function EditTransactionForm({
       id: transaction.id,
       amountInCents: sign * Math.abs(amountInCents ?? 0),
       date,
-      // A descrição vazia é enviada de propósito: é a única forma de a limpar,
-      // porque o schema não aceita `null` neste campo.
-      description: trimmed,
+      // Limpar a descrição manda `null`: o schema de atualização aceita-o, e
+      // uma string vazia ficaria na base como uma descrição que existe e não
+      // diz nada — uma sugestão em branco no histórico.
+      description: trimmed === '' ? null : trimmed,
       accountId,
       ...(showCategory ? { categoryId: categoryId === '' ? null : categoryId } : {}),
       status,
@@ -211,17 +226,15 @@ function EditTransactionForm({
 
       <Field data-invalid={errorFor('description') !== undefined}>
         <FieldLabel htmlFor={descriptionFieldId}>Descrição</FieldLabel>
-        <Input
+        <DescriptionCombobox
           id={descriptionFieldId}
           value={description}
+          onChange={setDescription}
+          suggestions={descriptions}
           placeholder="Sem descrição"
-          autoComplete="off"
           className={TOUCH}
-          aria-invalid={errorFor('description') !== undefined}
-          aria-describedby={
-            errorFor('description') === undefined ? undefined : 'editar-descricao-erro'
-          }
-          onChange={(event) => setDescription(event.target.value)}
+          invalid={errorFor('description') !== undefined}
+          describedBy={errorFor('description') === undefined ? undefined : 'editar-descricao-erro'}
         />
         <FieldError id="editar-descricao-erro">{errorFor('description')}</FieldError>
       </Field>

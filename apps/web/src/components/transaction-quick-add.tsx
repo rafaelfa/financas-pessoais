@@ -1,11 +1,13 @@
 'use client';
 
+import type { DescriptionUsage } from '@repo/shared';
 import { ArrowLeftRight, CreditCard, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
+import { DescriptionCombobox } from '@/components/description-combobox';
 import { MoneyInput } from '@/components/money-input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -56,12 +58,15 @@ export function TransactionQuickAdd({
   accounts,
   cards,
   categories,
+  descriptions,
   today,
   initialCardId,
 }: {
   readonly accounts: readonly AccountView[];
   readonly cards: readonly CardView[];
   readonly categories: readonly CategoryView[];
+  /** Descrições já usadas, para sugerir no campo. */
+  readonly descriptions: readonly DescriptionUsage[];
   /** Data de hoje em Portugal, como `YYYY-MM-DD`. */
   readonly today: string;
   /** Cartão pré-escolhido, quando se chega do ecrã dos cartões. */
@@ -651,17 +656,17 @@ export function TransactionQuickAdd({
 
             <Field className="sm:col-span-2" data-invalid={errorFor('description') !== undefined}>
               <FieldLabel htmlFor={descriptionFieldId}>Descrição</FieldLabel>
-              <Input
+              <DescriptionCombobox
                 id={descriptionFieldId}
                 value={description}
+                onChange={setDescription}
+                suggestions={descriptions}
                 placeholder="Opcional — ex.: Compra do mês"
-                autoComplete="off"
                 className={TOUCH}
-                aria-invalid={errorFor('description') !== undefined}
-                aria-describedby={
+                invalid={errorFor('description') !== undefined}
+                describedBy={
                   errorFor('description') === undefined ? undefined : 'lancamento-descricao-erro'
                 }
-                onChange={(event) => setDescription(event.target.value)}
               />
               <FieldError id="lancamento-descricao-erro">{errorFor('description')}</FieldError>
             </Field>
