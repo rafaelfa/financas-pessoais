@@ -2998,3 +2998,56 @@ mensagem de recusa precisar de ser mais clara) · `e2e/` (é do QA).
 **O que NÃO fazer:** não abras a validação do servidor para aceitar `accountId` numa transferência;
 não transformes a edição de uma transferência numa edição do par inteiro sem falar comigo (é outra
 decisão); não mexas no diálogo de criação; não commites nem empurres.
+
+## T55 — Calendário de contas: o mês de vencimentos e movimentos previstos
+
+**Porque:** o que já está agendado está espalhado por três sítios — recorrências, contas a
+pagar/receber e faturas de cartão — e nenhum deles responde à pergunta que se faz no início do mês:
+**«o que é que me sai este mês e quando»**.
+
+**Comportamento esperado**
+
+1. Rota nova **`/calendario`**, no grupo autenticado. O mês vive na **URL** (`?mes=2026-11`), como
+   os filtros do extrato: recarregar e partilhar mantêm o mês. Sem `?mes`, abre no mês corrente.
+2. Vista de **mês** a partir de `sm`; a **360** a mesma informação em **lista por dia** (uma grelha de
+   7 colunas não cabe e não se lê).
+3. Quatro fontes, cada item com a sua etiqueta de origem e um salto para o ecrã onde se resolve:
+   - **Contas a pagar/receber** com `dueDate` no mês e estado `OPEN`/`OVERDUE` → `/contas-pagar-receber`
+   - **Faturas de cartão** com `dueDate` no mês e estado `CLOSED` → `/cartoes`
+   - **Recorrências** activas com `nextRunDate` no mês → `/recorrencias`
+   - **Lançamentos por liquidar** (`settled = false`) com data no mês → `/transacoes`
+4. Cada dia mostra o **número de itens** e o **saldo do dia** (entradas menos saídas); o mês mostra
+   três totais: **a pagar**, **a receber**, **saldo previsto**.
+5. Um item **vencido** aparece no dia em que venceu, marcado como vencido — não desaparece nem salta
+   para o mês seguinte. As contas `OVERDUE` de meses anteriores aparecem no **mês corrente**, numa
+   faixa «em atraso», para não se perderem quando o mês vira.
+6. **Só leitura.** O calendário não cria, não paga e não apaga nada: cada item leva ao ecrã próprio.
+7. A **paleta** passa a ter **17** (`/revisao` da T54 + `/calendario`) e a barra lateral **continua
+   com oito**. A porta é o Painel, ao lado do bloco «por arrumar» da T54.
+8. Zero dependências novas, zero migrações, zero tabelas.
+
+**Ficheiros:** `app/(app)/calendario/page.tsx` (novo) · `server/calendar.ts` (novo) · `lib/nav.ts` ·
+`app/(app)/page.tsx` (a porta) · `e2e/` (é do QA).
+
+**Critério de aceitação**
+
+1. Com dados criados nas quatro fontes, o mês mostra **cada item no dia certo**, com o valor e a
+   etiqueta de origem; os três totais batem com a soma dos itens.
+2. Um item vencido no mês anterior aparece na faixa «em atraso» do mês corrente, e **não** duplicado
+   no dia original.
+3. `?mes` sobrevive a recarregar; navegar para o mês seguinte e voltar mantém tudo; um `?mes` inválido
+   cai no mês corrente em vez de rebentar.
+4. A 360 vê-se a **lista por dia** (não a grelha), sem transbordo (`scrollWidth` = 360); a partir de
+   `sm` vê-se a grelha.
+5. `axe` **0** a 1280 e a 360; cada dia é alcançável por teclado e o nome acessível inclui a data, o
+   número de itens e o saldo; nenhum item comunica **só** por cor (vencido tem palavra, não só
+   vermelho).
+6. **Só leitura**: depois de percorrer o mês inteiro, nenhuma escrita na base (comparar contagens
+   antes/depois).
+7. Paleta a **17**, barra lateral a **8**, `/calendario` com porta no Painel e na paleta; a spec do
+   contrato de navegação actualiza-se para 17 — **não** se afrouxa.
+8. Gate completo e suíte; zero dependências novas, zero migrações.
+
+**O que NÃO fazer:** não criar tabela nem migração («um evento» não se guarda aqui — deriva-se do que
+já existe); não pôr `/calendario` na barra lateral; não pôr o calendário a criar lançamentos; não
+trazer as recorrências inactivas; não afrouxar a spec da paleta; não commitar nem empurrar.
