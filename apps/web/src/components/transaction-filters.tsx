@@ -1,6 +1,8 @@
 'use client';
 
+import { formatCurrency, parseAmountToCents } from '@repo/shared';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/transaction-pagination';
 
@@ -18,6 +20,7 @@ import {
   TRANSACTION_KIND_LABELS,
   TRANSACTION_STATUS_LABELS,
 } from '@/components/transaction-kind-badge';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -56,8 +59,33 @@ export interface TransactionFilterValues {
   readonly kind?: string;
   readonly status?: string;
   readonly search?: string;
+  readonly valor?: string;
+  readonly valorOp?: string;
   readonly limit: number;
 }
+
+/** Operador do filtro por valor, com o texto que a barra mostra. */
+const AMOUNT_OPERATORS = [
+  { value: 'gt', label: 'Maior que' },
+  { value: 'lt', label: 'Menor que' },
+  { value: 'eq', label: 'Igual a' },
+] as const;
+
+type AmountOperator = (typeof AMOUNT_OPERATORS)[number]['value'];
+
+/** Texto do chip e do campo, em euros, sem símbolo (o campo é um número). */
+function euros(cents: number): string {
+  return (cents / 100).toLocaleString('pt-PT', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+const AMOUNT_CHIP_WORD: Record<AmountOperator, string> = {
+  gt: 'acima de',
+  lt: 'abaixo de',
+  eq: 'igual a',
+};
 
 export function TransactionFilters({
   values,
@@ -84,6 +112,8 @@ export function TransactionFilters({
       kind: values.kind,
       status: values.status,
       search: values.search,
+      valor: values.valor,
+      valorOp: values.valorOp,
       limit: values.limit === DEFAULT_PAGE_SIZE ? undefined : String(values.limit),
       ...changes,
     };
@@ -108,6 +138,12 @@ export function TransactionFilters({
   function applyRange(range: DateRange) {
     push({ from: range.from, to: range.to });
   }
+
+  const amountOperator: AmountOperator | undefined =
+    values.valorOp === 'lt' || values.valorOp === 'eq' || values.valorOp === 'gt'
+      ? values.valorOp
+      : undefined;
+  const amountCents = values.valor === undefined ? null : parseAmountToCents(values.valor);
 
   const accountName = (id: string): string =>
     accounts.find((account) => account.id === id)?.name ?? id;
@@ -170,6 +206,16 @@ export function TransactionFilters({
             onRemove: () => push({ search: undefined }),
           },
         ]),
+    ...(amountCents === null || amountOperator === undefined
+      ? []
+      : [
+          {
+            key: 'valor',
+            label: `Valor: ${AMOUNT_CHIP_WORD[amountOperator]} ${formatCurrency(amountCents, 'EUR')}`,
+            // Limpa as duas metades: uma sem a outra seria um par ignorado.
+            onRemove: () => push({ valor: undefined, valorOp: undefined }),
+          },
+        ]),
   ];
 
   return (
@@ -222,6 +268,15 @@ export function TransactionFilters({
         />
 
         <div className="sm:col-span-2">
+          <AmountFilterControl
+            key={`${values.valor ?? ''}|${values.valorOp ?? ''}`}
+            valor={values.valor}
+            valorOp={values.valorOp}
+            onApply={(next) => push(next)}
+          />
+        </div>
+
+        <div className="sm:col-span-2">
           <SearchFilter
             id="filtro-procura"
             label="Procurar na descrição"
@@ -250,6 +305,113 @@ export function TransactionFilters({
 
       <FilterChips chips={chips} onClear={() => router.push(pathname)} />
     </section>
+  );
+}
+
+/**
+ * Operador + valor do filtro de valor.
+ *
+ * O campo é texto, porque é isso que a pessoa escreve (`25`, `25,50`, `25.50`);
+ * ao sair, mostra o valor já normalizado (`25,50`) e aplica. Enter aplica sem
+ * sair do campo. Um valor que não é um montante não vai para o URL.
+ */
+function AmountFilterControl({
+  valor,
+  valorOp,
+  onApply,
+}: {
+  readonly valor?: string;
+  readonly valorOp?: string;
+  readonly onApply: (next: { valor?: string; valorOp?: string }) => void;
+}) {
+  const [operador, setOperador] = useState<AmountOperator>(
+    valorOp === 'lt' || valorOp === 'eq' ? valorOp : 'gt',
+  );
+  const [texto, setTexto] = useState(valor ?? '');
+
+  function aplicar(operadorASeguir: AmountOperator, bruto: string) {
+    const cents = parseAmountToCents(bruto);
+
+    if (cents === null) {
+      // Sem valor legível não há filtro: tira-se o par, em vez de mandar lixo.
+      onApply({ valor: undefined, valorOp: undefined });
+      return;
+    }
+
+    const normalizado = euros(cents);
+    setTexto(normalizado);
+    onApply({ valor: normalizado, valorOp: operadorASeguir });
+  }
+
+  return (
+    <form
+      className="space-y-1"
+      onSubmit={(event) => {
+        event.preventDefault();
+        aplicar(operador, texto);
+      }}
+    >
+      <Label htmlFor="filtro-valor">Valor (€)</Label>
+      <div className="flex gap-2">
+        <Select
+          value={operador}
+          onValueChange={(next) => {
+            const seguinte = next as AmountOperator;
+            setOperador(seguinte);
+            // Só mexe no URL se já houver um valor legível.
+            if (parseAmountToCents(texto) !== null) {
+              aplicar(seguinte, texto);
+            }
+          }}
+        >
+          <SelectTrigger
+            id="filtro-valor-op"
+            aria-label="Comparação do valor"
+            className={`w-32 shrink-0 ${TOUCH}`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {AMOUNT_OPERATORS.map((opcao) => (
+              <SelectItem key={opcao.value} value={opcao.value}>
+                {opcao.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Input
+          id="filtro-valor"
+          inputMode="decimal"
+          value={texto}
+          placeholder="ex.: 25,50"
+          className={TOUCH}
+          onChange={(event) => setTexto(event.target.value)}
+          onBlur={() => {
+            if (texto.trim() === '') {
+              if (valor !== undefined) {
+                onApply({ valor: undefined, valorOp: undefined });
+              }
+              return;
+            }
+
+            const cents = parseAmountToCents(texto);
+
+            if (cents === null) {
+              return;
+            }
+
+            const normalizado = euros(cents);
+
+            if (normalizado !== valor || operador !== valorOp) {
+              aplicar(operador, texto);
+            } else {
+              setTexto(normalizado);
+            }
+          }}
+        />
+      </div>
+    </form>
   );
 }
 
