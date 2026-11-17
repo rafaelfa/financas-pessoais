@@ -18,8 +18,9 @@ export interface CashflowPoint {
 }
 
 const CONFIG = {
-  entradas: { label: 'Entradas', color: 'var(--chart-4)' },
-  saidas: { label: 'Saídas', color: 'var(--chart-5)' },
+  // Cor com significado: mexer na paleta de séries não muda o que é «Entradas».
+  entradas: { label: 'Entradas', color: 'var(--chart-income)' },
+  saidas: { label: 'Saídas', color: 'var(--chart-expense)' },
 };
 
 const euroCompact = new Intl.NumberFormat('pt-PT', {

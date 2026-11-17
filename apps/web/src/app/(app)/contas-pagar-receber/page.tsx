@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 
+import { Amount } from '@/components/amount';
 import { ReceivablePayableDialog } from '@/components/receivable-payable-dialog';
 import { ReceivablePayableList } from '@/components/receivable-payable-list';
 import { EmptyState } from '@/components/empty-state';
@@ -54,17 +55,19 @@ export default async function ReceivablePayablePage() {
           </div>
           <div className="rounded-xl border bg-card p-4">
             <h3 className="text-sm font-medium text-muted-foreground">Contas Pendentes</h3>
-            <div className="text-2xl font-bold text-amber-600">{unpaidItems.length}</div>
+            <div className="text-2xl font-bold text-warning-foreground">{unpaidItems.length}</div>
           </div>
           <div className="rounded-xl border bg-card p-4">
             <h3 className="text-sm font-medium text-muted-foreground">Contas Pagas</h3>
-            <div className="text-2xl font-bold text-green-600">{paidItems.length}</div>
+            <div className="text-2xl font-bold text-success">{paidItems.length}</div>
           </div>
           <div className="rounded-xl border bg-card p-4">
             <h3 className="text-sm font-medium text-muted-foreground">Valor Pendente</h3>
-            <div className="text-2xl font-bold text-amber-600">
-              {unpaidItems.reduce((sum, item) => sum + item.amountInCents, 0) / 100} €
-            </div>
+            <Amount
+              amountInCents={unpaidItems.reduce((sum, item) => sum + item.amountInCents, 0)}
+              tone="neutral"
+              className="block text-2xl font-bold text-warning-foreground normal-nums"
+            />
           </div>
         </div>
 

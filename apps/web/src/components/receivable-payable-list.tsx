@@ -141,7 +141,7 @@ export function ReceivablePayableList({
             const isPaid = item.status === 'PAID';
 
             return (
-              <Card key={item.id} className={overdue ? 'border-red-200 bg-red-50' : ''}>
+              <Card key={item.id} className={overdue ? 'border border-expense' : ''}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
@@ -193,7 +193,7 @@ export function ReceivablePayableList({
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Vencimento</span>
-                      <div className={`font-medium ${overdue ? 'text-red-600' : ''}`}>
+                      <div className={`font-medium ${overdue ? 'text-expense' : ''}`}>
                         {format(new Date(item.dueDate), "d 'de' MMMM 'de' yyyy", { locale: pt })}
                       </div>
                     </div>
@@ -202,7 +202,7 @@ export function ReceivablePayableList({
                   {item.paidAt && (
                     <div className="border-t pt-2">
                       <span className="text-xs text-muted-foreground">Data do Pagamento</span>
-                      <div className="font-medium text-green-600">
+                      <div className="font-medium text-success">
                         {format(new Date(item.paidAt), "d 'de' MMMM 'de' yyyy", { locale: pt })}
                       </div>
                     </div>
