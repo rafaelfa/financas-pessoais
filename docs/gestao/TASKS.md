@@ -2367,3 +2367,84 @@ suite **93/93**. Base no baseline (2 utilizadores, 5 contas, 52 lançamentos, 0 
 quem leu o código tem de ser medida por quem a aplica — o `text-warning`, o `if (!aberta) return`,
 o `bg-expense/10`, a grelha do recharts e o `border-dashed` caíram todos contra medições, e nenhum
 desses erros seria apanhado pela suite.
+
+---
+
+# Vaga 2 — "chegar depressa ao que importa" (sem tabelas, sem migrações)
+
+Objetivo: menos cliques até ao que se usa todos os dias, e nenhuma alteração ao modelo de
+dados — o que a vaga 2 entrega calcula-se na hora.
+
+| ID  | Tarefa                                                                 | Dono | Estado                      |
+| --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
+| T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | aberta (handoff 2026-11-17) |
+| T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | aberta (bloqueada pela T52) |
+| T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (bloqueada pela T52) |
+| T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (bloqueada pela T52) |
+
+## T52 — Navegação 15 → 8 destinos (D7)
+
+**Porque:** a barra lateral tem 15 destinos e o uso diário é de quatro. A decisão D7 fixou a
+versão **moderada**: oito destinos, e os outros sete mudam de porta sem perder o ecrã.
+
+**Comportamento esperado**
+
+1. A barra lateral fica com **oito** ligações, em três grupos:
+   - **Dia a dia:** Painel · Transações · Contas · Contas a pagar/receber
+   - **Planeamento:** Orçamento · Objetivos · Património
+   - **Análise:** Relatórios
+2. **As rotas não mudam.** Nada de `redirect`, nada de URLs novos: muda o menu, não o
+   endereço. Um favorito antigo tem de continuar a abrir o mesmo ecrã.
+3. Os sete que saem da barra ganham porta, e continuam a **um clique** do sítio onde passam a
+   viver:
+   - `Cartões` e `Consolidação` → separadores/sub-navegação dentro de `/contas`.
+   - `Recorrências`, `Regras`, `Categorias`, `Importar` → menu do cabeçalho de `/transacoes`.
+   - `Definições` → rodapé do utilizador.
+4. **A paleta de comandos continua a conhecer os 15.** `ALL_NAV_ITEMS` não pode encolher: se
+   o `Ctrl+K` perder destinos, a simplificação passou a ser esconderijo.
+5. A navegação inferior do telemóvel fica com os cinco de hoje.
+6. Nenhum ecrã fica órfão: cada uma das 15 rotas tem de ter **pelo menos uma ligação** dentro
+   da aplicação. É o critério que apanha o esquecimento clássico — tirar da barra e não pôr em
+   lado nenhum.
+
+**Ficheiros:** `apps/web/src/lib/nav.ts` · `components/app-sidebar.tsx` ·
+`components/mobile-nav.tsx` · `components/command-palette.tsx` · `components/app-shell.tsx` ·
+`app/(app)/contas/page.tsx` (separadores de Cartões/Consolidação) ·
+`app/(app)/transacoes/page.tsx` (menu do cabeçalho) · `e2e/support/ui.ts` e os specs que
+navegam por ligações (é do QA, mas a T52 pode pedir-lhe a alteração).
+
+**Critério de aceitação**
+
+1. Barra lateral com **exatamente 8** ligações nos três grupos acima, a 1280 e a 360 px
+   (a 360 usa-se a navegação inferior).
+2. As **15 rotas** continuam a responder 200 e cada uma tem ≥1 ligação na aplicação: provar
+   com uma varredura de links a partir de `/`, `/contas` e `/transacoes`, listando rota →
+   onde está a ligação.
+3. `Ctrl+K` devolve os **15** destinos (contar os itens da lista, não a olho).
+4. Os sete ecrãs movidos estão a **≤ 2 cliques** de `/`: Cartões e Consolidação por Contas;
+   Recorrências, Regras, Categorias e Importar por Transações; Definições pela conta.
+5. Teclado e leitor de ecrã: a barra mantém `aria-current` na página atual, a ordem de `Tab`
+   segue a ordem visual, `axe` **0** em `/` e `/contas`; alvos de toque ≥ 44 px a 360.
+6. Sem regressão de comportamento: `format:check`, `lint`, `typecheck`, `test` (**≥582**),
+   `build` verdes e **suite 94/94** depois de atualizados os percursos de navegação.
+7. Zero dependências novas, zero migrações.
+
+**O que NÃO fazer:** não mudar rotas nem criar redirecionamentos; não apagar ecrãs; não
+encurtar `ALL_NAV_ITEMS`; não juntar dois ecrãs numa página só para reduzir o número; não
+tocar em `e2e/` sem combinar com o QA; não fazer commit nem push (é o Lead que empurra).
+
+---
+
+# Vagas 3 a 5 — o que exige schema
+
+Cada vaga escreve as suas tarefas em detalhe quando abre. O que **já está fixado** (D8, D11):
+
+| Vaga | Schema                                                           | Migração                             | O que fica dependente dela                                                 |
+| ---- | ---------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
+| 3    | `NetWorthSnapshot` · `Insight` · `BudgetLimit.rolloverEnabled`   | **a primeira desde a linha de base** | património com memória mensal, «insight lido», orçamento que transita      |
+| 4    | `Merchant` · `Transaction.merchantId`                            | **T60** (D8: a única da vaga)        | comerciante como entidade; a importação **sugere** e o utilizador confirma |
+| 5    | `ImportMapping` · `Attachment` · `Transaction.importFingerprint` | a última                             | mapeamento de colunas guardado, recibos anexados, importação idempotente   |
+
+**Duas coisas que não se fazem sem o utilizador:** a migração de desenvolvimento na vaga 3
+(base Neon, aditiva mas real) e a migração de **produção**, no fim das vagas 4 e 5, sempre
+por mão dele (D11). As passkeys (T64) trazem a tabela do `better-auth` — não é desenho nosso.
