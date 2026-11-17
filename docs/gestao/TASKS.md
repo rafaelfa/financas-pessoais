@@ -2380,7 +2380,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (escrita, depois da T59) |
-| T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | aberta (depois da T58) |
+| T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | **fechada** (PASS QA; mutação vermelha em 1,5 s; suíte 108) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (escrita, depois da T54) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
@@ -3098,3 +3098,28 @@ transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a m
 **Decisão sobre o piso do `zod` (menor proposto pelo Revisor, não feito):** o `packages/shared` continua a declarar `^4.6.5`. Subir para `^4.6.6` não mudaria nada do que é instalado — `^4.6.5` **nunca** resolve para 4.6.5 enquanto existir 4.6.6, porque o range pede a versão mais alta que o satisfaça. O piso só valeria contra um **downgrade deliberado**, que é o mesmo risco de qualquer dependência. Registado, não feito, e a razão é esta e não «falta de tempo».
 
 **O que fica dito no contrato e se confirma:** o `shadcn` continua **necessário no build** (o `globals.css` importa o CSS dele). Não é problema de deploy — o build já precisa de `tailwindcss` e `@tailwindcss/postcss`, que também são devDependencies. O cenário que partiria isto (um stage Docker com `install --prod` **antes** do `next build`) não existe neste repositório, e fica escrito para o dia em que alguém o criar.
+
+### T59 — prova de fecho (QA)
+
+| O que                          | Números                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| Spec nova                      | `e2e/37-editar-transferencia.spec.ts` (4 testes) **verde**; suíte **108 passed (6,2 m)**     |
+| **Mutação**                    | reposto o envio de `accountId` → `x 1` em **1,5 s** com a recusa real, não timeout           |
+| Descrição numa transferência   | grava nas **duas** pernas                                                                   |
+| Valor                          | 500,00 → **−50 000/+50 000**, mesmo `transferGroupId`, contas intactas                       |
+| Conta e Categoria             | **0** e **0** no diálogo de uma transferência, a 1280 e a 360; nota presente                 |
+| Despesa / ganho / fatura       | Conta+Categoria nos dois primeiros, Conta e sem Categoria na linha de fatura; mudar a conta numa despesa grava |
+| Servidor                       | pedido directo com `accountId` numa transferência → recusa **inalterada**, pernas intactas    |
+| `axe`                          | **0** no diálogo aberto numa transferência, a 1280 e a 360                                  |
+| Gate                           | `format:check`/`lint`/`typecheck`/`test` **582**/`build` → 0/0/0/582/0                       |
+| Diff                           | `transaction-edit-dialog.tsx` 38+/23− · `e2e/support/db.ts` 39+ · spec nova — zero servidor  |
+
+**O detalhe que decidia o defeito e foi medido, não assumido:** o `isTransfer` compara `kind === 'transfer'` em **minúsculas** (`:141`), coerente com o `TransactionView` normalizado da T57 e com o servidor, que compara com o enum. Com a comparação em maiúsculas o `accountId` sairia do payload em **todas** as naturezas, o campo Conta desapareceria de tudo e o teste 1 — mais a mutação — apanhava-o.
+
+**Uma armadilha que fica escrita:** o servidor recusa `categoryId` **mesmo a `null`** (`value.categoryId !== undefined`). Numa transferência não basta não escolher categoria — **não se pode enviar o campo**. Quem «limpar» isto para `categoryId: null` reabre o defeito com outra cara.
+
+**O que isto não resolve (menores lidos pelo Revisor, nenhum bloqueia):**
+
+1. A frase de recusa existe **duas vezes** (diálogo e `transactions-actions.ts:511`); a do servidor tem de ficar como guarda da API, mas as duas cópias divergem à primeira edição de texto.
+2. A nota diz «elimina esta transferência» sem dizer que apagar uma perna apaga **as duas** — o diálogo de apagar já o diz, por isso o utilizador descobre no momento certo.
+3. Para transferências o `accountId`/`setAccountId` continuam a ser inicializados e nunca enviados (estado morto, explicado em comentário).
