@@ -223,6 +223,45 @@ export async function definirStatusDoLancamento(
   });
 }
 
+/** Um lançamento com os campos que os specs de edição medem. */
+export interface LancamentoBruto {
+  readonly id: string;
+  readonly kind: string;
+  readonly amountInCents: number;
+  readonly description: string | null;
+  readonly accountId: string | null;
+  readonly transferGroupId: string | null;
+  readonly settled: boolean;
+}
+
+/** Todos os lançamentos do utilizador com esta descrição (o par de uma transferência dá 2). */
+export async function lerPorDescricao(
+  email: string,
+  descricao: string,
+): Promise<LancamentoBruto[]> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT t.id, t.kind::text AS kind, t."amountInCents" AS amount, t.description,
+              t."financialAccountId" AS conta, t."transferGroupId" AS grupo, t.settled
+         FROM "transaction" t
+         JOIN "user" u ON u.id = t."userId"
+        WHERE u.email = $1 AND t.description = $2
+        ORDER BY t."amountInCents" ASC`,
+      [email, descricao],
+    );
+
+    return result.rows.map((row) => ({
+      id: String(row.id),
+      kind: String(row.kind),
+      amountInCents: Number(row.amount),
+      description: row.description === null ? null : String(row.description),
+      accountId: row.conta === null ? null : String(row.conta),
+      transferGroupId: row.grupo === null ? null : String(row.grupo),
+      settled: Boolean(row.settled),
+    }));
+  });
+}
+
 /** Quantos lançamentos têm exatamente esta descrição (o par de uma transferência dá 2). */
 export async function contarPorDescricao(email: string, descricao: string): Promise<number> {
   return withClient(async (client) => {

@@ -131,6 +131,14 @@ function EditTransactionForm({
   }
 
   const showCategory = transaction.kind === 'expense' || transaction.kind === 'income';
+
+  /**
+   * Numa transferência a conta não se edita: mudar a conta de uma perna é outra
+   * operação (o servidor recusa-a, e bem). O campo deixa de ser oferecido e o
+   * `accountId` deixa de ser enviado — antes vinha sempre, por isso gravar uma
+   * transferência falhava sempre, mesmo mudando só a descrição.
+   */
+  const isTransfer = transaction.kind === 'transfer';
   const categoryOptions = buildCategoryOptions(
     categories,
     transaction.kind === 'income' ? 'income' : 'expense',
@@ -154,7 +162,7 @@ function EditTransactionForm({
       // uma string vazia ficaria na base como uma descrição que existe e não
       // diz nada — uma sugestão em branco no histórico.
       description: trimmed === '' ? null : trimmed,
-      accountId,
+      ...(isTransfer ? {} : { accountId }),
       ...(showCategory ? { categoryId: categoryId === '' ? null : categoryId } : {}),
       status,
       settled,
@@ -200,7 +208,7 @@ function EditTransactionForm({
           />
         </div>
         <FieldDescription>
-          {transaction.kind === 'transfer'
+          {isTransfer
             ? 'O valor é espelhado automaticamente na outra conta.'
             : sign < 0
               ? 'Escreve o valor sem sinal: continua a ser uma saída.'
@@ -240,27 +248,34 @@ function EditTransactionForm({
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <FieldLabel htmlFor="editar-conta">Conta</FieldLabel>
-          <Select value={accountId} onValueChange={setAccountId}>
-            <SelectTrigger
-              id="editar-conta"
-              aria-required
-              className={`w-full ${TOUCH}`}
-              aria-invalid={errorFor('accountId') !== undefined}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldError>{errorFor('accountId')}</FieldError>
-        </div>
+        {isTransfer ? (
+          <p className="text-sm text-muted-foreground sm:col-span-2">
+            Numa transferência a conta não se altera: para mover o dinheiro a partir de outra conta,
+            elimina esta transferência e cria outra.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            <FieldLabel htmlFor="editar-conta">Conta</FieldLabel>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger
+                id="editar-conta"
+                aria-required
+                className={`w-full ${TOUCH}`}
+                aria-invalid={errorFor('accountId') !== undefined}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError>{errorFor('accountId')}</FieldError>
+          </div>
+        )}
 
         {showCategory ? (
           <div className="space-y-1">
