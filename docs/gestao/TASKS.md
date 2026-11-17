@@ -2782,3 +2782,61 @@ todas as mutações. A D21 já registou os avisos e decidiu a subida depois da T
 **O que NÃO fazer:** não subir de minor nem de major; não aproveitar para atualizar outras
 dependências («já que estamos aqui»); não mexer em `config.experimental` nem definir
 `__NEXT_AGENT_UPGRADE` para calar o aviso; não commitar nem empurrar (é o Lead).
+
+## T54 — Ecrã de Revisão: quatro contagens e um salto
+
+**Escolha do utilizador (17/11):** a página **só conta e salta** — a correção faz-se onde ela já
+se faz (no extrato, com as ações em massa da T53, e nas páginas de contas e de cartões). Quatro
+fontes: por confirmar, sem categoria, contas vencidas, faturas por pagar.
+
+**Porque:** o que está por arrumar não tem hoje um sítio onde se veja todo junto. Cada um destes
+quatro já tem ecrã; o que falta é saber **quantos** são, sem os procurar um a um.
+
+**Comportamento esperado**
+
+1. Rota nova **`/revisao`**, no grupo autenticado (a guarda de sessão vem do layout).
+2. Quatro cartões, cada um com a **contagem real** e um salto:
+   - **Por confirmar** — `status = PENDING` → `/transacoes?status=pending`
+   - **Sem categoria** — `kind` EXPENSE/INCOME, `categoryId = null`, `status ≠ IGNORED` →
+     `/transacoes?semCategoria=1`
+   - **Contas vencidas** — `ReceivablePayable.status = OVERDUE` → `/contas-pagar-receber`
+   - **Faturas por pagar** — `Invoice.status = CLOSED` → `/cartoes`
+3. O total no topo, e **cada cartão com o seu estado de zero** («Nada por confirmar», não um `0`
+   sem explicação).
+4. **A porta principal é o Painel** — um bloco «por arrumar» com o total e ligação para
+   `/revisao`. A barra lateral **continua com oito** (D7 não muda por causa disto).
+5. A **paleta** passa a ter **16**: `/revisao` entra em `ALL_NAV_ITEMS`. A spec `33-navegacao-15`
+   do QA atualiza a contagem e o nome — **afrouxá-la para «≥15» é proibido**: o contrato existe
+   para apanhar quem acrescenta um ecrã e esquece a porta.
+6. O filtro **`semCategoria=1`** vive na URL, como todos os outros: sobrevive a recarregar, é
+   partilhável, e aparece como chip removível na barra de filtros.
+7. Zero dependências novas, zero migrações, nenhuma rota existente muda de endereço.
+
+**Ficheiros:** `app/(app)/revisao/page.tsx` (novo) · `server/review.ts` (novo, ou as consultas
+junto de `server/transactions.ts` se ficarem melhor lá) · `lib/nav.ts` (a entrada da paleta) ·
+`app/(app)/page.tsx` (o bloco do Painel) · `components/transaction-filters.tsx`,
+`app/(app)/transacoes/page.tsx` e `server/transactions.ts` (o filtro `semCategoria`) ·
+`e2e/` (é do QA).
+
+**Critério de aceitação**
+
+1. As quatro contagens medidas contra a base, com dados criados para cada caso; a soma do topo é
+   igual à soma dos quatro.
+2. Resolver um item de cada tipo (confirmar um lançamento, dar categoria a um, pagar uma conta,
+   pagar uma fatura) faz **a contagem desse cartão descer** sem refresh manual.
+3. O salto do extrato abre com o filtro aplicado e o chip visível, e o **`total` que o extrato
+   devolve com `?semCategoria=1` é igual à contagem do cartão** — a mesma verdade nos dois sítios.
+4. `?semCategoria=1` sobrevive a recarregar; limpar o chip devolve a lista completa.
+5. Nenhum ecrã órfão: `/revisao` tem porta no Painel **e** na paleta; barra lateral continua
+   **8**; paleta **16**.
+6. `axe` **0** em `/revisao` a 1280 e a 360; alvos de toque ≥44 a 360; sem transbordo horizontal.
+7. Teclado e leitor de ecrã: a ordem de `Tab` segue a ordem visual, e o nome acessível de cada
+   cartão **inclui o número** («3 lançamentos por confirmar»), não só o título.
+8. Gate completo e suíte; a spec nova **falha quando deve** (fazer a contagem do cartão divergir
+   do `total` do extrato tem de a deixar vermelha).
+9. Zero dependências novas, zero migrações.
+
+**O que NÃO fazer:** não pôr `/revisao` na barra lateral (quebraria os oito de D7 e a decisão é que
+a porta é o Painel); não afrouxar a spec da paleta; **não pôr o extrato dentro de `/revisao`** — a
+página conta e salta, e a correção vive onde já vive; não criar filtros novos para além do
+`semCategoria`; não commitar nem empurrar.
