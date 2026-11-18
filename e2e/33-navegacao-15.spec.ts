@@ -5,21 +5,21 @@ import { lerCredenciais } from './support/dados';
 import { abrirRota } from './support/ui';
 
 /**
- * Percurso 33 — o contrato das 16 rotas (T52, T54).
+ * Percurso 33 — o contrato das 17 rotas (T52, T54, T55).
  *
  * A barra tem 8 destinos e os outros 7 vivem noutras portas (separadores de
  * `/contas`, menu «Mais» do cabeçalho, rodapé do utilizador, navegação
- * inferior). A paleta (`Ctrl+K`) tem os 16, mas `ALL_NAV_ITEMS` é **escrito à
+ * inferior). A paleta (`Ctrl+K`) tem os 17, mas `ALL_NAV_ITEMS` é **escrito à
  * mão** — duas listas para manter. Esta spec é a asserção que apanha a
  * divergência futura:
  *
  * - todo o `href` que aparece num menu (ou no bloco «Por arrumar» do Painel,
  *   a porta decidida para `/revisao`) pertence às 16 rotas conhecidas;
  * - todas as 16 rotas têm pelo menos uma porta (nenhum órfão);
- * - a paleta lista exatamente as 16, sem faltar e sem sobrar.
+ * - a paleta lista exatamente as 17, sem faltar e sem sobrar.
  */
 
-/** As 16 rotas e o rótulo de cada uma — o contrato que a navegação promete. */
+/** As 17 rotas e o rótulo de cada uma — o contrato que a navegação promete. */
 const ROTAS: readonly (readonly [string, string])[] = [
   ['/', 'Painel'],
   ['/transacoes', 'Transações'],
@@ -35,6 +35,7 @@ const ROTAS: readonly (readonly [string, string])[] = [
   ['/categorias', 'Categorias'],
   ['/relatorios', 'Relatórios'],
   ['/revisao', 'Revisão'],
+  ['/calendario', 'Calendário'],
   ['/importar', 'Importar'],
   ['/definicoes', 'Definições'],
 ];
@@ -85,7 +86,7 @@ test.describe('contrato de navegação das 15 rotas', () => {
     await limparDadosDoSpec(lerCredenciais().email, 'T33 prova');
   });
 
-  test('nenhum órfão: cada rota tem uma porta, e nenhum menu aponta para fora das 16', async ({
+  test('nenhum órfão: cada rota tem uma porta, e nenhum menu aponta para fora das 17', async ({
     page,
   }) => {
     const encontrados = new Map<string, string>();
@@ -121,7 +122,7 @@ test.describe('contrato de navegação das 15 rotas', () => {
     expect(orfaos, 'rotas sem porta nenhuma').toEqual([]);
   });
 
-  test('a paleta lista exatamente as 16 rotas', async ({ page }) => {
+  test('a paleta lista exatamente as 17 rotas', async ({ page }) => {
     await abrirRota(page, '/');
     await page.keyboard.press('Control+k');
 
@@ -129,7 +130,7 @@ test.describe('contrato de navegação das 15 rotas', () => {
     await expect(paleta).toBeVisible();
 
     const opcoes = paleta.getByRole('option');
-    await expect(opcoes).toHaveCount(16);
+    await expect(opcoes).toHaveCount(17);
 
     const textos = await opcoes.allInnerTexts();
     const nomes = textos.map((texto) => texto.split('\n')[0]?.trim() ?? '');

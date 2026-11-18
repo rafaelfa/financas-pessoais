@@ -262,6 +262,68 @@ export async function lerPorDescricao(
   });
 }
 
+/** Apaga os cartões do spec (e as faturas deles) pelo prefixo do nome. */
+export async function apagarCartoesDoSpec(email: string, prefixo: string): Promise<number> {
+  return withClient(async (client) => {
+    const user = await client.query('SELECT id FROM "user" WHERE email = $1', [email]);
+    const userId = user.rows[0]?.id;
+
+    if (typeof userId !== 'string') {
+      return 0;
+    }
+
+    await client.query(
+      `DELETE FROM "invoice_payment" WHERE "userId" = $1 AND "invoiceId" IN
+         (SELECT id FROM "invoice" WHERE "userId" = $1 AND "cardId" IN
+            (SELECT id FROM "credit_card" WHERE "userId" = $1 AND name LIKE $2))`,
+      [userId, `${prefixo}%`],
+    );
+    await client.query(
+      `DELETE FROM "invoice" WHERE "userId" = $1 AND "cardId" IN
+         (SELECT id FROM "credit_card" WHERE "userId" = $1 AND name LIKE $2)`,
+      [userId, `${prefixo}%`],
+    );
+
+    const removidos = await client.query(
+      'DELETE FROM "credit_card" WHERE "userId" = $1 AND name LIKE $2',
+      [userId, `${prefixo}%`],
+    );
+
+    return removidos.rowCount ?? 0;
+  });
+}
+
+/** Cria uma conta a pagar/receber com uma data de vencimento (cenário de calendário). */
+export async function criarContaAPagarDoSpec(
+  email: string,
+  descricao: string,
+  tipo: 'PAYABLE' | 'RECEIVABLE',
+  valorEmCentimos: number,
+  vencimento: string,
+): Promise<string> {
+  const { randomUUID } = await import('node:crypto');
+
+  return withClient(async (client) => {
+    const user = await client.query('SELECT id FROM "user" WHERE email = $1', [email]);
+    const userId = user.rows[0]?.id;
+
+    if (typeof userId !== 'string') {
+      throw new Error(`Não encontrei o utilizador ${email}.`);
+    }
+
+    const id = randomUUID();
+
+    await client.query(
+      `INSERT INTO "receivable_payable"
+         (id, "userId", type, description, "amountInCents", "paidAmountInCents", status, "dueDate", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3::"ReceivablePayableType", $4, $5, 0, 'OPEN'::"ReceivablePayableStatus", $6::date, now(), now())`,
+      [id, userId, tipo, descricao, valorEmCentimos, vencimento],
+    );
+
+    return id;
+  });
+}
+
 /** Quantos lançamentos têm exatamente esta descrição (o par de uma transferência dá 2). */
 export async function contarPorDescricao(email: string, descricao: string): Promise<number> {
   return withClient(async (client) => {

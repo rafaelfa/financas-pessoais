@@ -423,9 +423,15 @@ export default async function PainelPage({
                   {review.overdue} vencidas · {review.unpaidInvoices} faturas por pagar
                 </span>
               </p>
-              <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-0">
-                <Link href="/revisao">Ver a revisão</Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-0">
+                  <Link href="/revisao">Ver a revisão</Link>
+                </Button>
+                {/* A porta do calendário (T55) fica ao lado da revisão. */}
+                <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-0">
+                  <Link href="/calendario">Ver o calendário</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </section>

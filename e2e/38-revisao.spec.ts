@@ -162,7 +162,7 @@ test.describe('ecrã de Revisão (T54)', () => {
     await expect(paleta).toBeVisible();
 
     const opcoes = paleta.getByRole('option');
-    await expect(opcoes, 'a paleta passa a 16').toHaveCount(16);
+    await expect(opcoes, 'a paleta passa a 17').toHaveCount(17);
     await expect(opcoes.filter({ hasText: 'Revisão' })).toHaveCount(1);
   });
 

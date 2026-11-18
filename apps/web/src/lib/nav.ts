@@ -3,6 +3,7 @@ import {
   ChartColumn,
   CreditCard,
   FileUp,
+  CalendarDays,
   Landmark,
   Layers,
   ListChecks,
@@ -122,6 +123,12 @@ const IMPORTAR: NavItem = {
   description: 'Extratos OFX e CSV, exportações e cópias',
   icon: FileUp,
 };
+const CALENDARIO: NavItem = {
+  href: '/calendario',
+  label: 'Calendário',
+  description: 'O que sai e o que entra este mês, dia a dia',
+  icon: CalendarDays,
+};
 const REVISAO: NavItem = {
   href: '/revisao',
   label: 'Revisão',
@@ -161,6 +168,7 @@ const NAV = {
   regras: REGRAS,
   categorias: CATEGORIAS,
   relatorios: RELATORIOS,
+  calendario: CALENDARIO,
   revisao: REVISAO,
   importar: IMPORTAR,
   definicoes: DEFINICOES,
