@@ -216,10 +216,20 @@ export async function definirStatusDoLancamento(
   status: 'PENDING' | 'CONFIRMED' | 'IGNORED',
 ): Promise<void> {
   await withClient(async (client) => {
-    await client.query('UPDATE "transaction" SET status = $2::"TransactionStatus" WHERE id = $1', [
-      id,
-      status,
-    ]);
+    const result = await client.query(
+      'UPDATE "transaction" SET status = $2::"TransactionStatus" WHERE id = $1',
+      [id, status],
+    );
+
+    /*
+     * Um `UPDATE` que não apanha nada é um cenário que não foi montado, e um
+     * teste por cima dele mede outra coisa. Falta aqui o `userId` no `WHERE`
+     * (exceção conhecida: o id vem de `idDoLancamento(email, …)` e mudar a
+     * assinatura obrigaria a mexer na spec 35, fora desta tarefa).
+     */
+    if (result.rowCount !== 1) {
+      throw new Error(`Não mudei o estado de nenhum lançamento: ${id} não existe.`);
+    }
   });
 }
 
@@ -263,21 +273,233 @@ export async function lerPorDescricao(
 }
 
 /**
- * SQL directo para **fixtures** que a interface não consegue produzir.
+ * Fixtures do que a interface **não** consegue produzir.
  *
- * Existe para o empate de vencimentos da T61: um cartão com `closingDay 31` e
- * `dueDay 1` tem duas faturas a vencer no mesmo dia, e o formulário não cria
- * faturas — só o motor, a partir de compras. Só se usa para **montar cenário**;
- * as asserções continuam a ler o ecrã.
+ * Era um executor de SQL genérico, e SQL livre num
+ * teste é uma porta aberta: uma spec podia inventar um estado que o produto
+ * nunca produz e ficar verde sobre ele. Agora cada fixture tem nome e forma —
+ * os campos que o produto escreveria, fixos aqui — e o SQL fica fechado neste
+ * ficheiro. As asserções continuam a ler o ecrã.
  */
-export async function executarSqlDoSpec(
-  sql: string,
-  parametros: readonly unknown[] = [],
-): Promise<Record<string, unknown>[]> {
-  return withClient(async (client) => {
-    const result = await client.query(sql, [...parametros]);
 
-    return result.rows;
+/*
+ * Fixtures da cadeia de faturas (T61/T67) — a spec 41 é a única que as usa.
+ * Vivem aqui porque a regra é «SQL só neste ficheiro»; este bloco é o preço dela.
+ */
+
+/** Identificadores do utilizador de teste: a conta e a categoria que os specs usam. */
+export async function lerContextoDoUtilizador(email: string): Promise<{
+  userId: string;
+  contaId: string;
+  categoriaDespesaId: string;
+}> {
+  return withClient(async (client) => {
+    const utilizador = await client.query('SELECT id FROM "user" WHERE email = $1', [email]);
+    const userId = String(utilizador.rows[0]?.id ?? '');
+    const conta = await client.query(
+      'SELECT id FROM financial_account WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1',
+      [userId],
+    );
+    const categoria = await client.query(
+      `SELECT id FROM category WHERE "userId" = $1 AND kind = 'EXPENSE'::"CategoryKind" LIMIT 1`,
+      [userId],
+    );
+
+    return {
+      userId,
+      contaId: String(conta.rows[0]?.id ?? ''),
+      categoriaDespesaId: String(categoria.rows[0]?.id ?? ''),
+    };
+  });
+}
+
+/** Um cartão com o dia de fecho e o de vencimento que o cenário precisa. */
+export async function criarCartaoDoSpec(args: {
+  readonly email: string;
+  readonly nome: string;
+  readonly fechoDia: number;
+  readonly vencimentoDia: number;
+}): Promise<string> {
+  const { userId, contaId } = await lerContextoDoUtilizador(args.email);
+
+  return withClient(async (client) => {
+    const result = await client.query(
+      `INSERT INTO "credit_card" (id, "userId", name, "closingDay", "dueDay", "creditLimitInCents", "paymentAccountId", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, 100000, $5, now(), now()) RETURNING id`,
+      [userId, args.nome, args.fechoDia, args.vencimentoDia, contaId],
+    );
+
+    return String(result.rows[0]?.id ?? '');
+  });
+}
+
+/**
+ * Uma fatura com o fecho e o vencimento pedidos.
+ *
+ * É a fixture do empate da T61: duas faturas do mesmo cartão a vencer no mesmo
+ * dia. O formulário não cria faturas — só o motor, a partir de compras, e as
+ * compras caem sempre em meses diferentes — por isso o cenário precisa de as
+ * escrever; mas com os campos que o produto escreveria, e não com SQL à escolha
+ * de quem chama.
+ */
+export async function criarFaturaDoSpec(args: {
+  readonly cartaoId: string;
+  readonly fecho: string;
+  readonly vence: string;
+  readonly totalInCents: number;
+  readonly estado?: 'OPEN' | 'CLOSED' | 'PAID';
+}): Promise<string> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `INSERT INTO "invoice" (id, "userId", "cardId", "closingDate", "dueDate", "totalAmountInCents", "paidAmountInCents", "carriedOverInCents", status, "createdAt", "updatedAt")
+       SELECT gen_random_uuid(), c."userId", c.id, $2::date, $3::date, $4, 0, 0, $5::"InvoiceStatus", now(), now()
+         FROM "credit_card" c WHERE c.id = $1
+       RETURNING id`,
+      [args.cartaoId, args.fecho, args.vence, args.totalInCents, args.estado ?? 'CLOSED'],
+    );
+
+    return String(result.rows[0]?.id ?? '');
+  });
+}
+
+/** Uma compra do cartão, apontada à fatura do seu ciclo. */
+export async function criarCompraNaFaturaDoSpec(args: {
+  readonly cartaoId: string;
+  readonly faturaId: string;
+  readonly descricao: string;
+  readonly valorInCents: number;
+  readonly data: string;
+}): Promise<void> {
+  return withClient(async (client) => {
+    /*
+     * A fatura tem de ser daquele cartão: uma compra numa fatura de outro cartão
+     * é um estado que o produto nunca produz, e uma fixture que o aceita deixa
+     * um teste verde sobre um estado impossível — a categoria que a T67 fecha.
+     */
+    const fatura = await client.query('SELECT "cardId" FROM "invoice" WHERE id = $1', [
+      args.faturaId,
+    ]);
+
+    if (String(fatura.rows[0]?.cardId ?? '') !== args.cartaoId) {
+      throw new Error(
+        `A fatura ${args.faturaId} não é do cartão ${args.cartaoId} — a compra não foi criada.`,
+      );
+    }
+
+    await client.query(
+      `INSERT INTO "transaction" (id, "userId", kind, "amountInCents", date, description, "financialAccountId", "cardId", "invoiceId", settled, status, "updatedAt")
+       SELECT gen_random_uuid(), c."userId", 'EXPENSE'::"TransactionKind", $2, $3::date, $4, c."paymentAccountId", c.id, $5, false, 'CONFIRMED'::"TransactionStatus", now()
+         FROM "credit_card" c WHERE c.id = $1`,
+      [args.cartaoId, -Math.abs(args.valorInCents), args.data, args.descricao, args.faturaId],
+    );
+  });
+}
+
+/** As faturas de um cartão, pela ordem da cadeia: fecho e vencimento. */
+export async function lerFaturasDoCartao(
+  cartaoId: string,
+): Promise<readonly { id: string; fecho: string; vence: string }[]> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT id, to_char("closingDate",'YYYY-MM-DD') AS fecho, to_char("dueDate",'YYYY-MM-DD') AS vence
+         FROM "invoice" WHERE "cardId" = $1 ORDER BY "closingDate"`,
+      [cartaoId],
+    );
+
+    return result.rows.map((row) => ({
+      id: String(row.id),
+      fecho: String(row.fecho),
+      vence: String(row.vence),
+    }));
+  });
+}
+
+/** Move o fecho (e o vencimento) de uma fatura — um ciclo que ainda não fechou. */
+export async function moverFechoDaFatura(args: {
+  readonly email: string;
+  readonly faturaId: string;
+  readonly fecho: string;
+  readonly vence: string;
+}): Promise<void> {
+  return withClient(async (client) => {
+    /*
+     * Com o `userId` no `WHERE`, como as outras escritas **desta tarefa**: o id
+     * vem da fixture, mas um `UPDATE` sem dono num helper partilhado é a porta
+     * que se abre sozinha no dia em que alguém lhe passar um id de fora.
+     *
+     * Exceção conhecida, no mesmo ficheiro: `definirStatusDoLancamento` ainda
+     * atualiza por `id` sem dono (tem já a verificação de `rowCount`); fechá-la
+     * obriga a mudar a assinatura e duas chamadas da spec 35.
+     */
+    const result = await client.query(
+      `UPDATE "invoice" SET "closingDate" = $3::date, "dueDate" = $4::date
+        WHERE id = $1 AND "userId" = (SELECT id FROM "user" WHERE email = $2)`,
+      [args.faturaId, args.email, args.fecho, args.vence],
+    );
+
+    if (result.rowCount !== 1) {
+      throw new Error(
+        `Não mexi em nenhuma fatura: ${args.faturaId} não existe ou não é de ${args.email}.`,
+      );
+    }
+  });
+}
+
+/** Um lançamento do utilizador, com ou sem categoria e com o estado pedido. */
+export async function criarLancamentoDoSpec(args: {
+  readonly email: string;
+  readonly descricao: string;
+  readonly valorInCents: number;
+  readonly estado: 'PENDING' | 'CONFIRMED' | 'IGNORED';
+  readonly comCategoria?: boolean;
+}): Promise<void> {
+  const { userId, contaId, categoriaDespesaId } = await lerContextoDoUtilizador(args.email);
+
+  return withClient(async (client) => {
+    await client.query(
+      `INSERT INTO "transaction" (id, "userId", kind, "amountInCents", date, description, "financialAccountId", "categoryId", settled, status, "updatedAt")
+       VALUES (gen_random_uuid(), $1, 'EXPENSE'::"TransactionKind", $2, CURRENT_DATE, $3, $4, $5, false, $6::"TransactionStatus", now())`,
+      [
+        userId,
+        args.valorInCents,
+        args.descricao,
+        contaId,
+        args.comCategoria === false ? null : categoriaDespesaId,
+        args.estado,
+      ],
+    );
+  });
+}
+
+/*
+ * Contagens e lançamentos que mais de uma spec usa (T63/T66/T67).
+ */
+
+/** As três contagens da Revisão que um spec precisa de conferir na base. */
+export async function contarEstadoDoUtilizador(email: string): Promise<{
+  pendentes: number;
+  semCategoria: number;
+  contasVencidas: number;
+}> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT
+         (SELECT count(*)::int FROM "transaction" t JOIN "user" u ON u.id = t."userId"
+           WHERE u.email = $1 AND t.status = 'PENDING') AS pendentes,
+         (SELECT count(*)::int FROM "transaction" t JOIN "user" u ON u.id = t."userId"
+           WHERE u.email = $1 AND t.kind IN ('EXPENSE','INCOME') AND t."categoryId" IS NULL
+             AND t.status <> 'IGNORED') AS "semCategoria",
+         (SELECT count(*)::int FROM "receivable_payable" r JOIN "user" u ON u.id = r."userId"
+           WHERE u.email = $1 AND r.status = 'OPEN' AND r."dueDate" < CURRENT_DATE) AS "contasVencidas"`,
+      [email],
+    );
+    const linha = result.rows[0] ?? {};
+
+    return {
+      pendentes: Number(linha.pendentes ?? 0),
+      semCategoria: Number(linha.semCategoria ?? 0),
+      contasVencidas: Number(linha.contasVencidas ?? 0),
+    };
   });
 }
 

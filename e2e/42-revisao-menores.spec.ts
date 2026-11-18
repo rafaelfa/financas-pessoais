@@ -2,7 +2,12 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
 import { lerCredenciais } from './support/dados';
-import { executarSqlDoSpec, limparDadosDoSpec } from './support/db';
+import {
+  contarEstadoDoUtilizador,
+  criarContaAPagarDoSpec,
+  criarLancamentoDoSpec,
+  limparDadosDoSpec,
+} from './support/db';
 import { abrirRota } from './support/ui';
 
 /**
@@ -61,66 +66,35 @@ test.describe('Revisão: nome acessível, estado zero e fuso (T63)', () => {
   });
 
   test.beforeAll(async () => {
-    const [utilizador] = await executarSqlDoSpec('SELECT id FROM "user" WHERE email = $1', [
-      email(),
-    ]);
-    const userId = String(utilizador?.id ?? '');
-    const [conta] = await executarSqlDoSpec(
-      'SELECT id FROM financial_account WHERE "userId" = $1 ORDER BY "createdAt" LIMIT 1',
-      [userId],
-    );
-    const contaId = String(conta?.id ?? '');
-    const [categoria] = await executarSqlDoSpec(
-      `SELECT id FROM category WHERE "userId" = $1 AND kind = 'EXPENSE'::"CategoryKind" LIMIT 1`,
-      [userId],
-    );
-    const categoriaId = String(categoria?.id ?? '');
-
-    const lancamento = async (descricao: string, cents: number, status: string) => {
-      await executarSqlDoSpec(
-        `INSERT INTO "transaction" (id, "userId", kind, "amountInCents", date, description, "financialAccountId", "categoryId", settled, status, "updatedAt")
-         VALUES (gen_random_uuid(), $1, 'EXPENSE'::"TransactionKind", $2, CURRENT_DATE, $3, $4, $5, false, $6::"TransactionStatus", now())`,
-        [userId, cents, descricao, contaId, categoriaId, status],
-      );
-    };
-
     /* Por confirmar: 3. Sem categoria: 1 (sem `categoryId`). Vencidas: 0. */
-    await lancamento(`${PREFIXO} pendente 1`, -1000, 'PENDING');
-    await lancamento(`${PREFIXO} pendente 2`, -1001, 'PENDING');
-    await lancamento(`${PREFIXO} pendente 3`, -1002, 'PENDING');
+    for (const [i, valor] of [1000, 1001, 1002].entries()) {
+      await criarLancamentoDoSpec({
+        email: email(),
+        descricao: `${PREFIXO} pendente ${i + 1}`,
+        valorInCents: -valor,
+        estado: 'PENDING',
+      });
+    }
 
-    await executarSqlDoSpec(
-      `INSERT INTO "transaction" (id, "userId", kind, "amountInCents", date, description, "financialAccountId", "categoryId", settled, status, "updatedAt")
-       VALUES (gen_random_uuid(), $1, 'EXPENSE'::"TransactionKind", -2000, CURRENT_DATE, $2, $3, NULL, false, 'CONFIRMED'::"TransactionStatus", now())`,
-      [userId, `${PREFIXO} sem categoria`, contaId],
-    );
+    await criarLancamentoDoSpec({
+      email: email(),
+      descricao: `${PREFIXO} sem categoria`,
+      valorInCents: -2000,
+      estado: 'CONFIRMED',
+      comCategoria: false,
+    });
   });
 
   test('o nome diz o número uma vez, qualquer que seja a contagem', async ({ page }) => {
     /* As contagens vêm da base: o utilizador partilhado traz dados de outras specs. */
-    const [pendentes] = await executarSqlDoSpec(
-      `SELECT count(*)::int AS n FROM "transaction" t JOIN "user" u ON u.id = t."userId"
-        WHERE u.email = $1 AND t.status = 'PENDING'`,
-      [email()],
-    );
-    const [semCategoria] = await executarSqlDoSpec(
-      `SELECT count(*)::int AS n FROM "transaction" t JOIN "user" u ON u.id = t."userId"
-        WHERE u.email = $1 AND t.kind IN ('EXPENSE','INCOME') AND t."categoryId" IS NULL
-          AND t.status <> 'IGNORED'`,
-      [email()],
-    );
-    const [vencidas] = await executarSqlDoSpec(
-      `SELECT count(*)::int AS n FROM "receivable_payable" r JOIN "user" u ON u.id = r."userId"
-        WHERE u.email = $1 AND r.status = 'OPEN' AND r."dueDate" < CURRENT_DATE`,
-      [email()],
-    );
+    const { pendentes, semCategoria, contasVencidas } = await contarEstadoDoUtilizador(email());
 
     await abrirRota(page, '/revisao');
 
     const casos: readonly [string, number, string][] = [
-      ['/transacoes?status=pending', Number(pendentes?.n ?? 0), 'lançamento'],
-      ['/transacoes?semCategoria=1', Number(semCategoria?.n ?? 0), 'lançamento'],
-      ['/contas-pagar-receber', Number(vencidas?.n ?? 0), 'conta'],
+      ['/transacoes?status=pending', pendentes, 'lançamento'],
+      ['/transacoes?semCategoria=1', semCategoria, 'lançamento'],
+      ['/contas-pagar-receber', contasVencidas, 'conta'],
     ];
 
     for (const [href, count, unidade] of casos) {
@@ -145,17 +119,8 @@ test.describe('Revisão: nome acessível, estado zero e fuso (T63)', () => {
 
   test('o fuso não muda o vencimento: página e Revisão dizem 1 e 1', async ({ browser }) => {
     const hoje = hojeEmLisboa();
-    const [utilizador] = await executarSqlDoSpec('SELECT id FROM "user" WHERE email = $1', [
-      email(),
-    ]);
-    const userId = String(utilizador?.id ?? '');
-
     const contaAPagar = async (descricao: string, cents: number, vencimento: string) => {
-      await executarSqlDoSpec(
-        `INSERT INTO "receivable_payable" (id, "userId", type, description, "amountInCents", "paidAmountInCents", status, "dueDate", "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, 'PAYABLE'::"ReceivablePayableType", $2, $3, 0, 'OPEN'::"ReceivablePayableStatus", $4::date, now(), now())`,
-        [userId, descricao, cents, vencimento],
-      );
+      await criarContaAPagarDoSpec(email(), descricao, 'PAYABLE', cents, vencimento);
     };
 
     await contaAPagar(`${PREFIXO} vence hoje`, 3000, hoje);

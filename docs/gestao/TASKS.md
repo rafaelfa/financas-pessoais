@@ -2411,7 +2411,7 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | **fechada** (não reproduzível em >170 execuções; âmbito mudado para preservar artefactos, provado) |
 | T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | **fechada** (PASS QA; campo a campo com `catch`; chamador cru provado) |
-| T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | aberta (escrita, depois da T66) |
+| T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | **fechada** (PASS QA; SQL livre a 0; órfãos 0 durante a corrida) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3642,3 +3642,21 @@ do que a limpeza · não toques em `apps/` · não commites.
 **O preço da degradação, escrito:** com `catch`, um valor inválido deixa de ser distinguível de um campo ausente. Hoje não custa — `transactionFiltersSchema` só serve `listTransactions`, não há Server Action nem rota a validar com ele — mas no dia em que servir entrada de fora, o `success` não dirá nada sobre os campos.
 
 **Menores:** uma pesquisa com mais de 120 caracteres continua a não filtrar (antes derrubava tudo, agora cai só ela — o mesmo silêncio, mais pequeno); e o `search` é descartado em vez de truncado.
+
+### T67 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| A porta fechada              | `grep executarSqlDoSpec e2e/` → **0** (antes: 8 chamadas na 41, 9 na 42, mais a definição); `withClient` continua **sem export** — não há forma de obter um cliente |
+| Fixtures com forma           | `criarCartaoDoSpec`, `criarFaturaDoSpec`, `criarCompraNaFaturaDoSpec`, `lerFaturasDoCartao`, `moverFechoDaFatura`, `criarLancamentoDoSpec`, `contarEstadoDoUtilizador`, `lerContextoDoUtilizador` — todas recebem **campos**, nenhuma aceita SQL; valores por `$n`, datas por `$n::date` |
+| Órfãos                       | **0 durante a corrida** (polling de 45 s a cada 1,5 s: `prefixo 2` mid-run, `orfaos 0`) e 0 depois — antes eram **2 por corrida**, e o teardown escondia-os |
+| Spec 41                      | cenário intacto: janeiro 31/01→**01/02** 60,00 € e fevereiro 28/02→**01/02** 105,00 € · `--repeat-each=2` → **6 passed (29,0 s)** |
+| Spec 42 (do QA)              | `timezoneId: 'America/Sao_Paulo'` na linha 133 e as mesmas asserções (`página 1 · Revisão 1`)   |
+| Os dois vermelhos            | 41: «Expected "105,00 €" / Received "11-60,00 €…"» · 42: «Expected: 1, Received: 2»            |
+| Suíte / gate                 | **129 passed (7,5 m)** com `--output` próprio · gate 0/0/0/591/0                                |
+
+**O `--repeat-each=2` pagou-se:** o cartão da spec 41 tinha **nome fixo**, por isso a segunda passagem voltava a correr o `beforeAll` com o cartão da anterior e rebentava na chave única (`credit_card_userId_name_key`). Passou a `${PREFIXO} cartão ${Date.now().toString(36)}`. Era a mesma família de defeito que a T65 andou a caçar — dependência do estado deixado atrás — mas num sítio onde nem o `finally` nem a limpeza por prefixo chegavam. **Correção do QA, não do Dev:** o relatório do Dev não a menciona porque não a viu.
+
+**O que ficou de fora, dito e não corrigido:** `definirStatusDoLancamento` (`db.ts:220`, spec 35) continua a actualizar por `id` **sem dono** no `WHERE` — é a única excepção, e está escrita ao lado do comentário que fixa a regra («as outras escritas **desta tarefa**»), com o custo de a fechar (mudar a assinatura e duas chamadas da spec 35). Ganhou `rowCount`, para não falhar em silêncio. O `grep` e o comentário dizem a mesma coisa.
+
+**Sobre as +252 linhas no `db.ts`:** cinco dos sete helpers novos têm um único consumidor, a spec 41. Vivem lá porque a regra é «SQL só no `db.ts`» — o ficheiro crescer é o preço da regra, não o contrário. Ficaram num bloco separado dos genéricos.
