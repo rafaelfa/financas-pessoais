@@ -291,3 +291,16 @@ saída de cada item na própria secção. Seis dos dez itens estavam fechados, d
 (estado do CI e da produção) estavam fechados *e* desatualizados, um continua
 verdadeiro como requisito (`test:e2e` precisa de base real) e um era este documento.
 Quem usar o mapa como verdade mede primeiro; a data e o comando estão lá para isso.
+4. **Dois agentes a correr a suíte ao mesmo tempo estragam a medição um do outro.**
+   Partilham o mesmo `test-results/` e o mesmo utilizador `e2e-*` na base. O sintoma
+   não é «dois testes falham»: é `browserContext.close: ENOENT …/traces` numa corrida
+   e «a fatura não é do cartão» na outra — falhas que parecem defeito de código e são
+   colisão de ambiente. Aconteceu três vezes na vaga 3/4 (uma delas deu uma leitura
+   contra o build errado). Antes de medir: uma corrida de cada vez, ou um `--output`
+   próprio e um prefixo de dados próprio. **Este é o motivo pelo qual o `flake` da
+   T65 nunca teve reprodução** — o ambiente não é observável por omissão.
+5. **Um `trace.zip` não sobrevive sozinho.** `outputDir: test-results` é limpo no
+   arranque seguinte, por isso o traço de uma falha desaparece antes de alguém o ler.
+   É para isso que existe `pnpm test:e2e` (invólucro que copia trace, screenshot e
+   `error-context.md` para `relatorios/.falhas/<data-hora>/` quando a corrida falha) e
+   `pnpm qa:artefactos` (recupera o que ainda esteja no `test-results/`).
