@@ -159,15 +159,27 @@ export const updateTransactionSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
 });
 
+/**
+ * Um filtro inválido cai **só ele**.
+ *
+ * Antes, um valor mau numa chave (`semCategoria: 'true'`, `limit: 'abc'`) fazia o
+ * `safeParse` do objecto inteiro falhar — e quem chamava caía para uma consulta
+ * sem filtros nenhuns, em silêncio: o utilizador perdia todos os filtros por causa
+ * de um. Com o `catch`, o campo inválido vale `undefined` e os válidos seguem.
+ */
+function opcional<T extends z.ZodType>(schema: T) {
+  return schema.optional().catch(undefined);
+}
+
 /** Filtros do extrato. `from` e `to` são inclusivos. */
 export const transactionFiltersSchema = z.object({
-  from: calendarDateSchema.optional(),
-  to: calendarDateSchema.optional(),
-  accountId: entityIdSchema.optional(),
-  categoryId: entityIdSchema.optional(),
-  kind: transactionKindSchema.optional(),
-  status: transactionStatusSchema.optional(),
-  search: z.string().trim().max(120).optional(),
+  from: opcional(calendarDateSchema),
+  to: opcional(calendarDateSchema),
+  accountId: opcional(entityIdSchema),
+  categoryId: opcional(entityIdSchema),
+  kind: opcional(transactionKindSchema),
+  status: opcional(transactionStatusSchema),
+  search: opcional(z.string().trim().max(120)),
   /**
    * «Sem categoria» (T54). O valor é o que a URL leva — `1` — e não um booleano:
    * o filtro viaja no URL para os links de paginação e para o chip, e manter o
@@ -175,7 +187,7 @@ export const transactionFiltersSchema = z.object({
    * descartada em silêncio** (o objecto não é `.strict()`); no dia em que alguém
    * o tornar estrito, todos os filtros do extrato desapareceriam sem um erro.
    */
-  semCategoria: z.literal('1').optional(),
+  semCategoria: opcional(z.literal('1')),
   /*
    * O par do filtro por valor viaja no mesmo objecto que os outros filtros (a
    * página põe-no aqui para os links de paginação o levarem). O schema só aceita
@@ -184,10 +196,12 @@ export const transactionFiltersSchema = z.object({
    * próprios. Sem estas duas linhas, um `?valor=100&valorOp=gt` rebentava um
    * schema estrito e levava consigo todos os filtros do extrato.
    */
-  valor: z.string().optional(),
-  valorOp: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
+  valor: opcional(z.string()),
+  valorOp: opcional(z.string()),
+  // `limit`/`offset` têm valor por omissão: um valor inválido cai no mesmo
+  // número que a ausência, em vez de arrastar a consulta para o default global.
+  limit: z.coerce.number().int().min(1).max(200).catch(50).default(50),
+  offset: z.coerce.number().int().min(0).catch(0).default(0),
 });
 
 /** Criação de uma transferência: as duas pernas nascem juntas. */

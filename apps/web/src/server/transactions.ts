@@ -92,11 +92,10 @@ export async function listTransactions(
   const user = await requireUser();
   const parsed = transactionFiltersSchema.safeParse(filters);
   /*
-   * Se o `parse` falhar, cai-se para uma consulta sem filtros nenhuns — é o
-   * comportamento de hoje e não se muda aqui: o guarda é a normalização da
-   * página, que só põe no objecto valores já saneados. O schema tem de declarar
-   * **todas** as chaves que a página põe (incluindo `valor`/`valorOp`), senão um
-   * schema estrito derrubava o extrato inteiro por causa de uma chave a mais.
+   * O schema **degrada campo a campo** (T66): um valor inválido numa chave cai só
+   * ele, e os válidos seguem. Este `?? { limit, offset }` fica como rede para o
+   * caso em que o que chega não é sequer um objecto — já não é o caminho de um
+   * filtro mal escrito, que antes fazia o utilizador perder todos os filtros.
    */
   const value = parsed.success ? parsed.data : { limit: 50, offset: 0 };
 

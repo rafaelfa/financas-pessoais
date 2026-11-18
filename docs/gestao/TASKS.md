@@ -2410,7 +2410,7 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | **fechada** (não reproduzível em >170 execuções; âmbito mudado para preservar artefactos, provado) |
-| T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | aberta (escrita, depois da T65) |
+| T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | **fechada** (PASS QA; campo a campo com `catch`; chamador cru provado) |
 | T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | aberta (escrita, depois da T66) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
@@ -3622,3 +3622,23 @@ do que a limpeza · não toques em `apps/` · não commites.
 **O buraco que fica aberto, e é o mais importante:** o CI **não corre** `pnpm qa:teste` — `pnpm test` é `turbo run test` e nunca chega à raiz. Hoje, apagar o `130` do `INTERROMPIDO` deixa o CI **inteiro verde**. O teste existe e passa; a proteção ainda não. Fica como **T68 proposta** (duas linhas no `ci.yml`).
 
 **Menores registados:** `scripts/` está fora dos workspaces, por isso `lint` e `typecheck` não veem os três ficheiros (só o Prettier os cobre) · o glob `scripts/*.test.mjs` não apanha um teste futuro fora dessa pasta, em silêncio · um `taskkill /F` ou OOM chegam como `status: 1` e caem em «falhou», copiando um `test-results` a meio · o `process.on('SIGINT', () => {})` tira o Ctrl+C ao invólucro (não ao Playwright); corrigir exige `spawn` assíncrono.
+
+### T66 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| O defeito, na sonda do chamador | `{semCategoria:'true', search:'mercado'}` **antes** → `safeParse false` → `{limit:50, offset:0}` (todos os filtros perdidos) · **depois** → `true` com `{search:'mercado', limit:50, offset:0}` |
+| Com 60 lançamentos, 3 «mercado» | `/transacoes` **60** · `?search=mercado` **3** · `?semCategoria=true&search=mercado` **3** · `?semCategoria=true` **60** (não 50) · `?limit=abc&search=mercado` **3** |
+| Outros campos degradam sozinhos | `{limit:'abc', search:'mercado'}` → `search` preservado · `{kind:'inventado', status:'pending'}` → `status` preservado |
+| Sem regressão                | `?valor=15&valorOp=gt` **3** · `?semCategoria=1` **30 de 60** · objecto completo com `limit:25, offset:50` |
+| Teste                        | **9 passed** no ficheiro do schema · mutação sem o `catch` → `5 failed / 4 passed`               |
+| Limites                      | `999999`, `201`, `-5`, `'abc'` → **50** · `25` → 25 · `offset` `-1` → 0, `7` → 7 (com `catch`, não `undefined`: no Prisma um `limit` indefinido é **sem LIMIT**) |
+| Suíte / gate                 | **591 testes** · suíte **129 passed (7,7 m)** · `format:check` 0 na árvore inteira · lint/typecheck/build 0 |
+
+**Os meus critérios 1–3 eram mais fracos do que a correção.** O Dev avisou, e o QA confirmou: os cinco totais do URL são **iguais antes e depois**, porque desde a T64 a página normaliza e nunca entrega um valor inválido ao schema. Os critérios servem como regressão; o valor real está na sonda do **chamador cru** e na degradação **dos outros campos** — `limit:'abc'` já não derruba o `search`.
+
+**Uma expectativa da T64 mudou, e está presa nos dois sentidos.** O caso «`semCategoria: '0'` é recusado» saiu e entrou «`'0'` cai só ele» (`success: true`, `undefined`), com a razão escrita. O Revisor confirmou que não ficou mais fraco: repor `z.literal('1')` sem `catch` volta a dar `false` e o teste falha; afrouxar para `z.string()` deixa o `'0'` chegar ao `data` e o `toBeUndefined()` falha. O contrato `strict()` com o objecto completo, da T64, continua coberto e verde.
+
+**O preço da degradação, escrito:** com `catch`, um valor inválido deixa de ser distinguível de um campo ausente. Hoje não custa — `transactionFiltersSchema` só serve `listTransactions`, não há Server Action nem rota a validar com ele — mas no dia em que servir entrada de fora, o `success` não dirá nada sobre os campos.
+
+**Menores:** uma pesquisa com mais de 120 caracteres continua a não filtrar (antes derrubava tudo, agora cai só ela — o mesmo silêncio, mais pequeno); e o `search` é descartado em vez de truncado.

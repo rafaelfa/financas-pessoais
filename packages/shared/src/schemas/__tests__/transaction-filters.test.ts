@@ -21,9 +21,23 @@ describe('filtros do extrato — chaves fora do URL', () => {
     expect(parsed.success && parsed.data.semCategoria).toBe('1');
   });
 
-  it('só o valor `1` é aceite — o resto é recusado, não ignorado', () => {
-    expect(transactionFiltersSchema.safeParse({ semCategoria: '0' }).success).toBe(false);
-    expect(transactionFiltersSchema.safeParse({ semCategoria: 'true' }).success).toBe(false);
+  it('só o valor `1` vale como filtro; o resto cai sem rebentar o resto', () => {
+    /*
+     * Muda em relação à T64: antes este teste exigia que `'0'` e `'true'` fossem
+     * **recusados** (o `safeParse` falhava). Com a degradação por campo (T66), o
+     * que acontece é o que se quer de um filtro vindo do URL: o valor inválido é
+     * ignorado — como a normalização da página já fazia — em vez de derrubar tudo.
+     */
+    for (const invalido of ['0', 'true']) {
+      const parsed = transactionFiltersSchema.safeParse({ semCategoria: invalido });
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.success && parsed.data.semCategoria).toBeUndefined();
+    }
+
+    const valido = transactionFiltersSchema.safeParse({ semCategoria: '1' });
+
+    expect(valido.success && valido.data.semCategoria).toBe('1');
   });
 
   it('um clone estrito do schema aceita o objecto **completo** que a página constrói', () => {
@@ -70,5 +84,64 @@ describe('filtros do extrato — chaves fora do URL', () => {
 
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues.map((issue) => issue.code)).toContain('unrecognized_keys');
+  });
+});
+
+describe('um valor inválido cai só ele', () => {
+  /*
+   * O sintoma que isto impede: `?semCategoria=true&search=mercado` devolvia a
+   * lista sem filtro nenhum, porque o `safeParse` do objecto inteiro falhava e
+   * quem chamava caía para `{ limit, offset }`. O campo inválido tem de cair
+   * sozinho e os válidos têm de seguir.
+   */
+
+  it('`semCategoria` inválido não leva o `search` com ele', () => {
+    const parsed = transactionFiltersSchema.safeParse({
+      semCategoria: 'true',
+      search: 'mercado',
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.search).toBe('mercado');
+    expect(parsed.success && parsed.data.semCategoria).toBeUndefined();
+  });
+
+  it('`semCategoria` inválido e sozinho dá o resto por omissão', () => {
+    const parsed = transactionFiltersSchema.safeParse({ semCategoria: 'true' });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.semCategoria).toBeUndefined();
+    expect(parsed.success && parsed.data.limit).toBe(50);
+  });
+
+  it('`limit` inválido não derruba os outros filtros', () => {
+    const parsed = transactionFiltersSchema.safeParse({ limit: 'abc', search: 'mercado' });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.limit).toBe(50);
+    expect(parsed.success && parsed.data.search).toBe('mercado');
+  });
+
+  it('`kind` inválido não leva o `status` com ele', () => {
+    const parsed = transactionFiltersSchema.safeParse({ kind: 'inventado', status: 'pending' });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.kind).toBeUndefined();
+    expect(parsed.success && parsed.data.status).toBe('pending');
+  });
+
+  it('vários inválidos ao mesmo tempo: cai cada um, os válidos ficam', () => {
+    const parsed = transactionFiltersSchema.safeParse({
+      from: '2026-13-45',
+      limit: 'muitos',
+      search: 'mercado',
+      semCategoria: 'sim',
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.from).toBeUndefined();
+    expect(parsed.success && parsed.data.limit).toBe(50);
+    expect(parsed.success && parsed.data.search).toBe('mercado');
+    expect(parsed.success && parsed.data.semCategoria).toBeUndefined();
   });
 });
