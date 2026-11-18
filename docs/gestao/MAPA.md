@@ -297,3 +297,29 @@ a apontar para essa chave. Para empurrar: `git push origin main`.
    `turbo.json`, ou escreve-se a rota que gera as recorrências vencidas.
 5. **O gate tem de correr no Windows** (esta máquina) ou basta o runner de Ubuntu?
    Muda se o `.gitattributes` é obrigatório ou apenas simpático.
+
+## Armadilhas medidas a 2026-11-17 (vaga 2, T52–T59)
+
+Três coisas que custaram uma medição errada e não se vêem no código.
+
+1. **Uma árvore, um build, uma porta.** Dois agentes a correr `next start` na
+   mesma máquina colidem com `EADDRINUSE` e o segundo passa a servir — sem aviso —
+   o `.next` do primeiro. Numa das voltas da T55 leu-se o build errado e o número
+   saiu errado. Toda a medição de browser tem de declarar a **porta** e o
+   **`.next/BUILD_ID`** que está a servir, e fechar a porta antes de servir outra.
+2. **`apps/web/next-env.d.ts` fica modificado depois de cada `next build`**, porque
+   o Next o reescreve com aspas duplas e o repositório o guarda com aspas simples.
+   Está no `.prettierignore`, por isso não parte o gate — mas **reverte-se antes de
+   commitar**, ou o diff leva um ficheiro gerado.
+3. **A dívida de um cartão é a da última fatura da cadeia.** O motor faz
+   `carriedOverInCents = outstandingInCents` (`packages/shared/src/finance/invoice.ts:239`):
+   o que falta pagar de uma fatura entra no total da seguinte, e cada fatura da
+   cadeia continua a mostrar o seu próprio «por pagar». Somar faturas da cadeia
+   conta o mesmo dinheiro duas vezes — foi um DEVE na T55, e a regra certa está em
+   `totalsByCard` (`:269`).
+
+**Nota sobre a lista «Onde dói»:** foi medida a 2026-11-01. Hoje o gate está verde
+(`format:check`, `lint`, `typecheck`, 582 testes, `build`) e as specs e2e vão a 120,
+por isso os pontos 1 e 2 dessa lista — lockfile desactualizado e ficheiros por
+formatar — estão provavelmente fechados. Não os reescrevi sem os remedir; quem os
+usar como verdade, mede-os primeiro.
