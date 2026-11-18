@@ -2409,7 +2409,7 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
-| T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | aberta (handoff) |
+| T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | **fechada** (não reproduzível em >170 execuções; âmbito mudado para preservar artefactos, provado) |
 | T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | aberta (escrita, depois da T65) |
 | T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | aberta (escrita, depois da T66) |
 
@@ -3594,3 +3594,31 @@ dados que o produto nunca produz, e o teste fica verde sobre um estado impossív
 
 **O que NÃO fazer:** não apagues o cenário do empate para poder remover o executor — o cenário vale mais
 do que a limpeza · não toques em `apps/` · não commites.
+
+### T65 — prova de fecho (QA) e mudança de âmbito
+
+**O `flake` não se reproduziu, e isso passou a ser a conclusão.** O Dev tentou **79** execuções da spec (repeat-each 5 nos dois projetos, 15 em `chromium`, suíte inteira) e uma sonda que atrasava os chunks em 2,5 s; o QA tentou a base fria (10 min de ociosidade + suíte inteira) e a CPU saturada. Total **>170 execuções, zero falhas do «apaga o grupo»**. Pelo caminho o Dev **desmentiu a sua própria hipótese** dos chunks (`page.goto` só resolve no `load`), o que vale mais do que trinta verdes.
+
+**A razão de não haver resposta estava no repositório:** o `trace.zip` da falha original da T62 **existiu e foi apagado**, porque `outputDir: test-results` é limpo no arranque seguinte. Sem o ficheiro, o `flake` era um mistério por construção — não por falta de trabalho.
+
+**O que a tarefa passou a entregar:**
+
+| O que                        | Prova                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `pnpm test:e2e`              | invólucro que corre o Playwright, repassa argumentos e herda o `stdio` (129 testes listados com `--list`) |
+| Falha normal                 | copia `trace.zip` + `test-failed-*.png` + `error-context.md` para `relatorios/.falhas/<data>`, **EXIT=1** |
+| `trace.zip` copiado          | **íntegro** — 10 entradas, `test.trace` 7 310 B + attachments                                   |
+| Interrupção                  | `signal`, `3221225786` (Ctrl+C no Windows) e `130` → mensagem, **EXIT=130**, **nada copiado**   |
+| Arranque falhado             | `error` → mensagem e exit 1 (antes saía **0 mudo**)                                            |
+| `pnpm qa:teste`              | **8 pass em ~75 ms**; com o `1` no `INTERROMPIDO` → `pass 6 · fail 2`                          |
+| Guarda do `argv[1]`          | invocado por outro caminho → mensagem e **exit 1**; importado → silêncio                      |
+| Config / higiene             | `retries: 0`, `expect.timeout: 20 000`, `playwright.config.ts` intocado, zero `waitForTimeout`  |
+| Suíte / gate                 | **129 passed (7,4 m)** pelo caminho novo, igual ao direto · gate 0/0/0/586/0                   |
+
+**Uma falha a mais, que não é produto:** na corrida a frio, **4 testes não chegaram a correr** — três a 0 ms, uma a 680 ms — com `worker process exited unexpectedly (3221225794 = 0xC0000142)`, família do `3221226091` da T57. O processo worker morre e leva atrás a fila dele: um sintoma desses pode produzir qualquer falha, incluindo um `expect` de 20 s a esgotar. É ambiente (Windows), não produto — o CI corre em Linux. Fica como **T69 proposta**.
+
+**Declarado e não provado:** um `Ctrl+C` **real** não foi injetado nem pelo Dev nem pelo QA neste ambiente (o `kill -INT` do Git Bash não chega ao filho do invólucro; o `taskkill` mata com outro código). O ramo POSIX (`signal: 'SIGINT'`) está provado pela **tabela de oito casos**, não por uma corrida. O que está medido é o `0xC000013A` do Windows, que é o Ctrl+C desta máquina.
+
+**O buraco que fica aberto, e é o mais importante:** o CI **não corre** `pnpm qa:teste` — `pnpm test` é `turbo run test` e nunca chega à raiz. Hoje, apagar o `130` do `INTERROMPIDO` deixa o CI **inteiro verde**. O teste existe e passa; a proteção ainda não. Fica como **T68 proposta** (duas linhas no `ci.yml`).
+
+**Menores registados:** `scripts/` está fora dos workspaces, por isso `lint` e `typecheck` não veem os três ficheiros (só o Prettier os cobre) · o glob `scripts/*.test.mjs` não apanha um teste futuro fora dessa pasta, em silêncio · um `taskkill /F` ou OOM chegam como `status: 1` e caem em «falhou», copiando um `test-results` a meio · o `process.on('SIGINT', () => {})` tira o Ctrl+C ao invólucro (não ao Playwright); corrigir exige `spawn` assíncrono.
