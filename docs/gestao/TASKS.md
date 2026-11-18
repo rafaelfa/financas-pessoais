@@ -2379,7 +2379,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T52 | **Navegação 15 → 8 destinos** (D7), com os restantes a mudar de porta  | Dev  | **fechada** (PASS QA na 3ª volta; 8 ligações, 15 na paleta, 0 órfãos) |
 | T53 | **Ações em massa no extrato:** selecionar N lançamentos e agir uma vez | Dev  | **fechada** (PASS QA na 3ª volta; suíte 101/101; alvo medido com cliques) |
-| T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | aberta (escrita, depois da T59) |
+| T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | **fechada** (PASS QA na volta 2; mutação vermelha por asserção; suíte 113) |
 | T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | **fechada** (PASS QA; mutação vermelha em 1,5 s; suíte 108) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (escrita, depois da T54) |
@@ -2843,6 +2843,31 @@ a porta é o Painel); não afrouxar a spec da paleta; **não pôr o extrato dent
 página conta e salta, e a correção vive onde já vive; não criar filtros novos para além do
 `semCategoria`; não commitar nem empurrar.
 
+**Correção ao contrato, aceite durante a implementação (17/11):** dois dos quatro filtros escritos
+aqui davam **zero para sempre**, porque a coluna não é a verdade.
+
+1. **Contas vencidas:** `ReceivablePayable.status = OVERDUE` **nunca é gravado** por nada na
+   aplicação — o valor existe no enum, na etiqueta e no schema, e mais nada. A página de contas a
+   pagar/receber marca vencida com `status = 'OPEN' && dueDate < hoje`. O cartão passa a contar
+   **assim**: com a leitura literal, o cartão ficaria a zero enquanto a página mostrava contas
+   vencidas, e o critério 2 («pagar uma conta faz o cartão descer») seria impossível de cumprir.
+2. **Faturas por pagar:** `Invoice.status` é **derivado** (data de fecho + o que já foi pago, pela
+   cadeia de faturas), não lido da coluna. A contagem lê `listInvoices()`, a mesma fonte da página de
+   cartões, e filtra `status === 'closed'`.
+
+A regra que isto fixa, e que vale para o resto da vaga: **a contagem lê a mesma fonte que o ecrã onde
+se corrige** — se o cartão e a página discordarem, um dos dois está a ler uma coluna que já não é a
+verdade.
+
+**Volta 2 (DEVE do Revisor, aceite):** `status === 'closed'` sozinho ainda contava faturas **de total
+0 €**. O `invoiceChain` só dá `paid` quando `totalInCents > 0 && outstandingInCents === 0`
+(`packages/shared/src/finance/invoice.ts:137-142`), por isso uma fatura sem compras cai em `closed` com
+`outstandingInCents: 0`. É alcançável: a fatura nasce por `invoice.upsert` (`invoice-writes.ts:48`) e
+**nunca é apagada** — não existe `invoice.delete` na aplicação. E não sai pelo ecrã, porque
+`/cartoes` desativa «Paga» quando `outstandingInCents === 0` (`invoice-row-actions.tsx:34,51`).
+Correção: `&& invoice.outstandingInCents > 0`. Um cartão nunca chega a zero com dinheiro que já não
+existe.
+
 ## T58 — A árvore de dependências: tirar a CLI do runtime e fechar o zod
 
 **Porque:** a auditoria à árvore **de produção** (`pnpm audit --prod`, 17/11) devolve **34 avisos**,
@@ -3123,3 +3148,23 @@ transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a m
 1. A frase de recusa existe **duas vezes** (diálogo e `transactions-actions.ts:511`); a do servidor tem de ficar como guarda da API, mas as duas cópias divergem à primeira edição de texto.
 2. A nota diz «elimina esta transferência» sem dizer que apagar uma perna apaga **as duas** — o diálogo de apagar já o diz, por isso o utilizador descobre no momento certo.
 3. Para transferências o `accountId`/`setAccountId` continuam a ser inicializados e nunca enviados (estado morto, explicado em comentário).
+
+### T54 — prova de fecho (QA, volta 2)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Quatro contagens             | **2 por confirmar · 3 sem categoria · 2 vencidas · 0 faturas** · topo **7 = soma**              |
+| Presa a zero                 | ao inserir uma conta `OPEN` vencida: cartão **2 → 3** e topo **7 → 8** (a leitura literal `OVERDUE` dava 0) |
+| Descidas                     | confirmar 2→1 · categorizar 3→2 · pagar conta 3→2 · pagar fatura 1→0 — só o cartão certo        |
+| **Fatura de total 0**        | 45,00 € → 1 fatura; apagar a compra → `/cartoes` «Fechada · 0,00 €» com «Paga» e `/revisao` **0** e «Nada por arrumar» |
+| Extrato `?semCategoria=1`    | chip visível · total do extrato **=** cartão · sobrevive a recarregar · limpar devolve a lista  |
+| Navegação                    | paleta **16** com «Revisão» · barra **8** + Definições no rodapé · `/revisao` fora · porta no Painel · spec 33 passa a `toHaveCount(16)`, sem afrouxar |
+| Mutação                      | extrato com `status: 'CONFIRMED'` → «o extrato conta o mesmo que o cartão — Expected 3, Received 2» em **2,2 s**; reposto (`18 0`) |
+| `axe` / layout               | **0** a 1280 e a 360 · `scrollWidth` 1280/360 · alvos ≥44 · `Tab` na ordem visual · nome com o número |
+| Suíte / gate                 | **113 passed (6,5 m)** sem morte de worker · `format`/`lint`/`typecheck` 0 · **582** testes · `build` 0 |
+
+**Facto que se vê na descida e não é defeito:** pagar uma conta a pagar cria o lançamento correspondente **sem categoria**, por isso o cartão «sem categoria» **sobe** (2→3) enquanto o das vencidas desce. É a verdade da base a mexer-se, não um erro de contagem — fica registado para ninguém o «corrigir» depois.
+
+**Duas notas de âmbito:** o Painel **sem dados** não desenha o bloco «Por arrumar» (um utilizador novo só tem a paleta como porta), e é por isso que a spec 33 cria um lançamento antes de procurar órfãos. E o cartão e a página podem discordar num caso legítimo: uma fatura com `outstanding 0` que a página ainda mostre — o cartão diz «0 por pagar», que é a verdade do dinheiro.
+
+**Menores registados, não corrigidos:** `ReviewCard.done` é preenchido em quatro cartões e nunca lido · o nome acessível da ligação lê o número duas vezes («3 3 lançamentos por confirmar») · `isOverdue` da página de contas usa a meia-noite **do browser** e não de Lisboa (em Portugal coincidem; a oeste de UTC pode divergir) · `semCategoria` não está no `transactionFiltersSchema` (não é `.strict()`, por isso passa; se alguém o tornar estrito, o filtro morre em silêncio).
