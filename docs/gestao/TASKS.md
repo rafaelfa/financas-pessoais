@@ -2383,10 +2383,23 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | **fechada** (PASS QA; mutação vermelha em 1,5 s; suíte 108) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | **fechada** (PASS QA na 3ª volta; 2 DEVE apanhados; suíte 120) |
-| T60 | **A contagem «Faturas por pagar» soma a cadeia inteira:** duas faturas do mesmo cartão contam a mesma dívida duas vezes | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
-| T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | aberta (escrita, depois da T60) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
 | T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | **fechada** (PASS QA; avisos 29 → 8; CSS compilado verificado) |
+
+---
+
+# Vaga 3 — "fechar as contas" (sem tabelas, sem migrações)
+
+Objetivo: deixar de ter duas verdades sobre o mesmo dinheiro e um mapa que mente. Nada de produto
+novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
+
+| ID  | Tarefa                                                                 | Dono | Estado                      |
+| --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
+| T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | aberta (handoff) |
+| T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | aberta (escrita, depois da T61) |
+| T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | aberta (escrita, depois da T62) |
+| T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | aberta (escrita, depois da T63) |
+| T60 | **A contagem «Faturas por pagar» soma a cadeia inteira** | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3306,3 +3319,96 @@ refactorizes o resto do calendário nem da Revisão, não commites nem empurres.
 **Nota do QA que fica escrita:** a metade «pagar a fatura de outubro» **não é executável pela interface**. Em `/cartoes?fatura=<id>` a fatura antiga abre o detalhe com o botão **«Fechar»** apenas; só a fatura corrente de cada cartão tem «Pagar fatura». Não é um defeito: a dívida da de outubro já está na de novembro, e é por isso que a contagem não desce ao lidar com ela — a razão é estrutural, não um atalho do teste.
 
 **Fica aberta a divergência de chaves** (T61): a Revisão escolhe a última fatura por `closingDate` e o calendário por `dueDate`. O Revisor mediu o caso em que divergem — cartão com `closingDay 31` e `dueDay 1` dá duas faturas que vencem no mesmo dia e o calendário fica com a de fecho anterior.
+
+## T62 — O `MAPA.md` mente sobre o próprio estado
+
+**Porque:** o `MAPA.md` é o documento que a equipa lê para decidir o que fazer a seguir, e a secção
+«Onde dói» foi medida a **2026-11-01**. Três itens dela já não são verdade, e eu verifiquei-os hoje:
+o lockfile **tem** `react-hook-form` (3 referências), o `format:check` está a **0** na árvore inteira, e
+os dois ecrãs que a lista dizia sem teste (`contas-pagar-receber`, `consolidacao-contas`) têm specs
+(`e2e/45-…`, `e2e/55-…`). O `README.md` e o `docs/plano/ESTADO-E-HANDOFF.md` dizem «árvore verde»
+quando o CI estava vermelho — e agora há itens verdes anunciados como vermelhos. Um mapa que mente é
+pior do que nenhum, porque é em cima dele que se planeia.
+
+**Comportamento esperado**
+
+1. Cada item de «Onde dói» passa a ter: **o comando** que o mede, **a saída** de hoje e **a data**.
+2. O que já não se verifica **sai da lista** — não fica «provavelmente fechado».
+3. O que continua verdadeiro fica, com o número remedido (não herdado de 01/11).
+4. `README.md` e `docs/plano/ESTADO-E-HANDOFF.md`: o estado do gate e do CI escritos como estão
+   **hoje**, com a data, ou removidos se não se poderem verificar daqui.
+
+**Critério de aceitação**
+
+1. Nenhuma afirmação na secção «Onde dói» sem comando e saída colados no relatório.
+2. Os três itens que eu medi hoje (lockfile, formatação, specs dos dois ecrãs) aparecem **corrigidos**
+   ou removidos, com a medição ao lado.
+3. O relatório `relatorios/T62-dev.md` tem uma tabela: item · comando · saída · veredicto
+   (mantém/corrigido/removido).
+4. Zero alterações a código de aplicação. Zero dependências.
+5. Não se inventa: o que não se pode medir daqui (estado do CI no GitHub, produção na Vercel) aparece
+   como **não verificado daqui**, com o que seria preciso para o verificar.
+
+**Ficheiros:** `docs/gestao/MAPA.md` · `README.md` · `docs/plano/ESTADO-E-HANDOFF.md`.
+
+**O que NÃO fazer:** não corras `vercel`, não faças deploy, não mexas em código, não commites.
+
+## T63 — Três menores de acessibilidade e higiene
+
+**Porque:** ficaram escritos nas tarefas fechadas e não justificavam uma volta própria. Agora justificam
+uma tarefa pequena.
+
+1. **O número lido duas vezes** no cartão da Revisão: o nome acessível da ligação diz «3 3 lançamentos
+   por confirmar» porque o `<span>` do número e a frase o repetem (`revisao/page.tsx:128`).
+2. **`ReviewCard.done`** é preenchido em quatro cartões e **nunca lido** (`revisao/page.tsx:27,40,50,60,70`)
+   — são quatro strings e um campo a manter sem efeito.
+3. **O fuso do `isOverdue`** na página de contas a pagar/receber (`receivable-payable-list.tsx:120-126`)
+   usa a meia-noite **do browser**, não de Lisboa: em Portugal coincide, a oeste de UTC uma conta que
+   vence hoje aparece «Vencida» e não é contada pelo cartão da Revisão nem pelo calendário.
+
+**Critério de aceitação**
+
+1. O nome acessível de cada cartão da Revisão diz o número **uma vez** — colar o nome lido do DOM.
+2. `done` deixa de existir ou passa a ser usado; zero campos sem leitor no ficheiro.
+3. O `isOverdue` compara com a **data de Lisboa**, e a página e o cartão da Revisão concordam num
+   cenário de fronteira (uma conta que vence hoje). Cola o teste com o fuso forçado
+   (`TZ=America/Sao_Paulo` ou equivalente) a mostrar que não muda de resposta.
+4. `axe` **0** em `/revisao` e em `/contas-pagar-receber`, a 1280 e a 360.
+5. Gate completo e suíte; zero dependências.
+
+**Ficheiros:** `app/(app)/revisao/page.tsx` · `components/receivable-payable-list.tsx` (e o
+`lib/today.ts` se precisares de um helper, sem o duplicar).
+
+**O que NÃO fazer:** não mudes o comportamento do cartão nem o texto visível; não toques no calendário
+nem na contagem da Revisão; não commites.
+
+## T64 — `semCategoria` fora do schema de filtros
+
+**Porque:** o filtro `semCategoria=1` do extrato vive só no URL e é lido por `server/transactions.ts:102`.
+Não está no `transactionFiltersSchema` (`packages/shared/src/schemas/domain/transactions.ts:163-173`),
+que **não** é `.strict()` — por isso a chave extra é descartada em silêncio hoje. Se alguém tornar o
+schema estrito, o `safeParse` falha, o `value` cai para `{ limit: 50, offset: 0 }` e **todos os filtros
+do extrato desaparecem sem erro**. É uma armadilha armada, não um defeito visível.
+
+**Comportamento esperado**
+
+1. `semCategoria` passa a ser uma chave declarada do schema de filtros (booleano ou o literal `'1'`,
+   coerente com o que `transactions.ts` já lê), com o mesmo comportamento de hoje.
+2. Um teste no `packages/shared` que falha se a chave for removida do schema — e que continua a passar
+   se o schema ficar estrito.
+
+**Critério de aceitação**
+
+1. `transactionFiltersSchema` declara a chave, e `server/transactions.ts` lê-a do valor já parseado em
+   vez de a ir buscar ao URL à mão.
+2. Teste novo: com o schema tornado `.strict()` numa cópia, um filtro com `semCategoria: '1'` continua a
+   fazer `safeParse` com sucesso — colar a saída.
+3. Mais teste: o filtro continua a devolver o mesmo `total` e as mesmas linhas do que hoje (mesmo
+   cenário da T54, cartão e rodapé iguais).
+4. Gate completo e suíte; zero dependências, zero migrações.
+
+**Ficheiros:** `packages/shared/src/schemas/domain/transactions.ts` · `apps/web/src/server/transactions.ts`
+· `apps/web/src/app/(app)/transacoes/page.tsx` (se o parse mudar de sítio).
+
+**O que NÃO fazer:** não mudes o `where` do filtro (o cartão da Revisão lê o mesmo), não acrescentes
+filtros novos, não commites.
