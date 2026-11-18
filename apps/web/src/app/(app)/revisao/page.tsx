@@ -24,7 +24,6 @@ interface ReviewCard {
   readonly description: string;
   /** Frase do estado zero: um `0` sem explicação não diz nada. */
   readonly empty: string;
-  readonly done: string;
   /** O que a contagem mede, em português, para o nome acessível. */
   readonly unit: readonly [singular: string, plural: string];
   readonly icon: typeof Wallet;
@@ -37,7 +36,6 @@ const CARDS: readonly ReviewCard[] = [
     href: '/transacoes?status=pending',
     description: 'Lançamentos que ainda não foram confirmados nem ignorados.',
     empty: 'Nada por confirmar',
-    done: 'Tudo confirmado',
     unit: ['lançamento por confirmar', 'lançamentos por confirmar'],
     icon: HelpCircle,
   },
@@ -47,7 +45,6 @@ const CARDS: readonly ReviewCard[] = [
     href: '/transacoes?semCategoria=1',
     description: 'Gastos e ganhos sem categoria — não entram nos relatórios por categoria.',
     empty: 'Nada sem categoria',
-    done: 'Tudo classificado',
     unit: ['lançamento sem categoria', 'lançamentos sem categoria'],
     icon: Timer,
   },
@@ -57,7 +54,6 @@ const CARDS: readonly ReviewCard[] = [
     href: '/contas-pagar-receber',
     description: 'Contas a pagar ou a receber cujo vencimento já passou.',
     empty: 'Nada vencido',
-    done: 'Nada vencido',
     unit: ['conta vencida', 'contas vencidas'],
     icon: Wallet,
   },
@@ -67,7 +63,6 @@ const CARDS: readonly ReviewCard[] = [
     href: '/cartoes',
     description: 'Faturas de cartão já fechadas com valor por liquidar.',
     empty: 'Nenhuma fatura por pagar',
-    done: 'Nenhuma fatura por pagar',
     unit: ['fatura por pagar', 'faturas por pagar'],
     icon: CreditCard,
   },
@@ -125,7 +120,15 @@ export default async function ReviewPage() {
 
                       <div className="flex items-baseline gap-2">
                         {count > 0 ? (
-                          <span className="text-3xl font-semibold tabular-nums">{count}</span>
+                          /*
+                           * `aria-hidden`: o número já está na frase ao lado
+                           * («3 lançamentos por confirmar»). Sem isto o nome
+                           * acessível da ligação lia-o duas vezes — «3 3 lançamentos
+                           * por confirmar» — e o texto visível não muda.
+                           */
+                          <span aria-hidden className="text-3xl font-semibold tabular-nums">
+                            {count}
+                          </span>
                         ) : (
                           <CheckCircle2 className="size-6 text-success" aria-hidden />
                         )}
@@ -135,6 +138,14 @@ export default async function ReviewPage() {
                             count > 0 ? 'text-foreground' : 'text-muted-foreground',
                           )}
                         >
+                          {/*
+                            Com **um** item o `countLabel` devolve «lançamento por
+                            confirmar», sem numeral (o número grande ao lado é
+                            `aria-hidden` para não dizer «3 3 lançamentos»). Só
+                            nesse caso o numeral entra pelo `sr-only`: quem ouve
+                            tem de saber se é 1 ou 10, e o que se vê não muda.
+                          */}
+                          {count === 1 ? <span className="sr-only">{count} </span> : null}
                           {count > 0 ? countLabel(card, count) : card.empty}
                         </p>
                       </div>

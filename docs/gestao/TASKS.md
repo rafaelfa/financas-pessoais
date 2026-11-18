@@ -2397,7 +2397,7 @@ novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | **fechada** (PASS QA; 1 definição e 2 importadores; empate por fixture SQL) |
 | T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | **fechada** (PASS QA; 10 de 10 afirmações conferem; produção serve o HEAD) |
-| T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | aberta (escrita, depois da T62) |
+| T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | **fechada** (PASS QA; 1 DEVE apanhado; spec do fuso com `America/Sao_Paulo`) |
 | T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | aberta (escrita, depois da T63) |
 | T60 | **A contagem «Faturas por pagar» soma a cadeia inteira** | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
 
@@ -3452,3 +3452,22 @@ filtros novos, não commites.
 **O que se perdeu e voltou:** a primeira versão da correção apagou a secção «Mapa de ficheiros» inteira (~20 linhas de estrutura: os ecrãs, os módulos finos, o motor puro, o OFX/CSV). O que era falso eram as contagens e os números de linha; a estrutura era contexto que ninguém reescreve. Voltou sem números e datada.
 
 **`flake` encontrado pelo QA, registado e não corrigido:** na corrida conjunta das specs, «apaga o grupo» (`55-consolidacao-contas`) falhou uma vez e passou isolada em 2/2. É instabilidade de teste, não defeito de produto — mas é o tipo de vermelho que ensina a equipa a repetir até passar, e isso estraga o valor da suíte. Candidato a tarefa.
+
+### T63 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Nomes acessíveis (0, 1, 3)   | «Por confirmar **3 lançamentos** por confirmar…» · «Sem categoria **1 lançamento** sem categoria…» · «Contas vencidas **Nada vencido**…» — o número aparece **uma** vez |
+| Texto visível                | inalterado nos três casos                                                                     |
+| `done`                       | `grep -n done revisao/page.tsx` → **0**; o estado zero continua a sair de `empty`             |
+| **Fuso**                     | spec `42-revisao-menores.spec.ts` com `timezoneId: 'America/Sao_Paulo'`: conta que vence **hoje em Lisboa** → página **1** «Vencida» e cartão da Revisão **1** |
+| Mutação do fuso              | comparação com a meia-noite local → «só a de ontem está vencida — Expected: 1, Received: 2» em **3,0 s** (asserção) |
+| `axe` / layout               | **0** em `/revisao` e `/contas-pagar-receber`, 1280 e 360 · `scrollWidth` 1280/360            |
+| Suíte / gate                 | **129 passed (8,1 m)** sem morte de worker · `format:check` 0 na árvore inteira · 582 testes · lint/typecheck/build 0 |
+| Diff                         | dois ficheiros (21+/11− na volta 1, 12+/5− no `isOverdue`)                                    |
+
+**DEVE da volta 2, e o defeito era meu:** ao esconder o número grande (`aria-hidden`) para matar o «3 3 lançamentos», passei a esconder a informação no único caso em que a frase não a repetia. `countLabel` devolve `unit[0]` — «lançamento por confirmar» — quando `count === 1`, **sem numeral**: um cartão com exatamente um item lia-se «Por confirmar lançamento por confirmar». Com 0 havia o `empty`; com 3 a frase já trazia o número. Só o 1 ficava sem nada. Correção: o numeral entra **só em `sr-only`** nesse ramo, e o texto visível não muda.
+
+**O que isto ensina, e fica escrito:** nenhum teste anterior o apanhava — `axe` a 0, texto visível certo, página a funcionar. Só se vê lendo o **nome acessível produzido**. É por isso que a prova desta tarefa é o nome do DOM nos três casos, e não uma captura.
+
+**O fuso, agora com trava:** a divergência só existe a oeste de UTC, e por isso a spec força `America/Sao_Paulo` em vez de confiar no ambiente. Sem forçar o fuso, o teste passaria sempre e não provaria nada — que é a razão pela qual o defeito esteve escrito durante três tarefas sem ser corrigido.

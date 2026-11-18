@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { ReceivablePayableDialog } from '@/components/receivable-payable-dialog';
 import { ReceivablePayablePayDialog } from '@/components/receivable-payable-pay-dialog';
 import { Amount } from '@/components/amount';
+import { todayInLisbon } from '@/lib/today';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,12 +118,18 @@ export function ReceivablePayableList({
 
   const getStatusColor = (status: Status) => STATUS_COLORS[status];
 
+  /*
+   * Vencida é uma data de calendário comparada com o **hoje de Lisboa**, não com a
+   * meia-noite do browser: a oeste de UTC as duas não coincidem, e uma conta que
+   * vence hoje aparecia aqui como vencida enquanto o cartão da Revisão (que usa
+   * Lisboa) a não contava. As colunas são `@db.Date`, por isso compara-se
+   * `YYYY-MM-DD` com `YYYY-MM-DD`.
+   */
   const isOverdue = (dueDate: Date | string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0);
-    return due < today;
+    const due =
+      typeof dueDate === 'string' ? dueDate.slice(0, 10) : dueDate.toISOString().slice(0, 10);
+
+    return due < todayInLisbon();
   };
 
   return (
