@@ -5,6 +5,7 @@ import {
   FileUp,
   Landmark,
   Layers,
+  ListChecks,
   LayoutDashboard,
   ListFilter,
   PiggyBank,
@@ -121,6 +122,12 @@ const IMPORTAR: NavItem = {
   description: 'Extratos OFX e CSV, exportações e cópias',
   icon: FileUp,
 };
+const REVISAO: NavItem = {
+  href: '/revisao',
+  label: 'Revisão',
+  description: 'O que está por arrumar: por confirmar, sem categoria, vencido e por pagar',
+  icon: ListChecks,
+};
 const DEFINICOES: NavItem = {
   href: '/definicoes',
   label: 'Definições',
@@ -154,6 +161,7 @@ const NAV = {
   regras: REGRAS,
   categorias: CATEGORIAS,
   relatorios: RELATORIOS,
+  revisao: REVISAO,
   importar: IMPORTAR,
   definicoes: DEFINICOES,
 } as const;

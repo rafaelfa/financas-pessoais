@@ -132,6 +132,9 @@ export default async function TransacoesPage({
     kind: readOption(params, 'kind', TRANSACTION_KIND_LABELS),
     status: readOption(params, 'status', TRANSACTION_STATUS_LABELS),
     search: readText(params, 'search'),
+    // Só o valor do contrato (`1`): qualquer outra coisa é ignorada, como os
+    // restantes filtros inválidos.
+    semCategoria: readText(params, 'semCategoria') === '1' ? '1' : undefined,
     ...(amountFilter === null ? {} : { valor, valorOp }),
   };
 

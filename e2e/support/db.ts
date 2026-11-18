@@ -308,7 +308,13 @@ export async function criarLancamentosDoSpec(
   email: string,
   prefixo: string,
   quantidade: number,
-  opcoes: { readonly settled?: boolean; readonly valorEmCentimos?: number } = {},
+  opcoes: {
+    readonly settled?: boolean;
+    readonly valorEmCentimos?: number;
+    readonly status?: 'PENDING' | 'CONFIRMED' | 'IGNORED';
+    /** Põe a primeira categoria de gasto do utilizador (para o lançamento não ser «sem categoria»). */
+    readonly comCategoria?: boolean;
+  } = {},
 ): Promise<string[]> {
   const { randomUUID } = await import('node:crypto');
 
@@ -333,6 +339,21 @@ export async function criarLancamentosDoSpec(
     const ids: string[] = [];
     const valor = opcoes.valorEmCentimos ?? -1234;
 
+    let categoriaId: string | null = null;
+
+    if (opcoes.comCategoria === true) {
+      const categoria = await client.query(
+        `SELECT id FROM category WHERE "userId" = $1 AND kind = 'EXPENSE'::"CategoryKind"
+          ORDER BY "sortOrder", name LIMIT 1`,
+        [userId],
+      );
+      categoriaId = typeof categoria.rows[0]?.id === 'string' ? categoria.rows[0].id : null;
+
+      if (categoriaId === null) {
+        throw new Error(`O utilizador ${email} não tem categoria de gasto.`);
+      }
+    }
+
     for (let i = 0; i < quantidade; i += 1) {
       const id = randomUUID();
       const descricao = `${prefixo} ${String(i + 1).padStart(2, '0')}`;
@@ -340,10 +361,21 @@ export async function criarLancamentosDoSpec(
       await client.query(
         `INSERT INTO "transaction"
            (id, "userId", kind, "amountInCents", date, description,
-            "financialAccountId", settled, "settledOn", "updatedAt")
+            "financialAccountId", settled, "settledOn", status, "categoryId", "updatedAt")
          VALUES ($1, $2, 'EXPENSE'::"TransactionKind", $3, CURRENT_DATE - $4::int,
-                 $5, $6, $7, CASE WHEN $7 THEN CURRENT_DATE - $4::int END, now())`,
-        [id, userId, valor, i, descricao, contaId, opcoes.settled ?? false],
+                 $5, $6, $7, CASE WHEN $7 THEN CURRENT_DATE - $4::int END,
+                 $8::"TransactionStatus", $9, now())`,
+        [
+          id,
+          userId,
+          valor,
+          i,
+          descricao,
+          contaId,
+          opcoes.settled ?? false,
+          opcoes.status ?? 'CONFIRMED',
+          categoriaId,
+        ],
       );
 
       ids.push(id);

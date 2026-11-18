@@ -51,6 +51,12 @@ export interface TransactionFilters {
   readonly kind?: string;
   readonly status?: string;
   readonly search?: string;
+  /**
+   * `'1'` quando o extrato foi aberto a partir do cartão «Sem categoria» da
+   * Revisão (T54). Vive na URL como os outros filtros; o esquema Zod partilhado
+   * não o valida, por isso é lido antes do `parse`.
+   */
+  readonly semCategoria?: string;
   readonly limit?: number;
   readonly offset?: number;
 }
@@ -87,8 +93,20 @@ export async function listTransactions(
   const parsed = transactionFiltersSchema.safeParse(filters);
   const value = parsed.success ? parsed.data : { limit: 50, offset: 0 };
 
+  /*
+   * `semCategoria=1`: gastos e ganhos por classificar, fora os ignorados. Entra
+   * como condição **em AND** com os filtros escolhidos, para que juntar
+   * `status=ignored` a este filtro dê zero (é contraditório) em vez de um
+   * resultado que contradiz o cartão da Revisão.
+   */
+  const semCategoria = filters.semCategoria === '1';
+  const extra: Prisma.TransactionWhereInput[] = semCategoria
+    ? [{ kind: { in: ['EXPENSE', 'INCOME'] }, categoryId: null, status: { not: 'IGNORED' } }]
+    : [];
+
   const where: Prisma.TransactionWhereInput = {
     userId: user.id,
+    ...(extra.length === 0 ? {} : { AND: extra }),
     ...(value.from !== undefined || value.to !== undefined
       ? {
           date: {

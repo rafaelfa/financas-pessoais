@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDashboard, type DashboardData } from '@/server/dashboard';
 import { getMonthClose } from '@/server/month-close';
+import { getReviewCounts } from '@/server/review';
 
 export const metadata: Metadata = { title: 'Painel' };
 
@@ -90,9 +91,11 @@ export default async function PainelPage({
     id: stringParam(params.id),
   });
   const monthClosePromise = getMonthClose();
+  const reviewPromise = getReviewCounts();
 
   const data = await dashboardPromise;
   const monthClose = await monthClosePromise;
+  const review = await reviewPromise;
   const { scope } = data;
 
   /*
@@ -395,6 +398,38 @@ export default async function PainelPage({
           <CategoryDonut data={donut} />
         </ChartCard>
       </section>
+
+      {/*
+        Porta da Revisão (T54): o total do que está por arrumar em quatro
+        contagens. Só no âmbito «tudo» — com uma conta ou um cartão escolhido, a
+        lista é de outra coisa e misturar as duas ideias confunde.
+      */}
+      {hasScope ? null : (
+        <section className="mt-6" aria-labelledby="painel-por-arrumar">
+          <Card>
+            <CardHeader>
+              <CardTitle id="painel-por-arrumar" className="text-base">
+                Por arrumar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm">
+                <span className="text-2xl font-semibold tabular-nums">{review.total}</span>{' '}
+                <span className="text-muted-foreground">
+                  {review.total === 1 ? 'coisa por arrumar' : 'coisas por arrumar'}
+                </span>{' '}
+                <span className="text-muted-foreground">
+                  · {review.pending} por confirmar · {review.uncategorized} sem categoria ·{' '}
+                  {review.overdue} vencidas · {review.unpaidInvoices} faturas por pagar
+                </span>
+              </p>
+              <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-0">
+                <Link href="/revisao">Ver a revisão</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="mt-6">
         <Card>

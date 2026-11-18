@@ -59,6 +59,8 @@ export interface TransactionFilterValues {
   readonly kind?: string;
   readonly status?: string;
   readonly search?: string;
+  /** `'1'` = só gastos e ganhos sem categoria (cartão «Sem categoria» da Revisão). */
+  readonly semCategoria?: string;
   readonly valor?: string;
   readonly valorOp?: string;
   readonly limit: number;
@@ -112,6 +114,7 @@ export function TransactionFilters({
       kind: values.kind,
       status: values.status,
       search: values.search,
+      semCategoria: values.semCategoria,
       valor: values.valor,
       valorOp: values.valorOp,
       limit: values.limit === DEFAULT_PAGE_SIZE ? undefined : String(values.limit),
@@ -197,6 +200,15 @@ export function TransactionFilters({
             onRemove: () => push({ status: undefined }),
           },
         ]),
+    ...(values.semCategoria === '1'
+      ? [
+          {
+            key: 'semCategoria',
+            label: 'Sem categoria',
+            onRemove: () => push({ semCategoria: undefined }),
+          },
+        ]
+      : []),
     ...(values.search === undefined
       ? []
       : [
