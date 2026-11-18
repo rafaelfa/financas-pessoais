@@ -1,7 +1,7 @@
 import { prisma } from '@repo/db/client';
 
 import { todayInLisbon } from '@/lib/today';
-import { listInvoices } from '@/server/invoices';
+import { lastInvoiceByCard, listInvoices } from '@/server/invoices';
 import { requireUser } from '@/server/session';
 
 /**
@@ -169,27 +169,16 @@ export async function getMonthCalendar(mes?: string): Promise<CalendarMonth> {
 
   /*
    * Só a **última fatura da cadeia de cada cartão** conta dinheiro, nos dias e na
-   * faixa. O que ficou por pagar de uma fatura transita para a seguinte
-   * (`invoiceChain`, `carriedOverInCents = outstanding`), por isso a dívida de
-   * um cartão está sempre na última: somar o `outstanding` de duas faturas do
-   * mesmo cartão conta o mesmo dinheiro duas vezes — foi o que se mediu (60 € na
-   * faixa e os mesmos 60 € dentro dos 105 € da fatura seguinte).
+   * faixa — a regra vive em `lastInvoiceByCard` (`server/invoices.ts`), partilhada
+   * com a Revisão (T61). O que ficou por pagar de uma fatura transita para a
+   * seguinte, por isso somar duas faturas do mesmo cartão conta o mesmo dinheiro
+   * duas vezes.
    *
    * Consequência assumida: se a última fatura de um cartão estiver `open`, o que
    * veio transitado não aparece no calendário até essa fatura fechar — a data de
    * pagamento moveu-se para a frente, e é isso que o trânsito significa.
    */
-  const lastInvoiceByCard = new Map<string, (typeof invoices)[number]>();
-
-  for (const invoice of invoices) {
-    const current = lastInvoiceByCard.get(invoice.cardId);
-
-    if (current === undefined || invoice.dueDate > current.dueDate) {
-      lastInvoiceByCard.set(invoice.cardId, invoice);
-    }
-  }
-
-  const billableInvoices = [...lastInvoiceByCard.values()];
+  const billableInvoices = lastInvoiceByCard(invoices);
 
   const items: CalendarItem[] = [
     ...payables.map((payable): CalendarItem => {

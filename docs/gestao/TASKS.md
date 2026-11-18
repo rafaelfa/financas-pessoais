@@ -2395,7 +2395,7 @@ novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
-| T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | aberta (handoff) |
+| T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | **fechada** (PASS QA; 1 definição e 2 importadores; empate por fixture SQL) |
 | T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | aberta (escrita, depois da T61) |
 | T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | aberta (escrita, depois da T62) |
 | T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | aberta (escrita, depois da T63) |
@@ -3316,6 +3316,8 @@ refactorizes o resto do calendário nem da Revisão, não commites nem empurres.
 | Suíte / gate                 | **123 passed (6,9 m)** sem morte de worker · gate 0/0/582/0 · `format:check` **0** na árvore inteira |
 | Diff                         | `server/review.ts` 18+/1− — um ficheiro                                                    |
 
+**Consequência da mesma regra, escrita para não ser redescoberta como defeito:** se a **última** fatura de um cartão estiver `open` (ciclo a decorrer), a contagem não inclui esse cartão — a dívida transitada das anteriores está dentro dela e aparece quando ela fechar. Não é dinheiro perdido nem dívida esquecida: é a mesma quantia com a data de pagamento movida para a frente, e o cartão de `/cartoes` mostra-a sempre. Contar a última `closed` em vez da última da cadeia punha o mesmo dinheiro a contar duas vezes, que é o defeito que esta tarefa fechou.
+
 **Nota do QA que fica escrita:** a metade «pagar a fatura de outubro» **não é executável pela interface**. Em `/cartoes?fatura=<id>` a fatura antiga abre o detalhe com o botão **«Fechar»** apenas; só a fatura corrente de cada cartão tem «Pagar fatura». Não é um defeito: a dívida da de outubro já está na de novembro, e é por isso que a contagem não desce ao lidar com ela — a razão é estrutural, não um atalho do teste.
 
 **Fica aberta a divergência de chaves** (T61): a Revisão escolhe a última fatura por `closingDate` e o calendário por `dueDate`. O Revisor mediu o caso em que divergem — cartão com `closingDay 31` e `dueDay 1` dá duas faturas que vencem no mesmo dia e o calendário fica com a de fecho anterior.
@@ -3412,3 +3414,19 @@ do extrato desaparecem sem erro**. É uma armadilha armada, não um defeito vis�
 
 **O que NÃO fazer:** não mudes o `where` do filtro (o cartão da Revisão lê o mesmo), não acrescentes
 filtros novos, não commites.
+
+### T61 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Uma implementação            | `grep lastInvoiceByCard` → **1 definição** (`invoices.ts:74`, por `closingDate`) + **2 importadores**; nenhum mapa local sobra |
+| O empate, por fixture SQL    | cartão fecho 31/venc 1: janeiro (60,00 €) e fevereiro (105,00 €) vencem **ambos a 01/02**; `/revisao` **1** fatura, calendário **1 item −105,00 €** — a de fevereiro (`8a5f8458…`), não a de janeiro (`a6a2707c…`) |
+| A outra metade               | com fevereiro por fechar: **0** nos dois ecrãs, sem valor a mais                              |
+| Regressão                    | specs 38/39/40 verdes na mesma árvore; `axe` **0** em `/revisao` e no calendário, 1280 e 360  |
+| Mutação                      | calendário a escolher por `dueDate` → «Expected "105,00 €", Received "…−60,00 €"» — asserção   |
+| Suíte / gate                 | **126 passed (7,3 m)** sem morte de worker · `format:check` 0 na árvore inteira · lint/typecheck/build 0 · **582** testes |
+| Diff                         | `invoices.ts` +30 · `calendar.ts` −23 · `review.ts` −32 — motor intocado                     |
+
+**Nota de método, escrita para não enganar quem vier depois:** o cenário do empate **não se constrói pelo ecrã** (exige um ciclo a fechar a 31 num mês de 31 dias e o vencimento no mesmo dia da fatura seguinte). A fixture é **SQL**, com um `executarSqlDoSpec` novo em `e2e/support/db.ts`, e está documentada no relatório e na spec. É o único caso desta vaga provado fora do caminho do utilizador — e é o que dá sentido à regra.
+
+**Facto a vigiar, não achado:** o `e2e/support/db.ts` passou a ter um executor de SQL genérico. É útil e é o que torna o empate possível, mas num sítio onde qualquer spec o pode chamar. Se um dia se quiser apertar, é uma tarefa de testes, não de produto.

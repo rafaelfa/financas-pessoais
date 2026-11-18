@@ -262,6 +262,25 @@ export async function lerPorDescricao(
   });
 }
 
+/**
+ * SQL directo para **fixtures** que a interface não consegue produzir.
+ *
+ * Existe para o empate de vencimentos da T61: um cartão com `closingDay 31` e
+ * `dueDay 1` tem duas faturas a vencer no mesmo dia, e o formulário não cria
+ * faturas — só o motor, a partir de compras. Só se usa para **montar cenário**;
+ * as asserções continuam a ler o ecrã.
+ */
+export async function executarSqlDoSpec(
+  sql: string,
+  parametros: readonly unknown[] = [],
+): Promise<Record<string, unknown>[]> {
+  return withClient(async (client) => {
+    const result = await client.query(sql, [...parametros]);
+
+    return result.rows;
+  });
+}
+
 /** Faturas `CLOSED` com valor por pagar — a contagem "crua" da base (T60). */
 export async function contarFaturasFechadasComValor(email: string): Promise<number> {
   return withClient(async (client) => {

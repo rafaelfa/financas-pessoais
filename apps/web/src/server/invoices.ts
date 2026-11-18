@@ -55,6 +55,36 @@ export async function listInvoices(cardId?: string): Promise<InvoiceSummary[]> {
   return filtered.sort((a, b) => (a.dueDate < b.dueDate ? 1 : a.dueDate > b.dueDate ? -1 : 0));
 }
 
+/**
+ * A **última fatura da cadeia de cada cartão** — a única que conta dinheiro.
+ *
+ * O motor transita o que falta pagar para a fatura seguinte
+ * (`carriedOverInCents = outstanding`), por isso a dívida de um cartão está
+ * sempre na última das suas faturas: somar o `outstanding` de duas faturas do
+ * mesmo cartão conta o mesmo dinheiro duas vezes. É a mesma regra que o motor
+ * usa em `totalsByCard` (`packages/shared/src/finance/invoice.ts`).
+ *
+ * A escolha é pela **`closingDate`**, que é a chave da cadeia (`invoiceChain`).
+ * Pela `dueDate` havia um empate real: um cartão com fecho ao dia 31 e
+ * vencimento ao dia 1 tem o fecho de 31/01 e o de 28/02 a vencer no mesmo dia, e
+ * quem comparasse por vencimento podia ficar com a fatura errada.
+ *
+ * Uma por cartão, na ordem em que `listInvoices` as devolve.
+ */
+export function lastInvoiceByCard(invoices: readonly InvoiceSummary[]): readonly InvoiceSummary[] {
+  const byCard = new Map<string, InvoiceSummary>();
+
+  for (const invoice of invoices) {
+    const current = byCard.get(invoice.cardId);
+
+    if (current === undefined || invoice.closingDate > current.closingDate) {
+      byCard.set(invoice.cardId, invoice);
+    }
+  }
+
+  return [...byCard.values()];
+}
+
 /** Detalhe de uma fatura: compras, pagamentos e para onde transita o que resta. */
 export async function getInvoiceDetail(invoiceId: string): Promise<InvoiceDetail | null> {
   const user = await requireUser();

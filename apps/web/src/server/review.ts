@@ -1,7 +1,7 @@
 import { prisma } from '@repo/db/client';
 
 import { todayInLisbon } from '@/lib/today';
-import { listInvoices } from '@/server/invoices';
+import { lastInvoiceByCard, listInvoices } from '@/server/invoices';
 import { requireUser } from '@/server/session';
 
 /**
@@ -65,30 +65,16 @@ export async function getReviewCounts(): Promise<ReviewCounts> {
   ]);
 
   /*
-   * `closed` **e** com valor por pagar. Uma fatura cujo ciclo ficou sem compras
-   * também sai `closed` (o `invoiceChain` só a marca `paid` quando há total e
-   * está tudo pago), mas tem `outstandingInCents: 0` — e em `/cartoes` essa linha
-   * tem o botão «Paga» desativado, ou seja, não há ação que a tire daqui. Sem a
-   * segunda condição o cartão dizia «1 fatura por pagar» para 0,00 €.
+   * `closed` **e** com valor por pagar, e só a **última fatura da cadeia de cada
+   * cartão** — a regra vive em `lastInvoiceByCard` (`server/invoices.ts`), para a
+   * Revisão e o calendário não a escolherem cada uma à sua maneira.
    *
-   * E, por cartão, **só a última fatura da cadeia conta**: o motor transita o que
-   * falta pagar para a fatura seguinte (`carriedOverInCents = outstanding`), por
-   * isso duas faturas do mesmo cartão com valor por pagar são **uma** dívida — a
-   * de outubro de 60,00 € está dentro dos 105,00 € de novembro. É a regra que o
-   * motor usa em `totalsByCard`. A «última» escolhe-se pela `closingDate`, que é
-   * a chave da cadeia (`invoiceChain`) e não a data de vencimento.
+   * Uma fatura cujo ciclo ficou sem compras também sai `closed` (o `invoiceChain`
+   * só a marca `paid` quando há total e está tudo pago), mas tem
+   * `outstandingInCents: 0` — e em `/cartoes` essa linha tem o botão «Paga»
+   * desativado, ou seja, não há ação que a tire daqui.
    */
-  const lastInvoiceByCard = new Map<string, (typeof invoices)[number]>();
-
-  for (const invoice of invoices) {
-    const current = lastInvoiceByCard.get(invoice.cardId);
-
-    if (current === undefined || invoice.closingDate > current.closingDate) {
-      lastInvoiceByCard.set(invoice.cardId, invoice);
-    }
-  }
-
-  const unpaidInvoices = [...lastInvoiceByCard.values()].filter(
+  const unpaidInvoices = lastInvoiceByCard(invoices).filter(
     (invoice) => invoice.status === 'closed' && invoice.outstandingInCents > 0,
   ).length;
 
