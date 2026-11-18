@@ -2383,6 +2383,8 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | **fechada** (PASS QA; mutação vermelha em 1,5 s; suíte 108) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
 | T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | **fechada** (PASS QA na 3ª volta; 2 DEVE apanhados; suíte 120) |
+| T60 | **A contagem «Faturas por pagar» soma a cadeia inteira:** duas faturas do mesmo cartão contam a mesma dívida duas vezes | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
+| T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | aberta (escrita, depois da T60) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
 | T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | **fechada** (PASS QA; avisos 29 → 8; CSS compilado verificado) |
 
@@ -3201,3 +3203,106 @@ transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a m
 **Ligação com a T54 — fica por corrigir e precisa de autorização:** a contagem «Faturas por pagar» (`server/review.ts`) continua a somar todas as `closed` com valor por pagar, por isso no cenário acima diria «2 faturas» para a mesma dívida de 105,00 €. É o mesmo filtro de uma linha, em ficheiro de outra tarefa.
 
 **Facto de ambiente que custou uma medição:** a `next start` falhou com `EADDRINUSE` e o Dev leu, sem dar por isso, o build de outro agente em `:3000`. Tudo o que se mede neste projeto tem de vir com a porta e o `.next/BUILD_ID` declarados — um PASS contra o build errado é verde e falso.
+
+## T60 — A contagem «Faturas por pagar» soma a cadeia inteira
+
+**Aberto a pedido do utilizador (17/11), depois da T55.** Achado do Dev ao fechar a volta 3 da T55,
+medido pelo QA no mesmo cenário.
+
+**O defeito:** `server/review.ts` conta as faturas com `status === 'closed' && outstandingInCents > 0`.
+Como o motor faz `carriedOverInCents = outstandingInCents` (`packages/shared/src/finance/invoice.ts:239`),
+o que falta pagar de uma fatura entra no total da seguinte, e **cada fatura da cadeia continua a
+mostrar o seu próprio «por pagar»**. Resultado: um cartão com a fatura de outubro de 60,00 € em aberto
+e a de novembro de 105,00 € (45 + 60 transitados) conta **duas** faturas para **uma** dívida de
+105,00 €. Com dois cartões nessa situação, a Revisão diz «3 faturas por pagar» onde há 2 dívidas.
+
+**Regra, a mesma que a T55 fixou e que o motor já usa em `totalsByCard` (`:269`):** a dívida de um
+cartão é a da **última fatura da cadeia**. Por isso, por cartão, só a última conta.
+
+**Comportamento esperado**
+
+1. A contagem é o número de **cartões** com a última fatura `closed` e com valor por pagar — não o
+   número de faturas da base.
+2. O cenário da T55 passa a dar **2** (cartão A com a última fatura de 105,00 €, cartão B com 70,00 €),
+   e não 3.
+3. A contagem continua a bater com o que `/cartoes` apresenta como dívida: a mesma dívida, o mesmo
+   número de cartões devedores.
+4. Resolver continua a funcionar: pagar a fatura de um cartão faz a contagem descer **1**, e pagar a
+   última fatura de um cartão com dívida transitada faz descer **1** (não 2).
+
+**Critério de aceitação**
+
+1. Com o cenário de duas faturas no mesmo cartão, a contagem no ecrã e na base é **2**, com o número
+   de faturas `closed` com valor por pagar lido da base a ser **3** — os dois números colados.
+2. Pagar a última fatura de um dos cartões faz a contagem descer para **1**; pagar a de outubro de um
+   cartão cuja última é novembro **não** a faz descer (a dívida continua na de novembro).
+3. `axe` **0** em `/revisao` a 1280 e a 360; nada muda no layout.
+4. Gate completo e suíte; a spec nova **falha quando deve**: repor a contagem a todas as faturas da
+   cadeia tem de a deixar vermelha por asserção.
+5. Zero dependências novas, zero migrações.
+
+**Ficheiros:** `apps/web/src/server/review.ts` · `e2e/` (é do QA).
+
+**O que NÃO fazer:** não mexas no calendário (`server/calendar.ts` já segue a regra certa), não
+alteres o motor de faturas, não afrouxes a spec da paleta, não commites nem empurres.
+
+## T61 — A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes
+
+**Aberto a pedido do utilizador (17/11), depois da T60.** Achado do Dev ao fechar a T60 e do Revisor,
+que encontrou o gatilho.
+
+**O defeito:** a mesma regra existe em dois ficheiros e escolhe por chaves diferentes.
+`server/review.ts` (T60) escolhe a última fatura de cada cartão por **`closingDate`**; o calendário
+(`server/calendar.ts:187`, T55) escolhe por **`dueDate`**. Hoje dão a mesma fatura, porque o
+`dueDate` nasce de `closingDate + dueDay` e nada o edita. **Mas há um caso em que divergem, e foi
+medido:** um cartão com `closingDay = 31` e `dueDay = 1` tem duas faturas que vencem no **mesmo dia**
+(fecho 31/01 e fecho 28/02 vencem ambos a 01/03). No empate, o `calendar.ts` compara com `>` estrito e
+fica com a **primeira** que vê na lista — que o `listInvoices` ordena por `dueDate` descendente e
+mantém em ordem de cadeia no empate, ou seja a de **fecho anterior**. Com a de fevereiro ainda `open`,
+a Revisão conta **0** e o calendário põe **60,00 €** no dia 1 de março; depois de fevereiro fechar, a
+Revisão diz **105,00 €** e o calendário continua nos 60,00 € da de janeiro.
+
+**Comportamento esperado**
+
+1. Uma só função, num sítio só, que devolve «a última fatura de cada cartão» — em `server/invoices.ts`,
+   ao lado de `listInvoices`/`loadInvoiceContext`, escolhida por **`closingDate`**, que é a chave da
+   cadeia (`invoiceChain` ordena por `closingDate`).
+2. `server/review.ts` e `server/calendar.ts` passam a **importar** essa função. Nenhum dos dois volta a
+   escolher a última fatura à mão.
+3. Comportamento visível igual em todos os casos já provados, **exceto** o empate: no cartão
+   `closingDay 31 · dueDay 1`, o calendário passa a mostrar a fatura de **fecho mais recente**, igual à
+   Revisão.
+
+**Critério de aceitação**
+
+1. Um só sítio escolhe: `grep` da escolha da última fatura não encontra duas implementações.
+2. O caso do empate medido: cartão com `closingDay 31` e `dueDay 1`, fatura de janeiro fechada com
+   60,00 € por pagar e a de fevereiro `open` com 45,00 € — depois de fevereiro fechar, a Revisão diz
+   **105,00 €** e o calendário também, no mesmo dia. Cola os números antes e depois.
+3. Tudo o que a T54 e a T55 provaram continua igual: as quatro contagens, os três totais do mês, a
+   faixa «em atraso», a dupla apresentação que a T55 fechou.
+4. Gate completo e suíte; a spec nova **falha quando deve** (voltar a escolher por `dueDate` tem de a
+   deixar vermelha por asserção).
+5. Zero dependências novas, zero migrações.
+
+**Ficheiros:** `apps/web/src/server/invoices.ts` · `apps/web/src/server/review.ts` ·
+`apps/web/src/server/calendar.ts` · `e2e/` (é do QA).
+
+**O que NÃO fazer:** não mudes o motor de faturas, não mudes o comportamento de `listInvoices`, não
+refactorizes o resto do calendário nem da Revisão, não commites nem empurres.
+
+### T60 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Os dois números              | `/revisao` diz **2** · base conta **3** faturas `closed` com valor por pagar                    |
+| A diferença                  | a fatura de outubro do cartão A (60,00 €) está **dentro** dos 105,00 € de novembro             |
+| Pagar a fatura corrente      | 2 → **1**                                                                                      |
+| `axe` / layout               | **0** a 1280 e a 360 · `scrollWidth` 1280/360 · texto do cartão igual                          |
+| Mutação                      | `invoices.filter` reposto → «a Revisão conta a dívida … Expected: 2, Received: 3» em **923 ms** (asserção) |
+| Suíte / gate                 | **123 passed (6,9 m)** sem morte de worker · gate 0/0/582/0 · `format:check` **0** na árvore inteira |
+| Diff                         | `server/review.ts` 18+/1− — um ficheiro                                                    |
+
+**Nota do QA que fica escrita:** a metade «pagar a fatura de outubro» **não é executável pela interface**. Em `/cartoes?fatura=<id>` a fatura antiga abre o detalhe com o botão **«Fechar»** apenas; só a fatura corrente de cada cartão tem «Pagar fatura». Não é um defeito: a dívida da de outubro já está na de novembro, e é por isso que a contagem não desce ao lidar com ela — a razão é estrutural, não um atalho do teste.
+
+**Fica aberta a divergência de chaves** (T61): a Revisão escolhe a última fatura por `closingDate` e o calendário por `dueDate`. O Revisor mediu o caso em que divergem — cartão com `closingDay 31` e `dueDay 1` dá duas faturas que vencem no mesmo dia e o calendário fica com a de fecho anterior.

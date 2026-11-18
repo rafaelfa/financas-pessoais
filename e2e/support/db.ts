@@ -262,6 +262,22 @@ export async function lerPorDescricao(
   });
 }
 
+/** Faturas `CLOSED` com valor por pagar — a contagem "crua" da base (T60). */
+export async function contarFaturasFechadasComValor(email: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `SELECT count(*)::int AS total
+         FROM "invoice" i
+         JOIN "user" u ON u.id = i."userId"
+        WHERE u.email = $1 AND i.status = 'CLOSED'
+          AND (i."totalAmountInCents" - i."paidAmountInCents") > 0`,
+      [email],
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  });
+}
+
 /** Apaga os cartões do spec (e as faturas deles) pelo prefixo do nome. */
 export async function apagarCartoesDoSpec(email: string, prefixo: string): Promise<number> {
   return withClient(async (client) => {
