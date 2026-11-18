@@ -2396,7 +2396,7 @@ novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | **fechada** (PASS QA; 1 definição e 2 importadores; empate por fixture SQL) |
-| T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | aberta (escrita, depois da T61) |
+| T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | **fechada** (PASS QA; 10 de 10 afirmações conferem; produção serve o HEAD) |
 | T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | aberta (escrita, depois da T62) |
 | T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | aberta (escrita, depois da T63) |
 | T60 | **A contagem «Faturas por pagar» soma a cadeia inteira** | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
@@ -3430,3 +3430,25 @@ filtros novos, não commites.
 **Nota de método, escrita para não enganar quem vier depois:** o cenário do empate **não se constrói pelo ecrã** (exige um ciclo a fechar a 31 num mês de 31 dias e o vencimento no mesmo dia da fatura seguinte). A fixture é **SQL**, com um `executarSqlDoSpec` novo em `e2e/support/db.ts`, e está documentada no relatório e na spec. É o único caso desta vaga provado fora do caminho do utilizador — e é o que dá sentido à regra.
 
 **Facto a vigiar, não achado:** o `e2e/support/db.ts` passou a ter um executor de SQL genérico. É útil e é o que torna o empate possível, mas num sítio onde qualquer spec o pode chamar. Se um dia se quiser apertar, é uma tarefa de testes, não de produto.
+
+### T62 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Afirmações do mapa          | **10 de 10 conferem, 0 falsas** — cada uma com comando e saída                                 |
+| Lockfile / formatação       | `Already up to date` · `react-hook-form` **3** · `format:check` «All matched files use Prettier» |
+| `.gitattributes` / `next-env` | 19 B e `core.autocrlf false` · `next-env.d.ts` no `.prettierignore:10`                        |
+| Lint / typecheck            | **4/4, 0 erros** · **4/4, 0 erros**                                                            |
+| As duas specs               | existem **e correm**: 17 passed (um `flake` em «apaga o grupo» — ver abaixo)                   |
+| **Produção**                | `/revisao` e `/calendario` **307** → `/entrar` · caminho inventado **404** · `/api/health` **200** com base `reachable` · deploy de Produção **`16ae678` = HEAD** |
+| Migrações                   | **3 no repositório = 3 na base**, mesmos nomes, nenhuma revertida                              |
+| Stack                       | Next **16.4.6** · Zod **4.6.6** · `shadcn` só em devDependencies 4.21.4 · **582** testes em 32 ficheiros |
+| Diff                        | três `.md` (146+/230−) — **zero código**                                                       |
+
+**O item 10 estava invertido, não atrasado.** O mapa dizia «a produção está 8 commits atrás»; medido hoje, o deploy de Produção corresponde ao `HEAD` e as rotas da T54 e da T55 respondem. A prova aceitável não é o registo do deploy (isso prova publicação, não serviço) mas o **307 numa rota real contra o 404 de um caminho inventado** — e o próprio `/api/health` a 200 com a base alcançável. A API da Vercel deu **403** (scope), pelo que o `READY` e o conteúdo do build publicado ficam **não verificados daqui**.
+
+**Lacuna do mapa que se fechou:** conhecia **duas** migrações e existem **três** — faltava `20261103203748_remove_goal_movement_yield`, aplicada na base e ausente do documento.
+
+**O que se perdeu e voltou:** a primeira versão da correção apagou a secção «Mapa de ficheiros» inteira (~20 linhas de estrutura: os ecrãs, os módulos finos, o motor puro, o OFX/CSV). O que era falso eram as contagens e os números de linha; a estrutura era contexto que ninguém reescreve. Voltou sem números e datada.
+
+**`flake` encontrado pelo QA, registado e não corrigido:** na corrida conjunta das specs, «apaga o grupo» (`55-consolidacao-contas`) falhou uma vez e passou isolada em 2/2. É instabilidade de teste, não defeito de produto — mas é o tipo de vermelho que ensina a equipa a repetir até passar, e isso estraga o valor da suíte. Candidato a tarefa.

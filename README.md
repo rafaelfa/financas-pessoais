@@ -2,16 +2,18 @@
 
 Aplicação web de finanças pessoais — uma nova versão, com interface atualizada, das funcionalidades do [Minhas Economias](https://wwws.minhaseconomias.com.br/).
 
-> **Estado em 2026-11-01: o código está verde e a produção está ao nível do `main`.**
-> O gate passa por inteiro — `format:check`, `lint`, `typecheck`, `test`
-> (522 testes, 28 ficheiros) e `build` — e `pnpm install --frozen-lockfile` também.
-> `main` e `origin/main` estão no mesmo commit, `468a138`, com o CI verde (execução
-> `41346236265`), e é esse o commit que está publicado: o deploy
-> `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk` está `READY` em produção e serve o domínio
-> abaixo. Verificado com sessão iniciada, agora: «Dia a dia» tem os seis destinos,
-> «Contas a pagar/receber» e «Consolidação» abrem com o título certo, a paleta
-> `Ctrl+K` abre com as 14 opções, filtra e navega para os dois ecrãs sem erros de
-> consola, e `/api/health` responde `200`.
+> **Estado em 2026-11-18: o gate está verde nesta árvore.** Medido no commit
+> `16ae678`, com o comando colado no [`MAPA.md`](docs/gestao/MAPA.md#como-se-corre--medido-a-2026-11-18):
+> `pnpm install --frozen-lockfile` OK · `format:check` OK · `lint` 0 erros ·
+> `typecheck` 0 erros · `test` **582 testes** em 32 ficheiros · `build` 2/2.
+> A suíte e2e é do QA e não foi corrida nesta passagem.
+> **CI**: a execução de `8d084dd` terminou com sucesso a 2026-11-18 (run
+> `44272978670`); a de `16ae678` estava a correr no momento da medição.
+> **Produção**: `/api/health` responde `200` com base `reachable: true`, e as rotas
+> `/revisao` e `/calendario` respondem `307` (existem, atrás da sessão). O último
+> deploy de produção registado no GitHub é do commit `16ae678` (2026-11-18
+> 09:24 UTC); **o estado `READY` desse deploy não foi verificado daqui** — exigiria a
+> API/CLI da Vercel.
 > Produção: <https://financas-pessoais-psi-lac.vercel.app>
 
 ## O que é
@@ -116,10 +118,11 @@ O mesmo gate corre em cada `push` e em cada *pull request* pelo GitHub Actions
 (`.github/workflows/ci.yml`). O fumo é um workflow separado, à mão, porque escreve
 numa base real.
 
-**O CI está verde em `main`**: a execução `41346236265` (push em `main`, commit
-`468a138`, 2026-11-01) terminou com sucesso. As oito execuções anteriores, de
-2026-10-14 a 2026-10-18, não passaram: sete falharam e uma foi cancelada por ser
-duplicada — a última delas em `b980ed0`.
+**CI em `main` (2026-11-18):** a execução de `8d084dd` (run `44272978670`)
+terminou com **sucesso** em 1m56s; a de `16ae678` (`44275535227`) estava a correr
+quando isto foi escrito. As execuções falhadas de 2026-10-14 a 2026-10-18 são
+históricas — descrevem o estado até `b980ed0`, não o de hoje. Quem precisar do
+estado do CI neste minuto: `gh run list -L 5`.
 
 ### Duas armadilhas do ambiente de desenvolvimento (Windows)
 

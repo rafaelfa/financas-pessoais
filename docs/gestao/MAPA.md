@@ -4,170 +4,128 @@ Escrito pelo Lead antes de tocar em qualquer coisa. Tudo abaixo foi medido nesta
 máquina (Windows, `D:\openbot\projetos-dev\financas-pessoais`, clonado em 2026-11-01
 com `--depth 1`, HEAD `b980ed0`, ramo `main` limpo no remoto).
 
-## Stack real
+## Stack real — verificada a 2026-11-18
 
 Verificado nos manifestos instalados, não no README.
 
 - **Node 24.21.0**, `engines.node >= 20.18.1`; **pnpm 10.17.1** (`packageManager`)
 - **Monorepo**: pnpm workspaces (`apps/*`, `packages/*`) + Turborepo 2.11.7
-- **Web**: Next.js **16.4.0** (App Router), React **19.3.0**, TypeScript **5.9.3**
-  (estrito), Tailwind CSS **4.3.3**, radix-ui 1.7.0, shadcn 4.21.4, Recharts 3.8.0
-- **Dados**: Prisma **7.10.0**, PostgreSQL (Neon), **25 modelos**, **2 migrações**
-  (`20261011000000_linha_de_base`, `20261014192848_add_receivable_payable_and_account_group`)
-- **Auth**: better-auth 1.7.7 (utilizador único), Zod 4.6.5
-- **Testes**: Vitest no `packages/shared` (28 ficheiros), Playwright 1.64.0 + axe na raiz
+- **Web**: Next.js **16.4.6** (App Router), React **19.3.0**, TypeScript **5.9.3**
+  (estrito), Tailwind CSS **4.3.3**, radix-ui 1.7.0, shadcn 4.21.4 (só `devDependencies`), Recharts 3.8.0
+- **Dados**: Prisma **7.10.0**, PostgreSQL (Neon), **25 modelos**, **3 migrações**
+  (`20261011000000_linha_de_base`, `20261014192848_add_receivable_payable_and_account_group`,
+  `20261103203748_remove_goal_movement_yield`) — lidas de `_prisma_migrations` a 2026-11-18
+- **Auth**: better-auth 1.7.7 (utilizador único), Zod 4.6.6
+- **Testes**: Vitest no `packages/shared` (32 ficheiros, **582 testes** a 2026-11-18), Playwright 1.64.0 + axe na raiz
 - **Deploy**: Vercel + Neon; produção `https://financas-pessoais-psi-lac.vercel.app`
 
-## Como se corre — medido a 2026-11-01
+## Como se corre — medido a 2026-11-18
 
-`pnpm install` demora ~44 s nesta máquina. Todos os resultados abaixo são desta
-passagem, com o `node_modules` acabado de criar.
+Todos os resultados abaixo foram medidos **nesta árvore** (commit `16ae678`), com o
+`node_modules` já instalado. Cada linha traz o comando: quem duvidar, corre-o.
 
-| Comando                          | Resultado medido                                                                          |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `pnpm install --frozen-lockfile` | **FALHA** — `ERR_PNPM_OUTDATED_LOCKFILE`: faltam `@hookform/resolvers@3.3.0` e `react-hook-form@7.53.1` |
-| `pnpm install --no-frozen-lockfile` | OK, 44,2 s (reescreve `pnpm-lock.yaml` com +25 linhas)                                 |
-| `pnpm db:generate`               | OK **só** com `.env` presente; sem ele `PrismaConfigEnvError: Cannot resolve environment variable: DIRECT_URL` |
-| `pnpm format:check`              | **FALHA** — ver "Onde dói" (1 e 2)                                                        |
-| `pnpm format`                    | OK, deixa o `format:check` verde                                                           |
-| `pnpm lint`                      | **FALHA** — 51 erros em 11 ficheiros                                                       |
-| `pnpm typecheck`                 | **FALHA** — 2 erros (`receivable-payable-actions.ts:262` e `:300`)                         |
-| `pnpm test`                      | **VERDE** — 28 ficheiros, **522 testes**, 1,81 s                                           |
-| `pnpm build`                     | **FALHA** — "Failed to type check", 7 erros TS no `@repo/web`                              |
-| `pnpm test:e2e`                  | **não corrido** — exige `.env` com base Neon real (a desta máquina é falsa)                |
+| Comando                            | Resultado medido a 2026-11-18                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile`   | **OK** — `Already up to date` (o lockfile está alinhado com os `package.json`)    |
+| `pnpm db:generate`                  | OK com o `.env` presente (`prisma generate`, 210 ms); sem `.env` falha por `DIRECT_URL` |
+| `pnpm format:check`                 | **OK** — `All matched files use Prettier code style!`                            |
+| `pnpm lint`                         | **OK** — 4/4 tarefas, 0 erros                                                    |
+| `pnpm typecheck`                    | **OK** — 4/4 tarefas, 0 erros                                                    |
+| `pnpm test`                         | **OK** — 32 ficheiros, **582 testes**, ~1,8 s                                    |
+| `pnpm build`                        | **OK** — 2/2 tarefas                                                            |
+| `pnpm test:e2e`                     | **não corrido nesta passagem** — é a suíte do QA; exige `.env` com base real (existe nesta máquina) |
 
-Conclusão operacional: **o gate está vermelho em `main`**, ao contrário do que o
-`README.md` e o `docs/plano/ESTADO-E-HANDOFF.md` afirmam (esses documentos descrevem
-o estado anterior ao commit `b980ed0`).
+Conclusão operacional: **o gate está verde nesta árvore**, medido a 2026-11-18. As
+linhas de 2026-11-01 que diziam o contrário descreviam o estado até ao commit
+`b980ed0` e estão corrigidas em "Onde dói".
 
-`.env` desta máquina: criado a partir do `.env.example` com valores **falsos**
-(base `localhost`, segredos de enchimento). Chega para `db:generate`, `typecheck` e
-`build`; não chega para `dev`, `test:e2e` nem `db:seed`.
+`.env` desta máquina: base Neon real (não a falsa descrita a 2026-11-01). Chega para
+`build`, `typecheck`, `db:generate` e para a suíte e2e do QA.
 
-## Mapa de ficheiros
+## Mapa de ficheiros — estrutura verificada a 2026-11-18
 
-| Caminho                                        | O que faz                                                                        |
-| ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| `apps/web/src/app/(app)/`                      | 14 ecrãs autenticados: contas, transações, categorias, orçamento, objetivos, cartões, recorrências, regras, relatórios, importar, definições, consolidação-contas, contas-pagar-receber |
-| `apps/web/src/app/(auth)/`                     | `entrar` e `registar`                                                            |
-| `apps/web/src/app/api/`                        | só `health` e `auth/[...all]` — **não existe rota de cron**                       |
-| `apps/web/src/app/(app)/api/`                  | 2 rotas novas: `account-group`, `receivable-payable` (do commit `b980ed0`)         |
-| `apps/web/src/server/`                         | 42 módulos finos: consulta + validação + transação (ex.: `transactions-actions.ts`, 646 linhas) |
-| `apps/web/src/components/`                     | inclui `ui/` (shadcn). Maiores: `transaction-quick-add.tsx` e `recurrence-dialog.tsx` (749 linhas) |
-| `packages/shared/src/finance/`                 | motor financeiro puro (caixa e competência), 16 ficheiros de teste                |
-| `packages/shared/src/import/`                  | OFX/CSV: `ofx.ts` (958 linhas), `preview.ts` (745), reversão de importação         |
-| `packages/shared/src/schemas/`, `types/`, `utils/` | Zod, tipos e utilitários (dinheiro em cêntimos, datas `YYYY-MM-DD`)             |
-| `packages/db/prisma/schema.prisma`             | 25 modelos; `seed.ts` com 1 485 linhas (demo idempotente)                          |
-| `e2e/`                                         | 10 specs Playwright (20 percursos) + `global.setup/teardown`                       |
-| `docs/plano/`                                  | `PLANO-EXECUCAO.md`, `ESTADO-E-HANDOFF.md`, `DEPLOY.md`                            |
-| `docs/spec/`                                   | contrato de cálculo (`F1`) e 6 relatórios de verificação adversarial               |
-| `.github/workflows/`                           | `ci.yml` (gate com `--frozen-lockfile` + PostgreSQL em serviço) e `smoke.yml`       |
+Sem contagens de linhas nem de ficheiros: isso envelhece em cada commit e não é o que
+aqui serve. O que se segue é a **forma** do repositório — o que vive onde.
 
-Volumes: `apps/web/src` 207 ficheiros `.ts/.tsx`, `packages/shared/src` 72,
-`packages/db` 4, `e2e` 18. Total dos fontes: ~52 300 linhas.
+| Caminho | O que faz |
+| --- | --- |
+| `apps/web/src/app/(app)/` | os ecrãs autenticados: painel, transações, contas, contas a pagar/receber, consolidação de contas, cartões, património, orçamento, objetivos, recorrências, regras, categorias, relatórios, importar, revisão, calendário e definições |
+| `apps/web/src/app/(auth)/` | `entrar` e `registar` |
+| `apps/web/src/app/api/` | só `health` e `auth/[...all]` — **não existe rota de cron** |
+| `apps/web/src/app/(app)/api/` | as duas rotas de dados que não são Server Actions: `account-group` e `receivable-payable` |
+| `apps/web/src/server/` | a camada fina: consulta + validação + transação, um módulo por assunto (`transactions.ts`, `transactions-actions.ts`, `review.ts`, `calendar.ts`, `invoices.ts`, …) |
+| `apps/web/src/components/` | componentes da aplicação; `ui/` é shadcn gerado |
+| `packages/shared/src/finance/` | o motor financeiro puro (caixa e competência), testado no Vitest |
+| `packages/shared/src/import/` | leitura de OFX/CSV, pré-visualização e reversão de importação |
+| `packages/shared/src/schemas/`, `types/`, `utils/` | Zod, tipos e utilitários (dinheiro em cêntimos, datas `YYYY-MM-DD`) |
+| `packages/db/prisma/schema.prisma` | os modelos; `seed.ts` cria a conta de demonstração (idempotente) |
+| `e2e/` | specs Playwright (por ecrã e por tarefa) + `global.setup/teardown` |
+| `docs/plano/` | `PLANO-EXECUCAO.md`, `ESTADO-E-HANDOFF.md`, `DEPLOY.md` |
+| `docs/spec/` | contratos de cálculo e os relatórios de verificação adversarial |
+| `docs/gestao/` | este mapa, `TASKS.md`, `DECISOES.md` |
+| `.github/workflows/` | `ci.yml` (o gate, com `--frozen-lockfile`) e `smoke.yml` |
 
 ## Onde dói
 
-Por ordem de gravidade, tudo medido.
+Medido a **2026-11-18**, item a item, com o comando à frente. O que já não se
+verificava saiu da lista — a lista antiga (2026-11-01) está no histórico do git e
+descrevia o estado até ao commit `b980ed0`.
 
-1. **`pnpm-lock.yaml` desatualizado em `main`.** `apps/web/package.json` declara
-   `react-hook-form@7.53.1` e `@hookform/resolvers@3.3.0`; o lockfile não tem
-   nenhuma das duas (`grep -c react-hook-form pnpm-lock.yaml` → 0). Como o CI corre
-   `pnpm install --frozen-lockfile` (`.github/workflows/ci.yml:80`), **a CI falha no
-   primeiro passo**. O commit `b980ed0` ("adicionar react-hook-form, … ausentes")
-   mexeu no `package.json` e esqueceu o lockfile.
-2. **12 ficheiros não estão formatados** (`apps/web/src/components/ui/form.tsx`,
-   `ui/use-toast.tsx`, `account-group-*.tsx`, `receivable-payable-*.tsx`,
-   `consolidacao-contas/page.tsx`, `server/account-groups.ts`,
-   `schemas/domain/receivable-payable.ts` e 3 mais). `pnpm format:check` falha com
-   eles. **Já corrigido na árvore de trabalho desta máquina** por `pnpm format` (não
-   commitado) — o Dev confirma e commita.
-3. **Sem `.gitattributes`, com `core.autocrlf=true` global no Windows.** O clone
-   entregou CRLF e o Prettier exige `endOfLine: "lf"` → **330 ficheiros "mal
-   formatados"** que estão corretos no git (os blobs são LF, confirmado com
-   `git show HEAD:tsconfig.json`). Um clone no Linux não vê isto; um Windows vê o gate
-   vermelho sem ter mudado nada. Resolvido na T1 com `.gitattributes`
-   (`* text=auto eol=lf`). Depois de o `pnpm format` reconverter para LF, esses
-   ficheiros ficam com conteúdo igual ao commit e aparecem só como cache de stat
-   obsoleta em `git status` (`git hash-object` == `git rev-parse HEAD:…`).
-4. **`pnpm build` reescreve `apps/web/next-env.d.ts` com aspas duplas** e o Prettier
-   exige `singleQuote: true` → `format:check` falha em qualquer sequência
-   "build e depois format". É ficheiro gerado (diz "should not be edited"), logo a
-   correção é pô-lo no `.prettierignore`. O CI esconde o problema porque corre
-   `format` antes de `build`.
-5. **A funcionalidade do commit `b980ed0` está a meio.** `react/jsx-no-undef` em
-   `apps/web/src/components/account-group-dialog.tsx:195` (`<Checkbox …>` usado, sem
-   import) — é crash em runtime, não só lint. Mais 39 `no-unused-vars` (imports
-   `DialogContent`, `Form`, `DrawerTitle`, `Badge`, `Link`, `fail`, `ActionResult`),
-   6 `react/no-unescaped-entities`, 4 `no-explicit-any`, 1
-   `react-hooks/set-state-in-effect` (`lib/hooks/use-mobile.tsx:9`).
-6. **Erros de tipo reais** em `apps/web/src/server/receivable-payable-actions.ts`:
-   `:262` e `:300` usam `existing.status` mas o `select` só traz `{ id: true }`
-   (`TS2339`); `:207` passa `string | null` onde se espera `string | undefined`
-   (`TS2322`). Os dois primeiros são a mesma linha copiada em duas ações.
-   **Total medido: 80 erros** em `pnpm typecheck` (32 `TS6133` de código não usado, 28
-   `TS2339`, 2 `TS7006`, 2 `TS2349`, 2 `TS2322`, 1 `TS6196`, 1 `TS2769`, 1 `TS2304`),
-   concentrados em 7 ficheiros: `receivable-payable-dialog.tsx` (29),
-   `account-group-dialog.tsx` (28), `receivable-payable-actions.ts` (4),
-   `receivable-payable-list.tsx` (4) e 3 outros. O `pnpm build` mostra os mesmos 80.
-7. **`test:e2e` não corre sem base real.** O `playwright.config.ts` aponta para o
-   `.env`, e sem Neon (ou o `docker-compose.yml` levantado) não há como provar nada
-   nos percursos.
-8. **Os ecrãs novos não têm teste.** `consolidacao-contas` e `contas-pagar-receber`
-   não aparecem em `e2e/` nem nos 522 testes do `shared`. Foram acrescentados sem
-   verificação.
-9. **`docs/plano/ESTADO-E-HANDOFF.md` e o `README.md` mentem sobre o estado.** Dizem
-   "árvore verde, CI verde em `main`"; o gate falha em 4 de 8 comandos medidos e o CI
-   está vermelho desde 2026-10-14 19:30.
-10. **A produção está 8 commits atrás.** Nada do trabalho deste mês chegou ao ar.
-    Ver "Produção, CI e Vercel".
+1. **`test:e2e` e `db:seed` exigem uma base real.** `playwright.config.ts` lê o `.env`
+   e o seed escreve na `DATABASE_URL`: sem Neon (ou o `docker-compose.yml` levantado)
+   não há como correr nenhum dos dois.
+   - Comando: `ls .env` · saída: existe (base real nesta máquina).
+   - Comando: `pnpm test:e2e` · saída: **não corrido aqui** — é a suíte do QA.
+   - Continua verdadeiro como **requisito**, não como defeito.
 
-## Produção, CI e Vercel — verificado em 2026-11-01
+2. **O que ficou resolvido desde 2026-11-01** (com a prova de hoje, para não voltar a
+   ser copiado como problema):
 
-Isto é o que responde à pergunta "o projeto está no ar?".
+| Item de 01/11 | Comando (2026-11-18) | Saída de hoje | Estado |
+| --- | --- | --- | --- |
+| Lockfile desatualizado (`react-hook-form` ausente) | `pnpm install --frozen-lockfile` · `grep -c react-hook-form pnpm-lock.yaml` | `Already up to date` · **3** ocorrências | **fechado** |
+| 12 ficheiros por formatar | `pnpm format:check` | `All matched files use Prettier code style!` | **fechado** |
+| Sem `.gitattributes` / CRLF | `ls .gitattributes` · `git config --get core.autocrlf` | existe (19 B) · `false` | **fechado** |
+| `next-env.d.ts` a partir o `format:check` | `grep -n next-env .prettierignore` | `10:apps/web/next-env.d.ts` | **fechado** |
+| 51 erros de lint (incl. `jsx-no-undef`) | `pnpm lint` | 4/4 tarefas, **0 erros** | **fechado** |
+| 80 erros de tipo | `pnpm typecheck` | 4/4 tarefas, **0 erros** | **fechado** |
+| Ecrãs novos sem teste | `ls e2e/ \| grep -E "45-contas-pagar\|55-consolidacao"` | `45-contas-pagar-receber.spec.ts`, `55-consolidacao-contas.spec.ts` | **fechado** |
+| Produção 8 commits atrás | `curl -o /dev/null -w '%{http_code}' …/revisao` e `…/calendario` contra um caminho inventado | `/revisao` e `/calendario` **307** · caminho inventado **404** · `/api/health` **200** com base `reachable` | **fechado** |
+| README/handoff a mentir sobre o estado | este ficheiro + os dois documentos | corrigidos a 2026-11-18 | **fechado** |
 
-**Produção está no ar e saudável, mas está 8 commits atrás de `main`.**
+3. **Não se verifica daqui** (e é por isso que não está escrito como verde):
+   - estado `READY` do último deploy na Vercel e conteúdo exato do build publicado —
+     precisaria da API/CLI da Vercel, que esta tarefa não usa;
+   - resultado da suíte e2e — é do QA;
+   - dados de produção além do que o `/api/health` e os códigos HTTP dizem.
 
-- `GET /api/health` → `200`, `environment: production`, base de dados
-  `reachable: true`.
-- `GET /` → `307` para `/entrar`. Os 8 ecrãs antigos respondem `307` (transações,
-  cartões, orçamento, relatórios, categorias, regras, contas, definições).
-- **`/contas-pagar-receber` e `/consolidacao-contas` respondem `404`** — o código
-  publicado não tem a funcionalidade do `b980ed0`.
-- O deploy que serve a produção é `dpl_FtCdbjsWbJj2xmLj8moWhGHKoFUM`, do commit
-  **`e4366ee`** ("feat: melhorias de usabilidade e responsividade"), `READY`.
+## Produção, CI e Vercel — verificado em 2026-11-18
 
-**Os 8 deploys seguintes falharam todos** (API do Vercel, estado `ERROR`,
-`target: production`, todos em `main`): `b980ed0`, `324c4db`, `6c3a8b3` (três
-vezes), `9298813`, `cf21804`, `b04bc9a`, `589d488`. Nenhum chegou a produção — não
-há nada partido no ar, apenas trabalho retido.
+**Produção está no ar e serve código recente.** Verificado só com pedidos `GET`
+públicos e com a API do GitHub (nenhum deploy, nenhum `vercel`):
 
-**O CI diz o mesmo** (`gh run list`):
+| Verificação | Comando | Saída de 2026-11-18 |
+| --- | --- | --- |
+| Saúde | `curl -s -o- -w '%{http_code}' https://financas-pessoais-psi-lac.vercel.app/api/health` | **200** · `environment: production` · `database: reachable: true` |
+| Rotas antigas | `curl -o /dev/null -w '%{http_code}' …/` e `…/transacoes` | **307** (redirecionam para `/entrar`; existem) |
+| Rotas da vaga 1 e 2 | `…/revisao` e `…/calendario` | **307** — as rotas da T54 e da T55 **existem em produção** (um caminho inexistente dá 404, como aconteceu a `/contas-pagar-receber` a 01/11) |
+| Último deploy de produção | `gh api "repos/rafaelfa/financas-pessoais/deployments?environment=Production&per_page=3"` | sha **`16ae678`** (= `HEAD`), criado `2026-11-18T09:24:52Z`; os anteriores: `8d084dd` (09:07) e `eeacad2` (09:07) |
 
-| Commit                                                | Data do run      | Estado              | Passo que falhou                     |
-| ----------------------------------------------------- | ---------------- | ------------------- | ------------------------------------ |
-| `b980ed0` (HEAD)                                      | 2026-10-18 10:53 | falha               | **Instalar dependências** (lockfile) |
-| `324c4db`                                             | 2026-10-18 10:46 | falha               | —                                    |
-| `6c3a8b3`, `9298813`, `cf21804`, `b04bc9a`, `589d488` | 2026-10-14 19:30–19:44 | falha        | —                                    |
-| `e4366ee`                                             | 2026-10-14 18:41 | **sucesso** (2m40s) | —                                    |
-| commits de documentação de 2026-10-13                  | 20:04–20:29      | falha               | **Formatação**                       |
+**O que não se verifica daqui:** o estado `READY`/`ERROR` desse deploy e o conteúdo do
+build publicado. Precisaria de `vercel ls`/API da Vercel com token — fora do âmbito
+desta tarefa. O que os pedidos acima provam é que o que está a servir inclui as rotas
+da T54/T55; não provam que o deploy de `16ae678` já esteja a servir.
 
-Conclusão: o último estado verde conhecido é **`e4366ee`**, exatamente o que está
-publicado. Tudo o que veio depois é trabalho não integrado.
+**CI (`gh run list`, 2026-11-18):** a execução de `8d084dd` (run `44272978670`) está
+**success** (1m56s) e a de `16ae678` (run `44275535227`) estava **in_progress** no
+momento da medição. As execuções falhadas de outubro (`b980ed0`, `324c4db`, …) são
+históricas e já não descrevem `main`.
 
-**Histórico reescrito.** Três deploys `READY` referem commits que já não existem em
-`main` (`6ec220d`, `18c0e0e`, `343acbf`, de 2026-10-13): houve rebase/force-push, ou
-os ramos foram apagados. Não é recuperável pelo repositório.
+**As migrações continuam a não correr no build** (`turbo.json`: `build` depende de
+`^db:generate`, não de `migrate deploy`) — isso não mudou e é o que continua a exigir
+`prisma migrate deploy` à mão para migrações novas.
 
-**As migrações não correm no build** (`turbo.json`: `build` depende de
-`^db:generate`, não de `migrate deploy`) e o CI também não as corre. Portanto a
-migração `20261014192848_add_receivable_payable_and_account_group` **não tem caminho
-automático para a Neon de produção**; se correu, foi à mão.
-
-**A base Neon foi verificada** (MCP do Neon, leitura, 2026-11-01). Ver secção
-seguinte.
-
-## Base de dados Neon — layout real, verificado
+## Base de dados Neon — layout real, verificado a 2026-11-18
 
 **A confusão começa aqui: existem dois projetos Neon chamados `diario_chofer`, e não
 existe nenhum projeto chamado `financas`.** A base das finanças é um **ramo** dentro
@@ -182,24 +140,30 @@ A base do `financas-pessoais` é o **ramo `Financas_Pessoal`** do primeiro proje
 
 - projeto `old-fire-26176066`, ramo `br-patient-mud-b166137a` (`Financas_Pessoal`)
 - endpoint `ep-young-poetry-b1nqzwit` · pooler `ep-young-poetry-b1nqzwit-pooler`
-- região `aws-eu-central-1`, PostgreSQL **18**, estado do compute `active`
+- região `aws-eu-central-1`, PostgreSQL **18**, estado do compute `active` (lido a 2026-11-18)
 - plano `free_v3`, `suspend_timeout_seconds: 0` (suspende assim que fica ocioso —
   por isso a primeira consulta depois de um intervalo demora uns segundos)
 - criado em 2026-10-10 17:04 UTC
 
-**Migrações — ambas aplicadas**, em `_prisma_migrations`:
+**Migrações — três aplicadas** (`SELECT migration_name FROM _prisma_migrations`, 2026-11-18):
 
-| Migração                                             | Aplicada | Passos |
-| ---------------------------------------------------- | -------- | ------ |
-| `20261011000000_linha_de_base`                       | sim      | 0 (marcada com `migrate resolve`, é a linha de base) |
-| `20261014192848_add_receivable_payable_and_account_group` | sim  | 1      |
+| Migração                                             | Aplicada | Nota |
+| ---------------------------------------------------- | -------- | ---- |
+| `20261011000000_linha_de_base`                       | sim      | marcada com `migrate resolve`, é a linha de base |
+| `20261014192848_add_receivable_payable_and_account_group` | sim  | 1 passo |
+| `20261103203748_remove_goal_movement_yield`          | sim      | migração de novembro, já em `main` |
 
 **As tabelas da funcionalidade nova já existem na base** (`receivable_payable`,
 `receivable_payable_payment`, `account_group`, `account_group_item`), com **0 linhas**
 — coerente com o facto de o código nunca ter chegado a produção.
 
-**Dados reais presentes** (contagem direta): 2 utilizadores, 5 contas financeiras,
-52 transações, 1 orçamento, 0 contas a pagar/receber, 0 grupos.
+**Dados reais presentes** — comando e saída de 2026-11-18 (script de leitura com a
+`DATABASE_URL` do `.env`, um `count(*)` por tabela):
+
+```
+user 2 · financial_account 5 · transaction 52 · invoice 4 · recurrence 2 ·
+category 58 · budget 1 · receivable_payable 0 · account_group 0
+```
 
 Consequência para o plano: **reter o código não tem custo de base de dados** — a
 migração já correu e as tabelas estão vazias. Nenhum `migrate deploy` é preciso para
@@ -235,7 +199,11 @@ nohup pnpm --filter @repo/web start > /tmp/prod.log 2>&1 < /dev/null & disown
 E2E_REUSE_SERVER=1 pnpm exec playwright test --reporter=line
 ```
 
-## Produção depois do deploy (2026-11-01, verificada)
+## Histórico: produção depois do deploy de 2026-11-01
+
+> Secção **histórica**, mantida para o registo. O estado atual está em "Produção, CI e
+> Vercel — verificado em 2026-11-18"; o commit e o deploy citados aqui há muito que
+> foram substituídos.
 
 - **Commit `2f84384` empurrado** para `main` (ver "Como se faz push neste repositório").
 - **CI verde pela primeira vez desde 2026-10-14**: run `41320502835`,
@@ -318,8 +286,8 @@ Três coisas que custaram uma medição errada e não se vêem no código.
    conta o mesmo dinheiro duas vezes — foi um DEVE na T55, e a regra certa está em
    `totalsByCard` (`:269`).
 
-**Nota sobre a lista «Onde dói»:** foi medida a 2026-11-01. Hoje o gate está verde
-(`format:check`, `lint`, `typecheck`, 582 testes, `build`) e as specs e2e vão a 120,
-por isso os pontos 1 e 2 dessa lista — lockfile desactualizado e ficheiros por
-formatar — estão provavelmente fechados. Não os reescrevi sem os remedir; quem os
-usar como verdade, mede-os primeiro.
+**Nota sobre a lista «Onde dói»:** remedida a **2026-11-18**, com o comando e a
+saída de cada item na própria secção. Seis dos dez itens estavam fechados, dois
+(estado do CI e da produção) estavam fechados *e* desatualizados, um continua
+verdadeiro como requisito (`test:e2e` precisa de base real) e um era este documento.
+Quem usar o mapa como verdade mede primeiro; a data e o comando estão lá para isso.

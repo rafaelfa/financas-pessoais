@@ -1,60 +1,32 @@
 # Estado do projeto e handoff
 
-> **Revisão de 2026-11-01 — ler esta secção primeiro.** Tudo o que vem depois foi
-> escrito em 2026-10-11 e descreve o estado dessa altura. Fica como histórico — é
-> útil precisamente por contar o que aconteceu —, mas já não é verdade em vários
-> pontos: a árvore não estava verde (tinha 80 erros de tipo e 51 de lint), o CI não
-> passava em `main` e a produção ficou atrás do trabalho de outubro.
+> **Revisão de 2026-11-18 — ler esta secção primeiro.** A secção 0 seguinte foi
+> reescrita hoje; o resto do documento (a partir do ponto 1) foi escrito em
+> 2026-10-11 e é **histórico**: conta o que aconteceu e já não descreve o presente.
+> O estado medido, com o comando de cada linha, está em
+> [`MAPA.md`](../gestao/MAPA.md#como-se-corre--medido-a-2026-11-18).
 
-## 0. Estado real — 2026-11-01
+## 0. Estado real — 2026-11-18
 
-- **Gate local verde** nesta árvore: `pnpm format:check`, `pnpm lint`,
-  `pnpm typecheck`, `pnpm test` (**522 testes**, 28 ficheiros) e `pnpm build`, todos
-  com código de saída 0. O `pnpm install --frozen-lockfile` também passa.
-- **Publicado: `468a138`.** Em 2026-11-01, `main` e `origin/main` estão no mesmo
-  commit (`468a138`), com o CI verde na execução `41346236265`, e o deploy
-  `dpl_AF1dL7LZS2j5gUhcRxpMaC4Jkjdk` está `READY` em produção, a servir
-  `https://financas-pessoais-psi-lac.vercel.app` (o domínio está nas *aliases* desse
-  deploy).
-- **Verificado em produção, com sessão iniciada** (conta demo, só leitura): «Dia a
-  dia» tem seis destinos — Painel, Transações, Contas, Contas a pagar/receber,
-  Consolidação, Cartões — e os dois novos abrem com o título certo; a paleta
-  `Ctrl+K` abre com as 14 opções, «consolida» e «contas a pagar» encurtam a lista
-  para um item e levam aos dois ecrãs; sem `pageerror` nem `console.error` em todo
-  o percurso; `/api/health` → `200` e as três rotas → `307` para `/entrar`.
-- **Menu e paleta deixaram de ser dívida.** A T19 fechou a entrada dos dois ecrãs no
-  menu e a T21 a paleta, que rebentava ao abrir por lhe faltar o `<Command>` do
-  `cmdk`. Ambas estão publicadas. Ficou registada a T22: o `<h2>` «Ir para» da
-  paleta vive fora do `DialogContent` e está sempre no DOM, mesmo com a paleta
-  fechada.
-- **CI**: verde em `468a138` (execução `41346236265`, 2026-11-01). As oito execuções
-  anteriores, de 2026-10-14 a 2026-10-18, não passaram — sete falharam e uma foi
-  cancelada por ser duplicada; a última delas foi em `b980ed0`.
-- **Tarefas fechadas**: T1, T2, T3, T4, T5, T7, T11, T12, T13, T19, T20 e T21 —
-  mais a T16, que espera a re-execução do QA (o código e a prova do Dev estão
-  fechados: 12/12, um sucesso em dois pedidos simultâneos). A T8 foi absorvida na
-  T7. O quadro está em `TASKS.md`.
-- **Tarefas abertas**: T6, T9, T10, T14, T15, T17, T18 e T22. O commit e o push, que
-  estavam à espera do utilizador (D4), foram feitos.
-- **Decisões à espera do utilizador** (`DECISOES.md`): **A2, A3, A4, A5 e A7**.
-  A A1 está decidida: a funcionalidade do `b980ed0` fica.
-- **Testes ponta a ponta**: 33 testes, 30 verdes na medição da T3; as 3 falhas eram
-  as pré-existentes de `35-estado-transacoes` (T10). Prova em `relatorios/T3.md`. A
-  suite completa não foi re-executada depois da T19: o spec `e2e/15-navegacao.spec.ts`
-  tem agora cinco testes (três da barra lateral, dois da paleta), provados em
-  `relatorios/T19-qa.md` e `relatorios/T21-qa.md`.
-- **Base de dados**: Neon. A `DATABASE_URL` desta máquina aponta para o ramo de
-  teste, não para produção — os relatórios do QA foram medidos lá.
+- **Gate local verde nesta árvore**, medido no commit `16ae678`:
+  `pnpm install --frozen-lockfile` (`Already up to date`), `pnpm format:check`,
+  `pnpm lint` (0 erros), `pnpm typecheck` (0 erros), `pnpm test` (**582 testes**,
+  32 ficheiros) e `pnpm build` (2/2), todos com código de saída 0. A suíte e2e é do
+  QA e **não foi corrida nesta passagem**.
+- **CI**: a execução de `8d084dd` terminou com **sucesso** a 2026-11-18 (run
+  `44272978670`, 1m56s) e a de `16ae678` (`44275535227`) estava a correr no momento
+  da medição. As execuções falhadas de outubro são históricas.
+- **Produção**: `/api/health` → **200**, `environment: production`, base
+  `reachable: true`; `/`, `/transacoes`, `/revisao` e `/calendario` → **307** (existem,
+  atrás da sessão). O último deploy de produção registado no GitHub é do commit
+  `16ae678` (2026-11-18 09:24 UTC). **O estado `READY` do deploy e o conteúdo do
+  build publicado não foram verificados daqui** — exigiria a API/CLI da Vercel, que
+  esta tarefa não usa; também não há verificação com sessão iniciada nesta passagem.
+- **Base de dados**: Neon. Lida a 2026-11-18: 3 migrações aplicadas
+  (`_prisma_migrations`), 2 utilizadores, 5 contas, 52 transações.
 - **Onde olhar**: `docs/gestao/MAPA.md` (o que foi medido, com números),
   `docs/gestao/TASKS.md` (o quadro), `docs/gestao/DECISOES.md` e
   `relatorios/T*.md` (as provas de cada tarefa).
-
----
-
-Documento escrito no fim de uma sessão longa, para quem continuar. Existe porque o
-contexto de uma sessão acaba e o projeto não: **tudo o que interessa está no
-repositório, nos documentos e no quadro de tarefas**, e este ficheiro diz onde
-olhar primeiro.
 
 ## 1. Onde estamos — escrito em 2026-10-11 (histórico)
 
