@@ -2401,6 +2401,18 @@ novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
 | T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | **fechada** (PASS QA; 3 chaves declaradas; `strict` do objecto completo verde) |
 | T60 | **A contagem «Faturas por pagar» soma a cadeia inteira** | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
 
+---
+
+# Vaga 4 — "confiar na prova" (sem tabelas, sem migrações)
+
+Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, ninguém vai acreditar no aviso.
+
+| ID  | Tarefa                                                                 | Dono | Estado                      |
+| --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
+| T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | aberta (handoff) |
+| T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | aberta (escrita, depois da T65) |
+| T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | aberta (escrita, depois da T66) |
+
 ## T52 — Navegação 15 → 8 destinos (D7)
 
 **Porque:** a barra lateral tem 15 destinos e o uso diário é de quatro. A decisão D7 fixou a
@@ -3486,3 +3498,99 @@ filtros novos, não commites.
 **O buraco que a volta 2 fechou, e é o mais instrutivo da vaga:** a primeira entrega declarou **só** `semCategoria`. O Revisor executou o schema estrito em vez de o ler e provou que `valor` e `valorOp` — que a página põe no **mesmo objecto** — continuavam fora: com o schema estrito, quem tivesse `?valor=100&valorOp=gt` perdia **todos** os filtros do extrato. O teste do Dev não o via porque o caso estrito só levava duas chaves. **Um teste que prova «esta chave passa» não prova «o objecto passa»** — e a diferença era exatamente o defeito.
 
 **Fica escrito, não corrigido:** um **valor** inválido (`?semCategoria=true`) ainda faz o `parse` inteiro falhar em vez de cair só ele; o guarda é a normalização em `transacoes/page.tsx:137`. O caminho certo é o schema **degradar em vez de rebentar** (`catch(undefined)` por campo). Candidato a tarefa, junto com o `flake` do «apaga o grupo» e o executor de SQL genérico em `e2e/support/`.
+
+## T65 — O `flake` do «apaga o grupo»
+
+**Porque:** na corrida conjunta da T62, o teste «apaga o grupo» de `e2e/55-consolidacao-contas.spec.ts`
+falhou **uma** vez e passou isolado em 2/2 (23,7 s). Não é um defeito do produto; é pior — é um
+vermelho que a equipa aprende a repetir até passar. A partir daí a suíte deixa de servir como prova, e
+esta equipa fecha tarefas com a suíte na mão.
+
+**O que se sabe:** falha **na corrida conjunta**, passa **isolado**. Isso aponta para estado partilhado
+entre specs (dados de outro spec na base, ordem de execução, ou dois workers a tocar nas mesmas linhas),
+não para o teste em si.
+
+**Comportamento esperado**
+
+1. A causa escrita por extenso: o que é partilhado, e por que ordem de execução importa.
+2. A correção **na causa**, não no teste: espera cega (`waitForTimeout`) e repetição do teste não
+   contam como correção.
+
+**Critério de aceitação**
+
+1. O vermelho **reproduzido por comando**, colado: a spec corrida em conjunto falha hoje, ou — se não
+   falhar — diz quantas tentativas foram precisas e com que comando (`--repeat-each`, `--workers`).
+2. A causa identificada com a linha e o dado que colidem.
+3. Depois da correção: a spec corrida **5 vezes seguidas** na mesma invocação, verde; e a suíte inteira
+   uma vez, verde.
+4. Nenhum `waitForTimeout` novo, nenhum `test.skip`, nenhum `retries` a aumentar para tapar.
+5. Zero dependências, zero migrações, zero alterações de produto.
+
+**Ficheiros:** `e2e/55-consolidacao-contas.spec.ts` · `e2e/support/` (o que precisar). Não toques em
+`apps/`.
+
+**O que NÃO fazer:** não aumentes `retries` no `playwright.config.ts` · não marques o teste como `skip`
+ou `fixme` · não serializes a suíte inteira para esconder a colisão — se a correção for mesmo
+`workers: 1`, isso é uma decisão minha, não tua, e vem com o custo escrito.
+
+## T66 — Um valor inválido no URL derruba todos os filtros
+
+**Porque:** o schema do extrato já conhece todas as chaves (T64), mas um **valor** inválido ainda faz
+o `safeParse` falhar inteiro: `?semCategoria=true` sai da página como `undefined` e o filtro desliga-se
+— mas se um chamador passar o valor cru, o `value` cai para `{ limit: 50, offset: 0 }` e o utilizador
+**perde todos os filtros** sem uma única mensagem. Hoje o guarda é a normalização da página, não o schema.
+
+Isto foi escrito como resíduo na T64 e ficou por decisão minha. Agora é tarefa.
+
+**Comportamento esperado**
+
+1. Um valor inválido num campo **cai só esse campo** (`undefined`), e os outros filtros continuam a
+   valer. O caminho é `catch` por campo (ou equivalente), não um `try/catch` à volta do parse todo.
+2. Nenhum comportamento válido muda: `semCategoria=1`, `limites`, `datas` e `valor`/`valorOp` continuam
+   a filtrar como hoje.
+
+**Critério de aceitação**
+
+1. `?semCategoria=true&search=mercado` devolve **só o que o `search` filtra** (colar o total com e sem
+   o `search`), e não a lista sem filtros nenhum.
+2. `?semCategoria=true` sozinho devolve a lista completa do utilizador (não os 50 por omissão) — colar
+   o total.
+3. Um `limit` inválido (`?limit=abc`) não derruba os outros filtros: colar um caso com `search`.
+4. Teste no `packages/shared` que prova as duas coisas (valor inválido cai só ele; os válidos seguem), e
+   que **falha quando deve** (sem o `catch`, vermelho por asserção).
+5. Gate completo e suíte; zero dependências.
+
+**Ficheiros:** `packages/shared/src/schemas/domain/transactions.ts` · `apps/web/src/server/transactions.ts`
+· `apps/web/src/app/(app)/transacoes/page.tsx` (só se a normalização deixar de ser precisa).
+
+**O que NÃO fazer:** não mudes o `where` nem o `parseAmountFilter` · não engulas erros de parse em
+silêncio sem teste que o prove · não commites.
+
+## T67 — O executor de SQL genérico nos testes
+
+**Porque:** para o empate da T61 era preciso um cenário que o formulário não constrói, e o
+`e2e/support/db.ts` ganhou um `executarSqlDoSpec` — um executor de SQL **arbitrário**, disponível a
+qualquer spec. É o que torna o caso possível, e é uma porta aberta: uma spec pode passar a inventar
+dados que o produto nunca produz, e o teste fica verde sobre um estado impossível.
+
+**Comportamento esperado**
+
+1. Deixa de haver um executor genérico. Ficam **funções de fixture com nome e forma**: uma que cria a
+   fatura com o fecho que se quer, com os campos que o produto escreveria, e que o `limparDadosDoSpec`
+   apanha pelo prefixo como as outras.
+2. A spec da T61 continua a passar, sem reescrever o cenário.
+
+**Critério de aceitação**
+
+1. `grep` mostra que nenhuma spec pode chamar SQL arbitrário (o executor genérico desapareceu ou
+   deixou de ser exportado).
+2. A fixture nova está documentada com o cenário que serve e o que **não** permite (por exemplo: não
+   aceita SQL livre, só os campos da assinatura).
+3. A spec `41-cadeia-faturas` verde com a fixture nova, e o vermelho dela continua a existir (mutação
+   do `closingDate` → asserção).
+4. Gate completo e suíte; zero dependências.
+
+**Ficheiros:** `e2e/support/db.ts` · `e2e/41-cadeia-faturas.spec.ts`.
+
+**O que NÃO fazer:** não apagues o cenário do empate para poder remover o executor — o cenário vale mais
+do que a limpeza · não toques em `apps/` · não commites.
