@@ -9,7 +9,7 @@ Base `23ee3e5`. Uma alteração: `.github/workflows/ci.yml`.
       # `turbo run test` e só percorre os scripts dos pacotes — sem este passo,
       # apagar um ramo do `classificar` deixava o CI inteiro verde (T68). É
       # `node --test`: não precisa de base nem de browser, e não toca na app.
-      - name: Teste do invólucro e2e
+      - name: Testes do invólucro dos e2e (`node --test`)
         run: pnpm qa:teste
 ```
 
@@ -29,11 +29,32 @@ módulo resolve `@playwright/test/package.json` com `createRequire` **no topo** 
 CLI). Sem `node_modules` o import rebentava — mas não por acaso: é a mesma dependência que qualquer
 outro passo do job já tem.
 
+## Volta 2 — o teste deixou de arrastar o Playwright, e o job diz o que corre
+
+1. **Resolução do CLI para dentro do `correr()`.** `createRequire` e o caminho do `cli.js` estavam no
+   topo do módulo: importar `classificar` arrastava o `@playwright/test`. Agora vivem dentro de
+   `correr()` — o teste de uma função pura já não pode falhar porque o pacote mudou de layout ou
+   porque o `node_modules` não está instalado.
+
+   Prova: os dois scripts copiados para uma pasta **sem `node_modules`** nenhum (`/tmp/t68-semsmods`)
+   correm os oito casos verdes — se a resolução ainda acontecesse no import, isto dava
+   `MODULE_NOT_FOUND`:
+
+   ```
+   $ cd /tmp/t68-semsmods && node --test "*.test.mjs"
+   ℹ pass 8 · ℹ fail 0 · ℹ duration_ms 72.9887
+   ```
+
+   E o `grep` mostra o sítio: `scripts/qa-e2e.mjs:62-63` (dentro de `correr()`), e não no topo.
+
+2. **O nome do job passa a dizer a verdade** (`ci.yml:32`): «format · lint · typecheck · **qa** · test ·
+   build». O passo chama-se «Testes do invólucro dos e2e (`node --test`)» em vez da tradução literal.
+
 ## O YAML é válido
 
 ```
 $ python -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml',encoding='utf-8')); …"
-jobs: ['gate'] · passos: 11 · runs: pnpm install --frozen-lockfile · db:validate/db:generate ·
+job: format · lint · typecheck · qa · test · build · passos: 11 · runs: pnpm install --frozen-lockfile · db:validate/db:generate ·
       format:check · lint · typecheck · qa:teste · test · build
 ```
 
@@ -77,8 +98,9 @@ Não instala nada, não abre base nem browser.
 ## Diff
 
 ```
- .github/workflows/ci.yml | 7 +++++++
-1 file changed, 7 insertions(+)
+ .github/workflows/ci.yml |  9 ++++++++-
+ scripts/qa-e2e.mjs      | 12 +++++++++---
+2 files changed, 18 insertions(+), 3 deletions(-)
 ```
 
 Não mexi no script `test` do `package.json` (continua a ser o `turbo run test`) nem no `smoke.yml`.
