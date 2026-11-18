@@ -2412,6 +2412,7 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 | T65 | **O `flake` do «apaga o grupo»:** um vermelho intermitente ensina a repetir até passar | Dev  | **fechada** (não reproduzível em >170 execuções; âmbito mudado para preservar artefactos, provado) |
 | T66 | **Um valor inválido no URL derruba todos os filtros:** o schema passa a degradar em vez de rebentar | Dev  | **fechada** (PASS QA; campo a campo com `catch`; chamador cru provado) |
 | T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | **fechada** (PASS QA; SQL livre a 0; órfãos 0 durante a corrida) |
+| T68 | **O teste do invólucro não corre no CI:** a proteção existe e não morde | Dev  | **fechada** (PASS QA; passo 9 do job ; morde, provado) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3660,3 +3661,58 @@ do que a limpeza · não toques em `apps/` · não commites.
 **O que ficou de fora, dito e não corrigido:** `definirStatusDoLancamento` (`db.ts:220`, spec 35) continua a actualizar por `id` **sem dono** no `WHERE` — é a única excepção, e está escrita ao lado do comentário que fixa a regra («as outras escritas **desta tarefa**»), com o custo de a fechar (mudar a assinatura e duas chamadas da spec 35). Ganhou `rowCount`, para não falhar em silêncio. O `grep` e o comentário dizem a mesma coisa.
 
 **Sobre as +252 linhas no `db.ts`:** cinco dos sete helpers novos têm um único consumidor, a spec 41. Vivem lá porque a regra é «SQL só no `db.ts`» — o ficheiro crescer é o preço da regra, não o contrário. Ficaram num bloco separado dos genéricos.
+
+## T68 — O teste do invólucro não corre no CI
+
+**Aberto a pedido do utilizador (18/11), depois da T65.** Achado do Revisor ao fechar a T65, e é o
+buraco que dá sentido a tudo o que essa tarefa entregou.
+
+**O defeito:** o `pnpm test:e2e` agora classifica o resultado, copia os artefactos quando falha e tem
+**oito testes próprios** (`scripts/qa-e2e.test.mjs`) que prendem a classificação. Só que o CI corre
+`pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build` — e `pnpm test` é `turbo run test`, que percorre
+os scripts dos pacotes e **nunca chega à raiz**. `grep "qa:" .github/workflows/` não devolve nada.
+
+Consequência medida: **apagar o `130` do `INTERROMPIDO` deixa o CI inteiro verde.** O teste existe, a
+proteção não.
+
+**Comportamento esperado**
+
+1. O CI corre `pnpm qa:teste` — no mesmo job dos testes, como passo próprio, com o mesmo comando que se
+   usa à mão.
+2. Nada mais do workflow muda: os passos existentes ficam na mesma ordem e com as mesmas condições.
+3. O passo **não** precisa de base de dados nem de browser: `qa:teste` é `node --test`, puro. Se
+   precisar de instalar dependências a mais, diz — não deve.
+
+**Critério de aceitação**
+
+1. O `ci.yml` tem o passo, e um `grep "qa:teste" .github/workflows/ci.yml` devolve-o.
+2. O YAML **é válido**: cola a saída do parse (`node -e` com um parser YAML, ou `pnpm exec yaml`), porque
+   um workflow inválido só se descobre no GitHub, depois do push.
+3. **O passo morde:** numa cópia, mete o `1` no `INTERROMPIDO` e mostra que `pnpm qa:teste` sai ≠ 0 (é o
+   que o CI vai ver); repõe.
+4. Localmente, `pnpm qa:teste` corre em **menos de 1 s** e não instala nada.
+5. Gate completo e suíte; zero dependências novas.
+
+**Ficheiros:** `.github/workflows/ci.yml` (só isto).
+
+**O que NÃO fazer:** não mexas nos outros passos, nem nas versões de Node, nem no `smoke.yml` · não
+acrescentes o `qa:teste` ao script `test` do `package.json` (o `test` é do turbo e o CI chama-o; misturar
+esconde a origem de uma falha) · não commites nem empurres.
+
+### T68 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Onde corre                   | job **`gate`** (o único), passo **9 de 11**, entre «Tipos» e «Testes» · ordem `install · db · format · lint · typecheck · qa:teste · test · build` |
+| O passo morde                | `1` no `INTERROMPIDO` → **EXIT=1** (`pass 6 · fail 2`); reposto → **EXIT=0**, `8 pass`         |
+| Sem base nem browser         | `.env` renomeado e `env -u DATABASE_URL -u DIRECT_URL pnpm qa:teste` → **8 pass (92 ms)**        |
+| Tempo                        | **743 ms** com o arranque do pnpm · **300 ms** só o `node --test`                               |
+| YAML                         | parse independente: 1 job, 11 passos, nome novo «format · lint · typecheck · **qa** · test · build» |
+| Node do CI                   | o comando corre com **Node 22** (`npx node@22 --test "scripts/*.test.mjs"` → 8 pass) — o glob é expandido pelo Node, não pelo shell |
+| Fora do repositório          | os **três** scripts copiados para fora, sem `node_modules` → `classificar: function` e **8 pass** (antes: `MODULE_NOT_FOUND: @playwright/test/package.json`) |
+
+**A correção da volta 2, e a prova que a justificou:** `scripts/qa-e2e.mjs` resolvia `@playwright/test/package.json` no **topo do módulo**, por isso o teste de uma função pura só corria com o Playwright instalado. O QA provou-o copiando o script para fora do repositório — o import rebentava. A resolução passou para dentro do `correr()`, e o mesmo teste passa agora **sem `node_modules`**. Sem esta volta, o passo novo no CI funcionava — mas ficava a depender de um pacote que não tem nada a ver com o que testa.
+
+**O nome do job também mentia por omissão:** dizia «format · lint · typecheck · test · build» e passou a correr o invólucro dos e2e sem o dizer. É o mesmo defeito do `MAPA`, num sítio mais pequeno; agora diz `qa`.
+
+**Nota de método do QA:** o PyYAML lê a chave `on:` como `True` (YAML 1.1) — artefacto do parser, não do ficheiro. Fica escrito para ninguém «corrigir» um workflow que está certo.

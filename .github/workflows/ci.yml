@@ -29,7 +29,7 @@ env:
 
 jobs:
   gate:
-    name: format · lint · typecheck · test · build
+    name: format · lint · typecheck · qa · test · build
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -97,6 +97,13 @@ jobs:
 
       - name: Tipos
         run: pnpm typecheck
+
+      # O teste do invólucro dos e2e (`scripts/qa-e2e.test.mjs`). `pnpm test` é
+      # `turbo run test` e só percorre os scripts dos pacotes — sem este passo,
+      # apagar um ramo do `classificar` deixava o CI inteiro verde (T68). É
+      # `node --test`: não precisa de base nem de browser, e não toca na app.
+      - name: Testes do invólucro dos e2e (`node --test`)
+        run: pnpm qa:teste
 
       - name: Testes
         run: pnpm test

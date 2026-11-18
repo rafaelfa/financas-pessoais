@@ -18,9 +18,6 @@ import { guardarArtefactos } from './qa-artefactos.mjs';
  * Windows e Linux.
  */
 
-const require = createRequire(import.meta.url);
-const cli = join(dirname(require.resolve('@playwright/test/package.json')), 'cli.js');
-
 /**
  * Códigos que significam «alguém interrompeu», e não «a suíte falhou».
  *
@@ -56,6 +53,15 @@ export function classificar(resultado) {
  * testes desta correção usam sem correr a suíte).
  */
 function correr() {
+  /*
+   * A resolução do CLI fica **aqui**, não no topo do módulo: `classificar` é uma
+   * função pura, e o teste dela não pode falhar porque o `@playwright/test`
+   * mudou de layout ou porque o `node_modules` não está instalado. Quem importa
+   * este ficheiro para testar não paga o preço de o resolver.
+   */
+  const require = createRequire(import.meta.url);
+  const cli = join(dirname(require.resolve('@playwright/test/package.json')), 'cli.js');
+
   /*
    * `Ctrl+C` chega ao grupo de processos: o filho morre por sinal e este processo
    * também o receberia. O ouvido evita que o pai morra a meio do tratamento — quem
