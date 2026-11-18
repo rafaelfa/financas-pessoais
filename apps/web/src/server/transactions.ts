@@ -91,15 +91,26 @@ export async function listTransactions(
 ): Promise<TransactionPage> {
   const user = await requireUser();
   const parsed = transactionFiltersSchema.safeParse(filters);
+  /*
+   * Se o `parse` falhar, cai-se para uma consulta sem filtros nenhuns — é o
+   * comportamento de hoje e não se muda aqui: o guarda é a normalização da
+   * página, que só põe no objecto valores já saneados. O schema tem de declarar
+   * **todas** as chaves que a página põe (incluindo `valor`/`valorOp`), senão um
+   * schema estrito derrubava o extrato inteiro por causa de uma chave a mais.
+   */
   const value = parsed.success ? parsed.data : { limit: 50, offset: 0 };
 
   /*
-   * `semCategoria=1`: gastos e ganhos por classificar, fora os ignorados. Entra
-   * como condição **em AND** com os filtros escolhidos, para que juntar
+   * `semCategoria=1`: gastos e ganhos por classificar, fora os ignorados. Lido do
+   * **valor já validado** pelo `transactionFiltersSchema` (a chave está lá
+   * declarada), e não do objecto cru: um filtro fora do schema é uma chave que
+   * pode passar a ser descartada — ou a rebentar o `parse` inteiro — sem aviso.
+   *
+   * Entra como condição **em AND** com os filtros escolhidos, para que juntar
    * `status=ignored` a este filtro dê zero (é contraditório) em vez de um
    * resultado que contradiz o cartão da Revisão.
    */
-  const semCategoria = filters.semCategoria === '1';
+  const semCategoria = value.semCategoria === '1';
   const extra: Prisma.TransactionWhereInput[] = semCategoria
     ? [{ kind: { in: ['EXPENSE', 'INCOME'] }, categoryId: null, status: { not: 'IGNORED' } }]
     : [];

@@ -2398,7 +2398,7 @@ novo — a vaga fecha o que as duas anteriores deixaram a apontar para o lado.
 | T61 | **A regra «última fatura da cadeia» está escrita duas vezes, com chaves diferentes:** alinhar num sítio só | Dev  | **fechada** (PASS QA; 1 definição e 2 importadores; empate por fixture SQL) |
 | T62 | **O `MAPA.md` mente sobre o próprio estado:** remedir e corrigir, com o `README.md` e o `ESTADO-E-HANDOFF.md` | Dev  | **fechada** (PASS QA; 10 de 10 afirmações conferem; produção serve o HEAD) |
 | T63 | **Três menores de acessibilidade e higiene** que ficaram escritos nas tarefas fechadas | Dev  | **fechada** (PASS QA; 1 DEVE apanhado; spec do fuso com `America/Sao_Paulo`) |
-| T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | aberta (escrita, depois da T63) |
+| T64 | **`semCategoria` fora do schema de filtros:** o filtro morre em silêncio se o schema ficar estrito | Dev  | **fechada** (PASS QA; 3 chaves declaradas; `strict` do objecto completo verde) |
 | T60 | **A contagem «Faturas por pagar» soma a cadeia inteira** | Dev  | **fechada** (PASS QA; 2 no ecrã para 3 na base; mutação em 923 ms) |
 
 ## T52 — Navegação 15 → 8 destinos (D7)
@@ -3471,3 +3471,18 @@ filtros novos, não commites.
 **O que isto ensina, e fica escrito:** nenhum teste anterior o apanhava — `axe` a 0, texto visível certo, página a funcionar. Só se vê lendo o **nome acessível produzido**. É por isso que a prova desta tarefa é o nome do DOM nos três casos, e não uma captura.
 
 **O fuso, agora com trava:** a divergência só existe a oeste de UTC, e por isso a spec força `America/Sao_Paulo` em vez de confiar no ambiente. Sem forçar o fuso, o teste passaria sempre e não provaria nada — que é a razão pela qual o defeito esteve escrito durante três tarefas sem ser corrigido.
+
+### T64 — prova de fecho (QA)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| **A prova central**          | `transactionFiltersSchema.strict().safeParse(objecto completo)` → **true** com `semCategoria`, `valor`, `valorOp`; na cópia **sem as duas linhas** → **false** com `unrecognized_keys: ["valor","valorOp"]` |
+| Controlo                     | assere o **código** `unrecognized_keys`, não só o booleano                                    |
+| Vermelhos                    | sem a linha de `semCategoria`: **3 failed / 1 passed** (asserção, não compilação) · só com `valor`/`valorOp` fora: **1 failed / 3 passed** |
+| Comportamento                | cartão «Sem categoria» **3** = `?semCategoria=1` **total 3** (3 linhas, chip), recarregar mantém, limpar devolve **4** |
+| Filtros combinados           | `valor=15&valorOp=gt` → **3** · `+semCategoria=1` → **2** · `+status=pending` → **1** · `+search=mercado` → **1** · `valor=abc` → **4** (par inválido ignorado) |
+| Suíte / gate                 | **586 testes** em 33 ficheiros · suíte **129 passed (7,7 m)** · `format:check` 0 na árvore inteira · lint/typecheck/build 0 |
+
+**O buraco que a volta 2 fechou, e é o mais instrutivo da vaga:** a primeira entrega declarou **só** `semCategoria`. O Revisor executou o schema estrito em vez de o ler e provou que `valor` e `valorOp` — que a página põe no **mesmo objecto** — continuavam fora: com o schema estrito, quem tivesse `?valor=100&valorOp=gt` perdia **todos** os filtros do extrato. O teste do Dev não o via porque o caso estrito só levava duas chaves. **Um teste que prova «esta chave passa» não prova «o objecto passa»** — e a diferença era exatamente o defeito.
+
+**Fica escrito, não corrigido:** um **valor** inválido (`?semCategoria=true`) ainda faz o `parse` inteiro falhar em vez de cair só ele; o guarda é a normalização em `transacoes/page.tsx:137`. O caminho certo é o schema **degradar em vez de rebentar** (`catch(undefined)` por campo). Candidato a tarefa, junto com o `flake` do «apaga o grupo» e o executor de SQL genérico em `e2e/support/`.

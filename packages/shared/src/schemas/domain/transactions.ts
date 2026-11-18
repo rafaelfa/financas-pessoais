@@ -168,6 +168,24 @@ export const transactionFiltersSchema = z.object({
   kind: transactionKindSchema.optional(),
   status: transactionStatusSchema.optional(),
   search: z.string().trim().max(120).optional(),
+  /**
+   * «Sem categoria» (T54). O valor é o que a URL leva — `1` — e não um booleano:
+   * o filtro viaja no URL para os links de paginação e para o chip, e manter o
+   * literal evita converter em três sítios. **Sem esta declaração a chave era
+   * descartada em silêncio** (o objecto não é `.strict()`); no dia em que alguém
+   * o tornar estrito, todos os filtros do extrato desapareceriam sem um erro.
+   */
+  semCategoria: z.literal('1').optional(),
+  /*
+   * O par do filtro por valor viaja no mesmo objecto que os outros filtros (a
+   * página põe-no aqui para os links de paginação o levarem). O schema só aceita
+   * as **chaves**: quem valida o par — formato, operador, coerência entre os
+   * dois — é o `parseAmountFilter` (`finance/amount-filter.ts`), que tem testes
+   * próprios. Sem estas duas linhas, um `?valor=100&valorOp=gt` rebentava um
+   * schema estrito e levava consigo todos os filtros do extrato.
+   */
+  valor: z.string().optional(),
+  valorOp: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
