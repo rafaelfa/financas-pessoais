@@ -2382,7 +2382,7 @@ dados — o que a vaga 2 entrega calcula-se na hora.
 | T54 | **Ecrã de Revisão:** uma página com o que está por arrumar             | Dev  | **fechada** (PASS QA na volta 2; mutação vermelha por asserção; suíte 113) |
 | T59 | **Editar uma transferência falha sempre ao gravar:** o diálogo envia `accountId` e o servidor recusa-o | Dev  | **fechada** (PASS QA; mutação vermelha em 1,5 s; suíte 108) |
 | T57 | **Dois defeitos herdados do extrato:** `kind` em maiúsculas e o contraste do separador de `/importar` | Dev  | **fechada** (PASS QA; 2 mutações vermelhas; `axe` 0 sem exceção) |
-| T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | aberta (escrita, depois da T54) |
+| T55 | **Calendário de contas:** o mês de vencimentos e movimentos previstos  | Dev  | **fechada** (PASS QA na 3ª volta; 2 DEVE apanhados; suíte 120) |
 | T56 | **Segurança: Next 16.4.0 → 16.4.6** (D21), depois da T53            | Dev  | **fechada** (PASS QA; 5 avisos → 0; `next build` directo exit 0) |
 | T58 | **A árvore de dependências:** a CLI `shadcn` sai do runtime e o `zod` sobe a 4.6.6 | Dev  | **fechada** (PASS QA; avisos 29 → 8; CSS compilado verificado) |
 
@@ -3168,3 +3168,36 @@ transitivos do `shadcn` (que é uma CLI) e do `better-auth`. A **T58** fecha a m
 **Duas notas de âmbito:** o Painel **sem dados** não desenha o bloco «Por arrumar» (um utilizador novo só tem a paleta como porta), e é por isso que a spec 33 cria um lançamento antes de procurar órfãos. E o cartão e a página podem discordar num caso legítimo: uma fatura com `outstanding 0` que a página ainda mostre — o cartão diz «0 por pagar», que é a verdade do dinheiro.
 
 **Menores registados, não corrigidos:** `ReviewCard.done` é preenchido em quatro cartões e nunca lido · o nome acessível da ligação lê o número duas vezes («3 3 lançamentos por confirmar») · `isOverdue` da página de contas usa a meia-noite **do browser** e não de Lisboa (em Portugal coincidem; a oeste de UTC pode divergir) · `semCategoria` não está no `transactionFiltersSchema` (não é `.strict()`, por isso passa; se alguém o tornar estrito, o filtro morre em silêncio).
+
+### T55 — prova de fecho (QA, 3 voltas)
+
+| O que                        | Números                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Itens no dia certo           | 10 → −50 Conta · 12 → −105 Fatura · 15 → +70 Conta · 18 → 3 itens · 20 → −800 Recorrência · 25 → −30 Lançamento, **com valor e origem a 1280** |
+| Totais                       | **1015,00 / 80,00 / −935,00** = soma dos itens dos dias (inclui a transferência, ver abaixo)   |
+| Faixa «em atraso»            | **2 itens** (fatura → `/cartoes`, conta → `/contas-pagar-receber`), fora dos dias, ausentes noutros meses, fora dos totais |
+| `?mes`                       | sobrevive a recarregar · seguinte/anterior voltam a novembro · `2026-13`, `abc`, `2026-11-30` e `0099-05` caem em novembro |
+| 360 / 1280                   | lista por dia a 360 (`scrollWidth` 360) · grelha a 1280 com **todos** os itens, valor, origem e ligação |
+| `axe` / teclado              | **0** a 1280 e a 360 · **6 paragens de `Tab`** (só dias com itens; eram 30) · nome do dia com data, itens e saldo · «Vencida» escrito no DOM |
+| Só leitura                   | **260 → 260** nas 27 tabelas, login feito antes da primeira contagem                           |
+| Navegação                    | paleta **17** · barra **8** · `/calendario` fora dela · porta no Painel · specs 33 e 38 a 17 sem afrouxar |
+| Mutação                      | `billableInvoices` reposto a todas as faturas → «not toContainText … "2 faturas venceram … A −60,00 €"» — **asserção**, não timeout |
+| Suíte / gate                 | **120 passed (6,5 m)** sem morte de worker · `format`/`lint`/`typecheck` 0 · **582** testes · `build` 0 |
+
+**DEVE 1 (volta 2) · a dívida de uma fatura vencida desaparecia do calendário.** O filtro dos dias exigia `dueDate` dentro do mês e a faixa só consultava contas a pagar/receber: uma fatura de 300,00 € vencida em outubro não estava nos dias, não estava na faixa, não entrava em «a pagar» nem no saldo — via-se só em `/cartoes`. Correção: a faixa junta as faturas `closed && outstanding > 0 && dueDate < start`.
+
+**DEVE 2 (volta 2) · a partir de `sm` o terceiro item de um dia não existia.** A grelha cortava em `slice(0, 2)` e o `+N` era texto morto — não abria nada — e nenhum item da grelha mostrava valor nem origem. O critério 1 («cada item, com o valor e a etiqueta de origem») só se cumpria a 360. Correção: célula lista todos os itens com valor, origem e ligação, com scroll interno.
+
+**Volta 3 · a mesma dívida contada duas vezes no ecrã.** A correção da volta 2 expôs o trânsito da cadeia: `invoice.ts:239` faz `carriedOverInCents = outstandingInCents`, por isso os 60,00 € de outubro apareciam **na faixa** e **dentro** da fatura de novembro (45 + 60 = 105) — quem somava o ecrã chegava a 165,00 € para 105,00 € de dívida. Regra fixada: **por cartão, só a última fatura da cadeia conta dinheiro**, na faixa e nos dias. É a mesma que o motor já usa em `totalsByCard` (`invoice.ts:269`: a dívida do cartão é `chain[last].outstandingInCents`). Medido: cartão A soma **105,00 €** e nada dele na faixa; cartão B, cuja última fatura está fechada e vencida, aparece na faixa com 70,00 €.
+
+**Consequências aceites, escritas para não serem redescobertas como defeitos:**
+
+1. **Transferência por liquidar** conta como saída **e** entrada: com 10,00 € entre contas, «a pagar» 925 → **935** e «a receber» 70 → **80**, com o saldo do dia a 0,00 € e o saldo do mês parado (−855 €). Os dois brutos são «soma das saídas/entradas dos itens», não «o que sai da casa».
+2. **Compra de cartão com fatura `open`** não aparece no mês da compra: entra quando a fatura fechar, no dia do vencimento. É o preço de não contar o mesmo dinheiro duas vezes.
+3. **Se a última fatura de um cartão estiver `open`**, a dívida transitada não aparece na faixa até essa fatura vencer — a data de pagamento moveu-se para a frente, que é o que o trânsito significa.
+
+**Menores registados, não corrigidos:** a «última fatura» é escolhida por `dueDate` e não por `closingDate` (equivalente na prática — nada na aplicação edita o `dueDate` de uma fatura; só o `createInvoice` o calcula de `closingDate + dueDay`) · pluralização escrita à mão em três sítios · guarda morto no `leadingBlanks` · `rel` do `MonthLink` decidido pelo texto do filho · `dayLabel` e o `<h3>` repetem a data.
+
+**Ligação com a T54 — fica por corrigir e precisa de autorização:** a contagem «Faturas por pagar» (`server/review.ts`) continua a somar todas as `closed` com valor por pagar, por isso no cenário acima diria «2 faturas» para a mesma dívida de 105,00 €. É o mesmo filtro de uma linha, em ficheiro de outra tarefa.
+
+**Facto de ambiente que custou uma medição:** a `next start` falhou com `EADDRINUSE` e o Dev leu, sem dar por isso, o build de outro agente em `:3000`. Tudo o que se mede neste projeto tem de vir com a porta e o `.next/BUILD_ID` declarados — um PASS contra o build errado é verde e falso.
