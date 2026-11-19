@@ -143,7 +143,26 @@ efeito real. A partir daqui (a) uma agenda que dispare mais de uma vez por dia *
 Hobby, não só o cron, e (b) a rota é superfície pública: quem tiver o segredo escreve na base de todos. As
 duas coisas mordem em produção, e por isso ficam escritas antes de o código existir.
 
-### A7 — Rodar a palavra-passe da Neon — **AUTORIZADA (19/11), a executar quando a T70 fechar**
+### A7 — Rodar a palavra-passe da Neon — **EXECUTADA (19/11, 15:59Z → 16:12Z)**
+
+**Como correu, e a correção ao mapa de consumidores:** a sequência inteira está em
+`relatorios/A7-rotacao.md`, com a hora de cada passo. O ponto que muda o que estava escrito abaixo:
+**a palavra-passe é por ramo, não por projeto.** As três ligações de `old-fire-26176066` saíam da API
+com o mesmo valor porque os ramos o copiaram na criação — mas rodar um ramo **não** roda os outros,
+medido durante a execução (depois de rodar o do diário, os outros dois ainda abriam com a palavra-passe
+velha). A janela de «as duas produções em baixo» só aconteceu porque rodei os três ramos um a um, e o
+primeiro foi o do diário, por engano: o passo 1 dizia «Reset password de `neondb_owner`» sem nomear o
+ramo. **Ficou provado:** `/api/health` 200 com `database.reachable: true` às 16:09Z, os três casos não
+autenticados da rota de cron em produção a devolver 401, `run_sql` no ramo do diário com a palavra-passe
+nova, e a spec 46 **3 passed** contra o ramo `testes-e2e` rotacionado. **Não ficou feito:**
+`SMOKE_DATABASE_URL` nos segredos do GitHub Actions — o token do `gh` e a integração do OpenBot não
+escrevem segredos (`403 “Resource not accessible by integration”`), e o workflow é manual, por isso nada
+rebenta sozinho. **Peça nova no procedimento:** alterar variáveis na Vercel não toca na instância que
+está a servir; sem `redeploy` as apps ficam em baixo mesmo com as variáveis repostas.
+
+---
+
+**O que estava escrito antes da execução (19/11, com a inferência que se provou errada):**
 
 **Decisão dele, no bloco de confirmação de 19/11:** autorizou a sequência inteira, com duas condições
 escolhidas por ele — **(a)** rodo **depois de a T70 fechar**, não já, para não partir a meio uma corrida da

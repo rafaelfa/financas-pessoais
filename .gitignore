@@ -58,3 +58,5 @@ e2e/.tmp/
 relatorios/.qa-*/
 # artefactos de corridas e2e falhadas (traces, capturas) — ver T65
 relatorios/.falhas/
+
+*.tmp-*

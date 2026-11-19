@@ -2427,13 +2427,15 @@ trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apan
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **fechada** (Dev + QA + Revisor; suíte C 132/0 sobre o build pós-patch; secção em `TASKS-fechado.md`) |
 | T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **na fila** — escrita, handoff só depois de a T70 fechar |
-| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **aberta** (T70 fechou; à espera dele: o clique de autorização na Vercel e confirmar `CRON_SECRET` no projeto antes do próximo deploy) |
+| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado; resta `SMOKE_DATABASE_URL`, que o token não escreve. Registo em `relatorios/A7-rotacao.md`) |
 
-A **A7** não é código e não segue a fila: foi autorizada por ele hoje para correr **quando a T70 fechar**, com
-o passo da Vercel nas minhas mãos depois do link do scope. O mapa de consumidores está completo e medido em
-`DECISOES.md`, e diz uma coisa que a nota de 01/11 não previa: **a palavra-passe é uma só para três ramos**,
-por isso a janela derruba também a produção do diário do chofer. Apresentei-lhe esse preço e a alternativa
-(mudar a base para um projeto Neon próprio — a dívida **A5**), e **a escolha dele foi rodar mesmo assim**.
+A **A7** não é código e não segue a fila: foi autorizada por ele para correr **quando a T70 fechar**, com
+o passo da Vercel nas minhas mãos depois do link do scope. Correu. O mapa de consumidores de
+`DECISOES.md` media bem as ligações e inferia mal o que elas partilham: **a palavra-passe é por ramo**,
+não por projeto — os três ramos de `old-fire-26176066` tinham o mesmo valor porque o copiaram na criação,
+e rodar um não roda os outros. A janela ter caído sobre as duas produções foi consequência de eu rodar os
+três ramos, não de os três dependerem de um só segredo; o custo evitável (o diário, que não precisava de
+rotação) ficou escrito com a hora no relatório. **A5** (sair do projeto Neon da outra app) continua aberta.
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
