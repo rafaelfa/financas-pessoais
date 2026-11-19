@@ -3742,4 +3742,62 @@ esconde a origem de uma falha) · não commites nem empurres.
 
 ---
 
+# Vaga 6 — A5: sair do projeto Neon do chofer
+
+| ID | Tarefa | Dono | Estado |
+| -- | ------ | ---- | ------ |
+| A5 | **Levar os nossos dados para o nosso projeto Neon:** o `financas-pessoais` vive hoje num ramo dentro do projeto da app do diário | Lead + utilizador | **aberta, à espera da janela dele** |
+
+**Não tem código: não vai ao Dev.** Executo-a eu com ele, como a A7, e o QA prova depois.
+
+## Medido a 19/11, 18:50Z (API do Neon, `run_sql` — não é suposição)
+
+| | Origem | Destino |
+| --- | --- | --- |
+| Projeto | `old-fire-26176066` **`diario_chofer`** | `cold-pond-15149007` **`Financas_Pessoal`** |
+| Região | eu-central-1 | us-east-2 |
+| Endpoint | `ep-young-poetry-b1nqzwit` | `ep-wispy-sky-b4e0sr8e` |
+| Versão | PostgreSQL **18.7** | PostgreSQL **18.7** — iguais, sem choque de `pg_dump` |
+| Conteúdo | **11 MB · 27 tabelas em `public`** · maior tabela 58 linhas (`category`) | `public` **vazio**; 9 tabelas em `neon_auth` (Neon Auth ligado a 01/11) |
+| Ligado a | produção desta app | **ninguém** |
+
+É pequeno o suficiente para não haver drama: 11 MB copiam-se em segundos, e a janela de indisponibilidade é
+a do `redeploy` da Vercel (~1 min), não a da cópia.
+
+**Ferramentas nesta máquina:** `pg_dump`, `psql` e `pg_restore` **ausentes**; Docker presente. O caminho é
+`docker run --rm postgres:18-alpine pg_dump … | docker run --rm -i postgres:18-alpine psql …`, com a imagem
+na versão maior igual ao servidor (18).
+
+## Critério de fecho
+
+1. **Cópia só do `public`:** `-n public --no-owner --no-privileges`, sem `--clean` e sem tocar em
+   `neon_auth` no destino.
+2. **Contagem igual tabela a tabela:** as 27 tabelas do destino com o mesmo número de linhas da origem,
+   colado lado a lado. O `pg_stat_user_tables` da origem não chega para isto — é conta viva, não confirmada.
+3. **Vercel reposta e reimplantada:** `DATABASE_URL` + `DIRECT_URL` do projeto `financas-pessoais`
+   (`prj_OILikkukEulXSmf2gjnfKz00MXLM`) a apontar para `ep-wispy-sky-b4e0sr8e`, **com `redeploy`** — a peça
+   que a A7 aprendeu: mudar a variável não toca na instância que está a servir.
+4. **Prova em produção:** `/api/health` 200 com `database.reachable: true`, e os dados de verdade à vista
+   pela app, não só pela base.
+5. **`SMOKE_DATABASE_URL` trocado** pelo utilizador no browser (os nossos tokens não escrevem segredos), e o
+   fumo a correr verde depois disso.
+6. **Ramo de teste movido em passo próprio:** criar um ramo de `cold-pond` para os e2e, apontar o `.env`
+   desta máquina para ele e correr a suíte completa. Enquanto não for feito, `testes-e2e` continua no
+   projeto dele.
+7. **Nada se apaga nesse dia.** O ramo `Financas_Pessoal` de `old-fire` fica vivo **7 dias** como cópia de
+   segurança e só se apaga com ele a pedir.
+
+## O que custa e o que resolve
+
+Custa ~2 minutos com a app em baixo e a minha atenção no `redeploy`. Resolve a razão de 19/11: desde 01/11
+que rodar uma palavra-passe derrubava **duas** apps porque os dados viviam na casa do chofer. Depois da A5
+cada app roda a sua palavra-passe e a janela volta a ser de uma aplicação só.
+
+## Decisão que preciso dele
+
+1. **A janela** — quando posso fazer os 2 minutos em que ele não está a usar a app.
+2. Se o **ponto 6** (ramo de teste) entra nesta vaga ou fica para uma segunda volta.
+
+---
+
 
