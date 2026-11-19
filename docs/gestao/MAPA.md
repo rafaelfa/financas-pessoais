@@ -125,33 +125,49 @@ históricas e já não descrevem `main`.
 `^db:generate`, não de `migrate deploy`) — isso não mudou e é o que continua a exigir
 `prisma migrate deploy` à mão para migrações novas.
 
-## Base de dados Neon — layout real, verificado a 2026-11-18
+## Base de dados Neon — layout real, reescrito a 2026-11-19 (depois da A5)
 
-**A confusão começa aqui: existem dois projetos Neon chamados `diario_chofer`, e não
-existe nenhum projeto chamado `financas`.** A base das finanças é um **ramo** dentro
-de um deles.
+**Desde 19/11 que a base desta app é o projeto `Financas_Pessoal`.** Antes disso era um
+ramo dentro do projeto da app do chofer, e é por isso que as duas produções caíam juntas
+quando se rodava uma palavra-passe.
 
-| Projeto                | Conteúdo                                                                 |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `old-fire-26176066`    | ramo `main` = app do diário do chofer (`app_users`, `driving_sessions`, `work_days`, …) |
-| `patient-field-12858176` | também chamado `diario_chofer`; inativo desde 2026-09-26                 |
+| Projeto                  | Região        | Papel hoje |
+| ------------------------ | ------------- | ---------- |
+| `cold-pond-15149007` **`Financas_Pessoal`** | `aws-us-east-2` | **desta app** — produção na Vercel aponta para aqui |
+| `old-fire-26176066` `diario_chofer` | `aws-eu-central-1` | diário do chofer (ramo `production`) + **cópia de segurança de 19/11** (ramo `Financas_Pessoal`, apaga-se no máximo a 26/11) + ramo `testes-e2e` |
+| `patient-field-12858176` | — | também chamado `diario_chofer`; inativo desde 2026-09-26 |
 
-A base do `financas-pessoais` é o **ramo `Financas_Pessoal`** do primeiro projeto:
+Produção desta app, lido por API a 19/11:
 
-- projeto `old-fire-26176066`, ramo `br-patient-mud-b166137a` (`Financas_Pessoal`)
-- endpoint `ep-young-poetry-b1nqzwit` · pooler `ep-young-poetry-b1nqzwit-pooler`
-- região `aws-eu-central-1`, PostgreSQL **18**, estado do compute `active` (lido a 2026-11-18)
-- plano `free_v3`, `suspend_timeout_seconds: 0` (suspende assim que fica ocioso —
-  por isso a primeira consulta depois de um intervalo demora uns segundos)
-- criado em 2026-10-10 17:04 UTC
+- projeto `cold-pond-15149007`, ramo `production` = `br-rough-bird-b4yllio1`
+- endpoint `ep-wispy-sky-b4e0sr8e` · pooler `ep-wispy-sky-b4e0sr8e-pooler`
+- `aws-us-east-2`, PostgreSQL **18.7**, compute `active`
+- 27 tabelas em `public` (158 linhas) **e 9 tabelas em `neon_auth`**, que a app não usa:
+  a autenticação é better-auth, com as tabelas em `public`. A Neon Auth ficou montada no
+  projeto quando ele nasceu, a 01/11.
 
-**Migrações — três aplicadas** (`SELECT migration_name FROM _prisma_migrations`, 2026-11-18):
+Ramos do projeto antigo, para não voltar a confundi-los:
 
-| Migração                                             | Aplicada | Nota |
-| ---------------------------------------------------- | -------- | ---- |
-| `20261011000000_linha_de_base`                       | sim      | marcada com `migrate resolve`, é a linha de base |
-| `20261014192848_add_receivable_payable_and_account_group` | sim  | 1 passo |
-| `20261103203748_remove_goal_movement_yield`          | sim      | migração de novembro, já em `main` |
+| Ramo | Endpoint | Quem o usa |
+| ---- | -------- | ---------- |
+| `production` (`br-snowy-dew`) | `ep-frosty-water-b1nyzzpu` | diário do chofer — **nunca tocar** |
+| `Financas_Pessoal` (`br-patient-mud`) | `ep-young-poetry-b1nqzwit` | cópia de segurança até 26/11; a palavra-passe foi rodada a 19/11, já não há ligação no repo |
+| `testes-e2e` (`br-damp-math`) | `ep-spring-mud-b11fe546` | **`.env` desta máquina** e a suíte e2e — continua no projeto do chofer (ponto 6 da A5, por decidir) |
+
+**Migrações — engano corrigido.** O `MAPA.md` de 18/11 media **o ramo de teste** (a
+`DATABASE_URL` do `.env` aponta para `ep-spring-mud`) e chamava-lhe produção. Medido nos
+três ramos a 19/11 por API:
+
+| Migração | produção antiga | projeto novo | testes |
+| -------- | --------------- | ------------ | ------ |
+| `20261011000000_linha_de_base` | sim | sim | sim |
+| `20261014192848_add_receivable_payable_and_account_group` | sim | sim | sim |
+| `20261103203748_remove_goal_movement_yield` | **não** | **não** | sim |
+
+Prova: `GoalMovementType` ainda tem `YIELD` na produção e no projeto novo; no ramo de
+teste é `DEPOSIT, WITHDRAWAL`. Nada se partiu — as 3 linhas de `goal_movement` são todas
+`DEPOSIT` — mas **o primeiro `pnpm db:migrate` em produção aplica essa migração**, e isso
+é decisão do utilizador.
 
 **As tabelas da funcionalidade nova já existem na base** (`receivable_payable`,
 `receivable_payable_payment`, `account_group`, `account_group_item`), com **0 linhas**
@@ -164,6 +180,10 @@ A base do `financas-pessoais` é o **ramo `Financas_Pessoal`** do primeiro proje
 user 2 · financial_account 5 · transaction 52 · invoice 4 · recurrence 2 ·
 category 58 · budget 1 · receivable_payable 0 · account_group 0
 ```
+
+*Medido no ramo de teste, que é cópia da produção; por isso os números batiam certo.
+Repetido a 19/11 na produção de origem e no projeto novo, tabela a tabela: **158 linhas
+nos dois lados, 27/27 tabelas com o mesmo `md5`** — ver `relatorios/A5-neon.md`.*
 
 Consequência para o plano: **reter o código não tem custo de base de dados** — a
 migração já correu e as tabelas estão vazias. Nenhum `migrate deploy` é preciso para
@@ -304,3 +324,42 @@ Quem usar o mapa como verdade mede primeiro; a data e o comando estão lá para 
    É para isso que existe `pnpm test:e2e` (invólucro que copia trace, screenshot e
    `error-context.md` para `relatorios/.falhas/<data-hora>/` quando a corrida falha) e
    `pnpm qa:artefactos` (recupera o que ainda esteja no `test-results/`).
+
+## Armadilhas medidas a 2026-11-19 (A5 — migração entre projetos Neon)
+
+Cinco coisas que custaram tempo e que não se vêem em nenhum ficheiro do repo.
+
+1. **Não há cliente Postgres nesta máquina, e o Docker não tem daemon.** `pg_dump`,
+   `psql`, `pg_restore`: ausentes. Docker Desktop instalado mas morto —
+   `request returned 500 Internal Server Error for API route … dockerDesktopLinuxEngine`,
+   `com.docker.service` em `Stopped`, WSL `docker-desktop` em `Stopped`. **Antes de
+   prometer uma rota que usa uma ferramenta, mede-se a ferramenta.** A rota que ficou
+   foi `postgres_fdw`: uma ponte entre as duas bases, montada e desmontada por SQL, sem
+   dados nem palavras-passe a passar pelo chat.
+2. **A API HTTP do Neon (`run_sql`) rejeita três formas que o `psql` aceita**:
+   `import foreign schema … options (import_collate false)` → `42601 syntax error at or
+   near "false"`; `unnest(…) with ordinality as k(a,b)` → `42601` (contorna-se com
+   `generate_subscripts(con.conkey, 1)`); e `run_sql` com `params:` → `08P01 bind message
+   supplies 0 parameters`. Além disso `run_sql` corre **um** statement; para vários é
+   `run_sql_transaction` com `sql_statements`.
+3. **`get_connection_string` imprime a palavra-passe, com ou sem `pooled:false`** — esse
+   parâmetro é ignorado e a API devolve sempre o host `-pooler` (o host directo obtém-se
+   ao tirar `-pooler`). Numa chamada de verificação a string completa foi para o chat.
+   Regra: **uma ferramenta de ligação devolve host, comprimento e booleanos — nunca o
+   texto do segredo.**
+4. **Variáveis `sensitive` na Vercel não se podem corrigir.** `edit_project_env` aceita
+   **só** `value` num `PATCH`; meter `type` ou `key` no corpo dá `400 You cannot change
+   the type/key of a Sensitive Environment Variable`, e um valor rejeitado **não altera o
+   registo**. O MCP da Vercel não expõe `delete_project_env`, por isso uma variável criada
+   como `sensitive` fica ilegível para sempre — inclusive para quem a escreveu. A fonte da
+   verdade das ligações é o Neon. E verificar a escrita faz-se pelo `updatedAt` de
+   `filter_project_envs`, **antes** de disparar o `redeploy`.
+5. **Um redeploy a partir de um deployment anterior herda as variáveis do projeto, não as
+   do deployment antigo** — por isso o corte exige escrever primeiro e só depois
+   `create_deployment` com `forceNew: '1'`. O contrário já nos apanhou na A7: mudar a
+   variável sem `redeploy` deixa a app a servir da base velha.
+
+**Como se prova qual das duas bases está a servir, sem dump nem log:** `pg_stat_user_tables`
+lado a lado. Na A5 bateram-se 12 tentativas de entrada em produção e o `seq_scan` de `user`
+subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/health` só faz
+`SELECT 1` e não distingue uma base da outra, por isso não serve de prova sozinho.

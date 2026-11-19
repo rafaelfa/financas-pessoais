@@ -248,11 +248,18 @@ reachable: true }`.
 **Não se roda antes de o passo 2 estar pronto:** sem ele, o passo 1 deita a produção abaixo sem saída à vista.
 O gatilho passa a ser **a T70 fechada** — e nessa altura peço-lhe o link outra vez, porque o de hoje expira.
 
-### A5 — A base das finanças vive dentro de um projeto de outra app
+### A5 — A base das finanças vive dentro de um projeto de outra app — **EXECUTADA (19/11, ~19:25Z → 19:52Z)**
 
 **Trava:** nada agora; é dívida a limpar quando houver tempo. **Decide:** utilizador.
 
-A base do `financas-pessoais` é o ramo `Financas_Pessoal` dentro do projeto Neon
+**Estado a 19/11 às 19:52Z: fechado o essencial, dois pontos à espera dele.** A base desta app passou
+para o projeto `Financas_Pessoal` (`cold-pond-15149007`, `ep-wispy-sky-b4e0sr8e`) e a Vercel foi
+reposta **e** reimplantada. Execução, prova e o que falhou em `relatorios/A5-neon.md`. Ficam por ele:
+o `SMOKE_DATABASE_URL` (ponto 5 — o valor actual aponta para a origem e a palavra-passe da origem foi
+rodada hoje) e o ramo de `testes-e2e` (ponto 6 — perguntei se entrava nesta vaga e não houve resposta).
+**Nada foi apagado**: o ramo `Financas_Pessoal` de `old-fire` fica vivo até **26/11**.
+
+A base do `financas-pessoais` era o ramo `Financas_Pessoal` dentro do projeto Neon
 `old-fire-26176066`, cujo ramo `main` é a app do diário do chofer. Há ainda um segundo
 projeto também chamado `diario_chofer` (`patient-field-12858176`), inativo.
 Risco: abrir o console e ficar no ramo errado. Cada ramo tem o seu `public`, portanto
@@ -267,14 +274,13 @@ não há mistura de dados — mas há risco de operar no sítio errado.
 | `old-fire-26176066` `diario_chofer` | eu-central-1 | `testes-e2e` (`br-damp-math`) | `ep-spring-mud-b11fe546` | — | `.env` desta máquina, suíte e2e |
 | `cold-pond-15149007` `Financas_Pessoal` | us-east-2 | `production` (`br-rough-bird`) | `ep-wispy-sky-b4e0sr8e` | **0 tabelas em `public`**, 9 em `neon_auth` | **ninguém** — projeto nosso, vazio desde 01/11 |
 
-Consequência para a proposta abaixo: **o projeto próprio já existe e tem a Neon Auth montada** — o trabalho
-de A5 não é criar nada, é `pg_dump`/`restore` do ramo `Financas_Pessoal` para `ep-wispy-sky-b4e0sr8e`,
-repor as duas Vercel e só depois apagar o ramo emprestado. E é esse o motivo estrutural da janela de
+Consequência prática, corrigida pela execução: **o projeto próprio já existia e tinha a Neon Auth
+montada** — não havia nada para criar. O que se fez foi copiar o `public` por `postgres_fdw` (não por
+`pg_dump`: sem cliente Postgres nesta máquina e sem daemon do Docker), repor as duas variáveis da Vercel
+e reimplantar. **O apagamento do ramo emprestado não faz parte desta execução**: vive até 26/11 e só se
+apaga com ele a pedir, como estava escrito no critério 7. E é esse o motivo estrutural da janela de
 19/11 ter derrubado duas apps: os dados do `financas-pessoais` estavam dentro do projeto do chofer.
-
-Proposta: criar um projeto Neon próprio (`financas-pessoais`), fazer `pg_dump` + `restore`
-do ramo, trocar a `DATABASE_URL`/`DIRECT_URL` na Vercel e apagar o ramo antigo — depois
-de confirmar que a app nova está saudável.
+**Depois de hoje, rodar a nossa palavra-passe volta a ser uma janela de uma aplicação só.**
 
 ### D7 — Navegação: 15 destinos passam a 8 — **delegada pelo utilizador (2026-11-17)**
 
@@ -492,3 +498,29 @@ definidos, e o turbo não propaga essa variável ao filho. Não é configuraçã
 Medido a 1,31:1 (claro) e 1,46–1,57:1 (escuro); o mínimo WCAG 1.4.11 é 3:1. Os
 mínimos que resolvem estão em `docs/plano/ESTADO-E-HANDOFF.md` §6.1. Escurecer os
 tokens muda o carácter visual da aplicação — é escolha de produto, não de código.
+
+### D23 — A cópia fez-se por `postgres_fdw`, e as duas palavras-passe rodaram na mesma janela — **decisão do Lead (2026-11-19)**
+
+**O que se decidiu:** mover os dados com uma ponte `postgres_fdw` montada no destino
+(`create server` → `import foreign schema` → `insert into … select`), e rodar a palavra-passe
+do destino **antes** do corte e a da origem **depois** dele, dentro da mesma execução da A5.
+
+**Alternativa rejeitada e porquê:** `pg_dump`/`psql` em Docker, como estava escrito no critério de
+fecho. Foi medida antes de se começar e não existe nesta máquina — os três binários estão ausentes e
+o daemon do Docker devolve `500 … dockerDesktopLinuxEngine` (`com.docker.service` e o WSL
+`docker-desktop` ambos em `Stopped`). A segunda alternativa rejeitada foi despejar o `public` em
+ficheiro e carregá-lo statement a statement pelo MCP: funciona para 158 linhas, mas **cada linha de
+dados e cada palavra-passe passava pelo chat**, e foi precisamente por uma palavra-passe ter caído no
+chat que a rotação de hoje deixou de ser opcional. A ponte deixa os dados e as credenciais dentro do
+servidor; foi desmontada a seguir (`0` esquemas, `0` servidores, `0` tabelas estrangeiras).
+
+**O que a torna irreversível:** a palavra-passe antiga da origem **deixou de abrir a base da origem**,
+e era ela que estava neste chat. A partir de agora o ramo `Financas_Pessoal` de `old-fire-26176066` só
+se alcança pelo console do Neon ou por uma ligação pedida pela API — fica como cópia de segurança
+muda, não como cópia de segurança acessível a quem leia a conversa. Reversível é o resto: `git revert`
+dos commits desta vaga repõe as ligações antigas na Vercel, e a origem não foi apagada até 26/11.
+
+**Regra que fica:** uma ferramenta de ligação devolve **host, comprimento e booleanos**, nunca o texto
+do segredo — nem com máscara, porque a máscara falha. Escrita de segredo em variável da Vercel faz-se
+dentro do mesmo `execute`, e a verificação é `updatedAt`, não o valor.
+

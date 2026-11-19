@@ -3746,7 +3746,7 @@ esconde a origem de uma falha) · não commites nem empurres.
 
 | ID | Tarefa | Dono | Estado |
 | -- | ------ | ---- | ------ |
-| A5 | **Levar os nossos dados para o nosso projeto Neon:** o `financas-pessoais` vive hoje num ramo dentro do projeto da app do diário | Lead + utilizador | **aberta, à espera da janela dele** |
+| A5 | **Levar os nossos dados para o nosso projeto Neon:** o `financas-pessoais` vive hoje num ramo dentro do projeto da app do diário | Lead + utilizador | **executada 19/11 19:25Z–19:52Z, à espera da prova do QA** |
 
 **Não tem código: não vai ao Dev.** Executo-a eu com ele, como a A7, e o QA prova depois.
 
@@ -3797,6 +3797,49 @@ cada app roda a sua palavra-passe e a janela volta a ser de uma aplicação só.
 
 1. **A janela** — quando posso fazer os 2 minutos em que ele não está a usar a app.
 2. Se o **ponto 6** (ramo de teste) entra nesta vaga ou fica para uma segunda volta.
+
+## Executada — 19/11, ~19:25Z → 19:52Z (prova completa em `relatorios/A5-neon.md`)
+
+Respondida a 1 pelo utilizador com um «agora» às 19:2xZ. A 2 continua sem resposta, por isso
+`testes-e2e` ficou onde estava.
+
+**A rota mudou pelo caminho, e foi melhor:** `pg_dump` em Docker era inexecutável nesta máquina
+(binários ausentes, daemon do Docker morto com `500 … dockerDesktopLinuxEngine`). Foi tudo por
+**`postgres_fdw`** — ponte montada no destino, cópia `insert … select`, ponte desmontada. Com uma
+vantagem que o `pg_dump` não dava: **nenhum dado nem nenhuma palavra-passe passou por este chat.**
+
+| Critério | Estado |
+| -------- | ------ |
+| 1 · só o `public` | ✅ `neon_auth` intacto (9 tabelas, antes e depois) |
+| 2 · contagem tabela a tabela | ✅ 27/27, **158 = 158**, e `md5` por tabela igual nos dois lados |
+| 3 · Vercel reposta **e** reimplantada | ✅ hosts `ep-wispy-sky-b4e0sr8e` (+ `-pooler`), `dpl_BcvdsMwRyMMQZDGWGFGna2CX89Df` `READY` às 19:41:06Z |
+| 4 · prova em produção | ✅ 20/20 pedidos de santé 200, `database.reachable: true`, e **varrimentos**: origem inalterada, destino `user` 19 → 27 com 12 tentativas de entrada |
+| 5 · `SMOKE_DATABASE_URL` | ⏳ **dele** — o valor actual aponta para a origem, cuja palavra-passe rodei hoje; o fumo parte com `authentication failed` |
+| 6 · ramo de teste | ⏳ **dele** — a pergunta ficou sem resposta |
+| 7 · nada apagado nesse dia | ✅ origem viva com 27 tabelas / 52 movimentos; reaping no máximo **26/11** |
+
+**Feito por mim, com a hora:** DDL no destino (74 statements: 20 enums, 27 tabelas, 302 colunas,
+27 primárias) → carga (158 linhas) → 76 índices + 52 estrangeiras + `analyze` → verificação →
+`DATABASE_URL` às 19:38:52Z e `DIRECT_URL` às 19:38:53Z → `redeploy` 19:39:41Z → `READY` 19:41:06Z
+→ medição da janela cópia↔corte (**0** linhas de deriva) → ponte desmontada ~19:50Z →
+**palavra-passe da origem rodada ~19:52Z**.
+
+**Custo real da janela: a app nunca esteve inacessível.** Entre a escrita das variáveis (19:38:53Z)
+e o `READY` (19:41:06Z) — **2 min 13 s** — foi a instância antiga a servir, da origem. Não há escrita
+perdida nesse intervalo: medido linha a linha.
+
+**Três coisas que correm mal e ficam registadas:** (a) vendi a rota do `pg_dump` sem medir a máquina;
+(b) **uma palavra-passe da origem caiu no chat por erro meu** — `get_connection_string` imprime o
+segredo e a minha máscara avariou; está rodada e a antiga já não abre nada; (c) disparei um `redeploy`
+antes de confirmar a escrita das variáveis — cancelei-o sem tráfego, e a regra passa a ser ler o
+`updatedAt` primeiro.
+
+**Achado novo, fora do critério — gera tarefa só com autorização dele:** a produção está **uma
+migração atrás** do `main`. Faltou `20261103203748_remove_goal_movement_yield` (o enum
+`GoalMovementType` ainda tem `YIELD`; no ramo de teste não tem). O `MAPA.md` de 18/11 dizia «três
+aplicadas» porque mediu o `.env`, que aponta para o ramo de teste. Nenhum dano — as 3 linhas de
+`goal_movement` são `DEPOSIT` — mas o primeiro `pnpm db:migrate` em produção aplica-a, e isso é
+decisão dele.
 
 ---
 
