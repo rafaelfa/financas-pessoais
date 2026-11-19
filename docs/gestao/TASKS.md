@@ -2425,9 +2425,9 @@ trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apan
 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
-| T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **aberta** (handoff 19/11) |
+| T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **fechada** (Dev + QA + Revisor; suíte C 132/0 sobre o build pós-patch; secção em `TASKS-fechado.md`) |
 | T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **na fila** — escrita, handoff só depois de a T70 fechar |
-| A7  | **Rodar a palavra-passe da Neon** — não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **autorizada** (rodo quando a T70 fechar; o passo da Vercel é meu depois do link dele) |
+| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **aberta** (T70 fechou; à espera dele: o clique de autorização na Vercel e confirmar `CRON_SECRET` no projeto antes do próximo deploy) |
 
 A **A7** não é código e não segue a fila: foi autorizada por ele hoje para correr **quando a T70 fechar**, com
 o passo da Vercel nas minhas mãos depois do link do scope. O mapa de consumidores está completo e medido em
@@ -3739,74 +3739,6 @@ esconde a origem de uma falha) · não commites nem empurres.
 **Nota de método do QA:** o PyYAML lê a chave `on:` como `True` (YAML 1.1) — artefacto do parser, não do ficheiro. Fica escrito para ninguém «corrigir» um workflow que está certo.
 
 ---
-
-## T70 — Recorrências vencidas geram-se sozinhas (a rota que a A3 pedia)
-
-**Aberta a pedido do utilizador (19/11), ponto 2 de «faça 1, 2 e 3».** A decisão **A3** estava aberta
-desde 01/11 com duas saídas — escrever a rota ou retirar a variável. Ele escolheu a rota.
-
-**O defeito:** `generateDueRecurrences()` (`apps/web/src/server/recurrences-actions.ts:302`) existe, é
-idempotente e protege-se contra corrida, mas só corre quando alguém abre a app e carrega no botão
-(`recurrence-generate-button.tsx:28`). `apps/web/src/app/api/` tem só `health` e `auth`. Uma série com
-`nextRunDate` atrasado não gera nada sozinha.
-
-**Factos medidos hoje — a tarefa parte deles e não os pode contradizer:**
-
-1. A função começa por `await requireUser()` (`:305`): **depende da sessão**. O Vercel Cron chama por
-   HTTP sem cookies, por isso a rota **não pode chamá-la como está**. É o único trabalho de arquitetura
-   da tarefa e é obrigatório: um núcleo que recebe `userId`, chamado pela acção de sessão (comportamento
-   público igual) e pela rota (para cada utilizador com séries em atraso).
-2. A conta Vercel é **Hobby** (medido em `get_auth_user.billing.plan`, 19/11). Os docs de
-   `schedules/cron-jobs/usage-and-pricing` fixam: **intervalo mínimo de uma vez por dia**, precisão por
-   hora (±59 min), UTC. **Uma expressão que dispare mais de uma vez por dia faz o deploy falhar** — em
-   produção, não só o cron.
-3. Padrão de proteção nos docs: comparar o header `Authorization` com `Bearer ${process.env.CRON_SECRET}`
-   e devolver **401** também quando `CRON_SECRET` **não está definido**. Ou seja: sem segredo a rota fecha,
-   nunca abre.
-4. `CRON_SECRET` saiu do `.env.example` e do `turbo.json` na T32, porque não havia rota; continua no `.env`
-   desta máquina. Com a rota, a declaração volta — agora com justificação.
-5. Não existe `vercel.json` nesta árvore (verificado 19/11).
-
-**Comportamento esperado**
-
-1. `GET /api/cron/recurrences` protegido por segredo, sem sessão, que gera as ocorrências em atraso e
-   devolve contagens (`created`, `truncated`) **sem descrições, sem montantes, sem ids de utilizador**.
-2. A geração em si continua a ser a mesma lógica, com a reivindicação em transação que já existe — a rota
-   não cria duplicados se for chamada duas vezes.
-3. Uma linha em `vercel.json` agenda essa rota **uma vez por dia**, com a hora justificada contra o
-   `todayInLisbon()` que o gerador já usa.
-
-**Critério de aceitação (verificável)**
-
-1. `curl` com o header certo → **200** e `created` numérico; **sem** header → **401**; header **errado** →
-   **401**; e com `CRON_SECRET` fora do ambiente → **401** (prova: `env -u CRON_SECRET`). Quatro saídas coladas.
-2. **Idempotência pela segunda chamada:** chamar duas vezes seguidas e colar a segunda com `created: 0`.
-3. A acção de sessão continua a funcionar sem mudança de comportamento: o botão da UI e os testes/unitários
-   dessa fileira passam **sem serem tocados**.
-4. `vercel.json` faz parse e tem **exactamente uma** entrada `crons`; cola a avaliação da expressão em
-   dias/horas por semana, e prova que **não excede uma execução por dia** (plano Hobby). O `path` bate com
-   a rota real (`Test-Path` do directório).
-5. A rota não aceita `userId`, `email` nem data vindos do cliente — `grep` do `route.ts` mostra que nada é
-   lido do URL ou do body.
-6. Spec e2e nova no número livre de `e2e/`: 401 sem segredo, 200 com segredo, e **limpa o que criou** com
-   estado com dono e `finally` (a regra da T67). Nada de SQL arbitrário.
-7. Gate completo (`format:check` · `lint` · `typecheck` · `test` · `build`) e suíte e2e com `--output`
-   próprio e máquina livre; zero dependências novas.
-
-**Ficheiros que pode escrever:** `apps/web/src/app/api/cron/recurrences/route.ts` (novo),
-`apps/web/src/server/recurrences-actions.ts`, `vercel.json` (novo), `.env.example` (uma linha de
-*placeholder*), uma spec nova em `e2e/`, e o índice de `packages/shared` **só** se precisar de uma
-constante partilhada — diz antes. Mais nada.
-
-**O que NÃO fazer:** não mudar o comportamento público de `generateDueRecurrences` para a UI; não passar
-`userId` pela rota; não escrever segredo real no repositório (`.env.example` leva um *placeholder*); não
-agendar mais de uma vez por dia (Hobby rebenta o deploy); não correr `vercel` nem tocar na Vercel; não
-mexer em `.env`; não commites nem empurres.
-
-**Prova esperada:** `relatorios/T70-dev.md` com os quatro `curl`, a segunda chamada idempotente, o parse e
-a avaliação do `vercel.json`, o `grep` que prova que nada vem do cliente, a spec nova e o gate.
-
-**Gera:** fechar a A3 em `DECISOES.md` e pôr a D22 (a rota de cron como caminho privilegiado) a valer.
 
 ## T71 — `logicalCount` escrito duas vezes
 
