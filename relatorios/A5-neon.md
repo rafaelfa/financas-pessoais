@@ -150,14 +150,37 @@ deriva.
 6. Os dados de 58 categorias, 52 movimentos e 18 sessões **não saíram das duas bases** — não há dump em
    disco nem linha de dados no chat.
 
+## Prova do QA — **PASS** (relatório: `relatorios/A5-qa.md`)
+
+O QA reproduziu P1–P4 com chamadas dele às ~19:58–20:02Z e deu **PASS**, remetendo os pontos 5 e 6
+para o utilizador. Confirmou com milissegundos os `updatedAt` das variáveis (`.757` / `.205`), as
+9 tabelas de `neon_auth`, 158 = 158, e 10 tentativas de entrada dele com a origem **inalterada** e o
+destino a mexer.
+
+Dois buracos do relatório dele, que fechei eu às **20:04–20:06Z** com medição própria:
+
+| | O que faltava ao QA | O que medi eu |
+| --- | --- | --- |
+| conteúdo | P2 só por contagem — sem hash | **27/27 `md5` iguais, 158 = 158**, repetido **depois** do corte e das sondas dele |
+| deployment | «não consultei `get_deployments` para confirmar o ID e o `READY`» | `list_deployments` → `dpl_BcvdsMwRyMMQZDGWGFGna2CX89Df`, **`state: READY`**, `githubCommitSha: 52432be…`, criado 19:39:41Z, `url: financias-pessoais-3tittgr6t-rafaelfas-projects.vercel.app` |
+| varrimentos | só o par dele (destino 36 → 37, origem 6354 = ) | 6 tentativas minhas: destino **40 → 45**, origem **6355 → 6355** — mesma direção, noutro instante |
+| app na base nova | santé 200 | santé 200 + **`GET /api/cron/recurrences` → 401**, `POST` → 405, caminho inventado → 404: a rota da T70 está publicada em cima da base nova |
+
+Reparo que fica para as próximas voltas do QA: **contagem igual não prova conteúdo** — é o hash que
+prova. E os contadores da origem **não são uma linha de base absoluta**: sobem com qualquer leitura,
+incluindo as minhas (o `md5` que corri em cima das 27 tabelas de origem varre `user`, e é a explicação
+mais provável para 6354 → 6355 entre as duas medições). O que sustenta a conclusão não é «a origem não
+anda», é o **par dentro da mesma janela de sondas**: 12 tentativas → origem exatamente 6347 e destino a
+subir (19:43); 10 tentativas do QA → origem 6354 igual; 6 minhas → origem 6355 igual, destino 40 → 45.
+
 ## Estado do critério de fecho (os 7 pontos)
 
 | # | Ponto | Estado |
 | - | ----- | ------ |
-| 1 | Cópia só do `public`, sem tocar em `neon_auth` | ✅ 27 tabelas em `public`, 9 em `neon_auth` intactas nos dois momentos |
-| 2 | Contagem igual tabela a tabela | ✅ 27/27, 158 = 158, com `md5` por tabela |
-| 3 | Vercel reposta **e** reimplantada | ✅ hosts `ep-wispy-sky-b4e0sr8e` (+`-pooler`), `dpl_BcvdsMwRyMMQZDGWGFGna2CX89Df` `READY` |
-| 4 | Prova em produção, pela app e pela base | ✅ santé 200/200 e varrimentos a baterem no destino |
+| 1 | Cópia só do `public`, sem tocar em `neon_auth` | ✅ 27 tabelas em `public`, 9 em `neon_auth` — medido por mim **e** pelo QA, nos dois momentos |
+| 2 | Contagem igual tabela a tabela | ✅ 27/27, 158 = 158, com `md5` por tabela igual nos dois lados (repetido 20:04Z, depois do corte) |
+| 3 | Vercel reposta **e** reimplantada | ✅ hosts `ep-wispy-sky-b4e0sr8e` (+`-pooler`), `dpl_BcvdsMwRyMMQZDGWGFGna2CX89Df` `READY` — `updatedAt` confirmado pelo QA ao milissegundo e o `state: READY` lido por API às 20:04Z |
+| 4 | Prova em produção, pela app e pela base | ✅ santé 200/200 e varrimentos a baterem no destino, em três voltas independentes (19:43 minha, ~20:00 do QA, 20:05 minha) |
 | 5 | `SMOKE_DATABASE_URL` trocado pelo utilizador | ⏳ **à espera dele** — o valor actual aponta para a origem, cuja palavra-passe foi rodada hoje; o fumo parte com `authentication failed` |
 | 6 | Ramo de teste movido em passo próprio | ⏳ **à espera de decisão** — perguntei se entrava nesta vaga e ficou sem resposta; `testes-e2e` continua no projeto do chofer |
 | 7 | Nada se apaga nesse dia | ✅ origem viva com 27 tabelas / 52 movimentos; reaping no máximo **26/11**, só com ele a pedir |

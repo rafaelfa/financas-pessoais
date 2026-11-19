@@ -2435,7 +2435,9 @@ o passo da Vercel nas minhas mãos depois do link do scope. Correu. O mapa de co
 não por projeto — os três ramos de `old-fire-26176066` tinham o mesmo valor porque o copiaram na criação,
 e rodar um não roda os outros. A janela ter caído sobre as duas produções foi consequência de eu rodar os
 três ramos, não de os três dependerem de um só segredo; o custo evitável (o diário, que não precisava de
-rotação) ficou escrito com a hora no relatório. **A5** (sair do projeto Neon da outra app) continua aberta.
+rotação) ficou escrito com a hora no relatório. **A5** (sair do projeto Neon da outra app) foi entretanto
+**executada no próprio dia, 19/11 19:25Z–19:52Z** — os dados desta app vivem agora no projeto
+`Financas_Pessoal`, por isso a próxima rotação volta a ser de uma aplicação só (vaga 6, `relatorios/A5-neon.md`).
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 
@@ -3746,7 +3748,7 @@ esconde a origem de uma falha) · não commites nem empurres.
 
 | ID | Tarefa | Dono | Estado |
 | -- | ------ | ---- | ------ |
-| A5 | **Levar os nossos dados para o nosso projeto Neon:** o `financas-pessoais` vive hoje num ramo dentro do projeto da app do diário | Lead + utilizador | **executada 19/11 19:25Z–19:52Z, à espera da prova do QA** |
+| A5 | **Levar os nossos dados para o nosso projeto Neon:** o `financas-pessoais` vive hoje num ramo dentro do projeto da app do diário | Lead + utilizador | **executada 19/11 19:25Z–19:52Z, QA `PASS` 20:0xZ; pontos 5 e 6 à espera dele** |
 
 **Não tem código: não vai ao Dev.** Executo-a eu com ele, como a A7, e o QA prova depois.
 
@@ -3840,6 +3842,42 @@ migração atrás** do `main`. Faltou `20261103203748_remove_goal_movement_yield
 aplicadas» porque mediu o `.env`, que aponta para o ramo de teste. Nenhum dano — as 3 linhas de
 `goal_movement` são `DEPOSIT` — mas o primeiro `pnpm db:migrate` em produção aplica-a, e isso é
 decisão dele.
+
+### QA provou, e eu contra-provei (19/11, 20:04–20:06Z) — **a vaga fecha do meu lado**
+
+Veredicto do QA: **PASS**, com os pontos 5 e 6 remitidos para ele. Relatório em `relatorios/A5-qa.md`
+(P1 27 + 9 tabelas; P2 158 = 158 tabela a tabela; P3 `updatedAt` com milissegundos `.757` / `.205`;
+P4 santé 200 e origem quieta com as sondas dele).
+
+O que o QA não alcançava, e medi eu logo a seguir, para a vaga não fechar com buracos:
+
+| | Medido às ~20:04–20:06Z | Para que serviu |
+| --- | --- | --- |
+| `md5` por tabela, origem ↔ destino | **27/27 iguais**, 158 = 158 | repetido **depois** do corte e das sondas do QA: continua byte a byte igual |
+| deploy de produção | `list_deployments` → `dpl_BcvdsMwRyMMQZDGWGFGna2CX89Df`, `state: READY`, `githubCommitSha: 52432be…`, criado 19:39:41Z | tapo o P3 que o QA remeteu («falta a verificação explícita do objecto deployment») |
+| varrimentos com 6 tentativas de entrada minhas | origem `user` **6355 → 6355**, destino **40 → 45** | mesma direção do resultado dele (+1 em 10 sondas; +5 em 6): a origem não é tocada há horas |
+| santé | 200, `uptimeInSeconds: 299` | a instância que serve é a do corte |
+| rota de cron em produção | `GET /api/cron/recurrences` sem autorização → **401**, `POST` → 405, caminho inventado → 404 | a T70 está publicada em cima da base nova |
+
+Dois reparos ao relatório do QA, registados para não virar costume:
+
+1. **O P2 dele não prova conteúdo**: assumiu por omissão que «as tabelas não têm colunas textuais
+   grandes, logo uma colisão é improvável». Contagens iguais são compatíveis com linhas diferentes —
+   a prova é o hash e ele não o correu. Fica tapado pela minha medição acima.
+2. **Os contadores da origem não são linha de base absoluta**: sobem com qualquer leitura, e às
+   ~20:04Z eu li a origem tabela a tabela (o `md5` das 27), que é a explicação mais provável para
+   6354 → 6355 entre a volta dele e a minha. A prova que vale é o **par dentro da mesma janela de
+   sondas**: 12 tentativas → origem exatamente 6347 e destino a subir; 10 do QA → 6354 igual; 6
+   minhas → 6355 igual, destino 40 → 45.
+
+**Fecho.** Critérios **1, 2, 3, 4 e 7 provados por duas fontes**. Ficam abertos à espera dele os
+**5** (`SMOKE_DATABASE_URL`, partido pela rotação da origem; só ele escreve o valor) e **6** (ramo
+`testes-e2e` — a pergunta que ficou sem resposta). O apagamento de `br-patient-mud` continua a não
+ser meu: no máximo **26/11**, com ele a pedir.
+
+*Nota de higiene, corrigida hoje: os screenshots de `relatorios/` **não se versionam** — 82 `.md` em
+git e **zero** `.png`. Os ~25 ficheiros de evidência ficam de fora por esse padrão, e não os meti no
+commit da A5. Se ele os quiser no repo, diz — mas é mudar um padrão, não limpar uma tarefa.*
 
 ---
 

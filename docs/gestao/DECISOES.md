@@ -252,11 +252,12 @@ O gatilho passa a ser **a T70 fechada** — e nessa altura peço-lhe o link outr
 
 **Trava:** nada agora; é dívida a limpar quando houver tempo. **Decide:** utilizador.
 
-**Estado a 19/11 às 19:52Z: fechado o essencial, dois pontos à espera dele.** A base desta app passou
-para o projeto `Financas_Pessoal` (`cold-pond-15149007`, `ep-wispy-sky-b4e0sr8e`) e a Vercel foi
-reposta **e** reimplantada. Execução, prova e o que falhou em `relatorios/A5-neon.md`. Ficam por ele:
+**Estado a 19/11, 20:06Z: executada e provada.** A base desta app passou para o projeto `Financas_Pessoal`
+(`cold-pond-15149007`, `ep-wispy-sky-b4e0sr8e`) e a Vercel foi reposta **e** reimplantada; o QA deu **PASS**
+(`relatorios/A5-qa.md`) e eu contra-provei os hash e o objecto deployment (`TASKS.md`, vaga 6). Execução,
+prova e o que falhou em `relatorios/A5-neon.md`. Ficam por ele:
 o `SMOKE_DATABASE_URL` (ponto 5 — o valor actual aponta para a origem e a palavra-passe da origem foi
-rodada hoje) e o ramo de `testes-e2e` (ponto 6 — perguntei se entrava nesta vaga e não houve resposta).
+rodada hoje) e o ramo de `testes-e2e` (ponto 6 — perguntei se entrava nesta vaga e ficou sem resposta).
 **Nada foi apagado**: o ramo `Financas_Pessoal` de `old-fire` fica vivo até **26/11**.
 
 A base do `financas-pessoais` era o ramo `Financas_Pessoal` dentro do projeto Neon

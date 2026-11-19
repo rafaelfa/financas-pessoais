@@ -51,7 +51,7 @@ aqui serve. O que se segue é a **forma** do repositório — o que vive onde.
 | --- | --- |
 | `apps/web/src/app/(app)/` | os ecrãs autenticados: painel, transações, contas, contas a pagar/receber, consolidação de contas, cartões, património, orçamento, objetivos, recorrências, regras, categorias, relatórios, importar, revisão, calendário e definições |
 | `apps/web/src/app/(auth)/` | `entrar` e `registar` |
-| `apps/web/src/app/api/` | só `health` e `auth/[...all]` — **não existe rota de cron** |
+| `apps/web/src/app/api/` | `health`, `auth/[...all]` e **`cron/recurrences`** (T70, 19/11). O `vercel.json` da raiz agendado `0 2 * * *`. Em produção, 19/11 20:05Z: `GET` sem autorização → **401** `Não autorizado.**, `POST` → 405, caminho inventado → 404 — a rota está publicada e fecha-se |
 | `apps/web/src/app/(app)/api/` | as duas rotas de dados que não são Server Actions: `account-group` e `receivable-payable` |
 | `apps/web/src/server/` | a camada fina: consulta + validação + transação, um módulo por assunto (`transactions.ts`, `transactions-actions.ts`, `review.ts`, `calendar.ts`, `invoices.ts`, …) |
 | `apps/web/src/components/` | componentes da aplicação; `ui/` é shadcn gerado |
@@ -262,9 +262,11 @@ a apontar para essa chave. Para empurrar: `git push origin main`.
   Trocar uma pela outra dá um erro que não explica a causa.
 - **Produção tem segredos reais na Vercel.** Não estão aqui e não devem passar por
   chat, ficheiros ou commits.
-- `CRON_SECRET` está declarada no `.env.example`, no `turbo.json` e na Vercel, mas
-  **nenhuma rota a usa** — é uma variável que promete uma tarefa agendada que não
-  existe (já assinalado no §6.3 do handoff).
+- `CRON_SECRET` **passou a ser usada** pela T70 (rota `/api/cron/recurrences`). Está na Vercel como
+  `sensitive`, escrita em 19/11 — ninguém a volta a ler, nem eu. O `vercel.json` agenda `0 2 * * *`.
+  A Vercel acrescenta `Authorization: Bearer <CRON_SECRET>` aos pedidos de cron (documentação da
+  plataforma); **não foi medido por nós**. A prova é o registo da primeira execução, **20/11 02:00Z**,
+  no ecrã de Cron Jobs da dashboard — sem o segredo, é a única forma de a verificar.
 - O `seed.ts` cria um utilizador de demonstração com palavra-passe conhecida
   (`demo@financas-pessoais.pt`). Nunca correr este seed contra a base de produção.
 - Nunca escrever em: `.env`, `.next/`, `node_modules/`, `packages/db/src/generated/`.
@@ -281,8 +283,9 @@ a apontar para essa chave. Para empurrar: `git push origin main`.
 3. **Não há `.gitattributes`**: resolvido na T1 (`* text=auto eol=lf`). Fica a
    pergunta: o gate tem de correr no Windows (esta máquina) ou basta o runner de
    Ubuntu?
-4. **A rota de cron existe?** Se não, o `CRON_SECRET` sai do `.env.example` e do
-   `turbo.json`, ou escreve-se a rota que gera as recorrências vencidas.
+4. **A rota de cron existe?** **Sim, desde a T70** (19/11): `api/cron/recurrences` e o `vercel.json`
+   da raiz com `0 2 * * *`. Em produção devolve **401** sem autorização, 405 em `POST`. Falta só
+   provar a primeira execução real, **20/11 02:00Z**, no ecrã de Cron Jobs da dashboard.
 5. **O gate tem de correr no Windows** (esta máquina) ou basta o runner de Ubuntu?
    Muda se o `.gitattributes` é obrigatório ou apenas simpático.
 
