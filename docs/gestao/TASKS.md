@@ -2425,11 +2425,12 @@ pediu a 19/11, por esta ordem: **(1)** rodar a palavra-passe da Neon, **(2)** T7
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **aberta** (handoff 19/11) |
 | T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **na fila** — escrita, handoff só depois de a T70 fechar |
-| A7  | **Rodar a palavra-passe da Neon** — não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **bloqueada** (à espera do consentimento Vercel) |
+| A7  | **Rodar a palavra-passe da Neon** — não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **autorizada** (rodo quando a T70 fechar; o passo da Vercel é meu depois do link dele) |
 
-A **A7** vai primeiro na prática, mas não pode: a palavra-passe é **uma só para os três ramos** do
-projeto `old-fire-26176066`, por isso rodá-la parte também o diário do chofer. Sem saber onde mais
-ela vive, rodar é deitar produção abaixo à sorte. Ver a secção A7 em `DECISOES.md`.
+A **A7** não é código e não segue a fila: foi autorizada por ele hoje para correr **quando a T70 fechar**, com
+o passo da Vercel nas minhas mãos depois do link do scope. O mapa de consumidores está completo e medido em
+`DECISOES.md` — e diz uma coisa que a nota de 01/11 não previa: **a palavra-passe é uma só para três ramos**,
+por isso a janela derruba também a produção do diário do chofer.
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 

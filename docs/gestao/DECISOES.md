@@ -143,9 +143,19 @@ efeito real. A partir daqui (a) uma agenda que dispare mais de uma vez por dia *
 Hobby, não só o cron, e (b) a rota é superfície pública: quem tiver o segredo escreve na base de todos. As
 duas coisas mordem em produção, e por isso ficam escritas antes de o código existir.
 
-### A7 — Rodar a palavra-passe da Neon — **a fazer, bloqueada (19/11)**
+### A7 — Rodar a palavra-passe da Neon — **AUTORIZADA (19/11), a executar quando a T70 fechar**
 
-**Decide:** utilizador. **Urgência:** alta. Não é código — é produção, e por isso não segue a fila das tarefas.
+**Decisão dele, no bloco de confirmação de 19/11:** autorizou a sequência inteira, com duas condições
+escolhidas por ele — **(a)** rodo **depois de a T70 fechar**, não já, para não partir a meio uma corrida da
+suíte que o Dev e o QA possam estar a fazer contra `testes-e2e`; **(b)** o passo da Vercel faço-o **eu**,
+depois de ele autorizar o scope `rafaelfa-projects` no link de consentimento.
+
+**O que fica combinado e não se discute à frente:** entre o *reset* e o `.env` local a produção está em
+baixo; se o passo 2 falhar a meio, continua em baixo até se resolver, e é por isso que o link se pede no
+momento, não com horas de antecedência (é de uma vez e expira em 10 minutos). Se a T70 se arrastar, a A7
+arrasta-se com ela — e a ligação de 01/11 continua viva nesse tempo todo, o que é o custo de adiar.
+
+Urgência: alta. Não é código — é produção, e por isso não segue a fila das tarefas.
 
 **Medido hoje (19/11), através da API do Neon:** a `neondb_owner` do projeto `old-fire-26176066` tem **uma
 palavra-passe para os três ramos** — `production` (o diário do chofer: `app_users`, `driving_sessions`,
@@ -158,23 +168,38 @@ a 01/11 **não foi rodado**. E agravou-se hoje: ao pedir as três ligações par
 aparecer no histórico desta conversa. Rota-lo deixou de ser uma recomendação e passou a ser a única coisa que
 serve — a conversa velha e a nova têm-no.
 
-**Consumidores conhecidos:** nesta máquina, um só — `financas-pessoais\.env` (`DATABASE_URL`, `DIRECT_URL`),
-verificado por varrimento de `D:\openbot`. Fora daqui: a Vercel desta app e o que quer que corra o diário do
-chofer. **Não os posso enumerar** — a API da Vercel responde 403 no scope `rafaelfa-projects`, e o link de
-consentimento é de uma vez e expira em 10 minutos.
+**Consumidores conhecidos da palavra-passe** (todos verificados hoje, cada um com a fonte):
 
-**A sequência, quando for autorizada** — entre o passo 1 e o passo 3 a produção está em baixo:
+| # | Onde | Como se ligam | O que parte quando rodar |
+| - | ---- | ------------- | ------------------------ |
+| 1 | `financas-pessoais\.env` desta máquina | `DATABASE_URL` + `DIRECT_URL` → `ep-spring-mud-*` (`testes-e2e`) | `pnpm dev`, `db:studio` e a suíte e2e |
+| 2 | Vercel desta app | produção no ramo `Financas_Pessoal` | a app em produção, até as variáveis serem repostas |
+| 3 | **GitHub Actions deste repo** | `secrets.SMOKE_DATABASE_URL` (`smoke.yml:56-57`), usado por `packages/db/smoke.mjs`, que **apaga** o utilizador de teste que cria | o fumo em produção falha; corre só à mão, por isso não parte sozinho |
+| 4 | **O diário do chofer** | o README dele diz «a produção atual roda na Vercel com banco Neon», no ramo `production` do mesmo projeto | a produção **de outra app**, até as variáveis dele serem repostas |
+| 5 | CI deste repo | **não usa Neon** — `ci.yml:37-56` sobe `postgres:18-alpine` com `postgresql://postgres:postgres@localhost:5432/financas` | nada; fica de fora da janela |
+
+Fontes: tabela de ramos acima; `gh api repos/rafaelfa/diario_chofer/contents/README.md` (a linha do
+parágrafo inicial, consultada 19/11); `gh secret list` responde **403 “Resource not accessible by
+integration”**, por isso o segredo nº 3 está confirmado por *referência no workflow*, não por listagem — e
+o fumo já correu (T8.2), o que diz que ele existe.
+
+O nº 4 é o que a nota de 01/11 não previa: rodar a palavra-passe **derruba a produção do diário** com a
+desta app, e a janela deixa de ser «minutos desta aplicação» para ser «duas aplicações em baixo até às
+variáveis de ambas serem repostas». Continua na mão dele decidir se vale o custo — o que se poupa é o
+facto de a ligação colada a 01/11 dar acesso total às duas bases.
+
+**A sequência, quando for autorizada** — entre o passo 1 e o passo 4 há **duas** aplicações em baixo:
 
 1. Neon → `old-fire-26176066` → **Reset password** de `neondb_owner` (o Neon derruba as ligações em curso).
-2. `DATABASE_URL` e `DIRECT_URL` novas na Vercel (production **e** preview) e no diário, se partilha o
-   segredo — o que só se sabe depois de listar os projetos.
-3. `.env` desta máquina atualizado com a mesma palavra-passe.
-4. Verificar: `/api/health` com `database.reachable: true` em produção, e `pnpm db:generate` + uma corrida
-   e2e local.
+2. Escrever `DATABASE_URL` e `DIRECT_URL` novas na Vercel **das duas apps** (production **e** preview onde
+   existir) — as do diário só se escrevem depois do link do scope, porque hoje não sei o nome do projecto.
+3. Actualizar `SMOKE_DATABASE_URL` neste repo (`gh secret set SMOKE_DATABASE_URL -R rafaelfa/financas-pessoais`).
+4. `.env` desta máquina atualizado com a mesma palavra-passe → verificar: `/api/health` com
+   `database.reachable: true` em produção, e uma corrida e2e local.
 5. Escrever aqui a data, o que ficou coberto e o que não (se o diário não foi apanhado, diz-se).
 
 **Não se roda antes de o passo 2 estar pronto:** sem ele, o passo 1 deita a produção abaixo sem saída à vista.
-Por isto o estado é `bloqueada` — falta um clique dele no link da Vercel e a autorização da janela.
+O gatilho passa a ser **a T70 fechada** — e nessa altura peço-lhe o link outra vez, porque o de hoje expira.
 
 ### A5 — A base das finanças vive dentro de um projeto de outra app
 
