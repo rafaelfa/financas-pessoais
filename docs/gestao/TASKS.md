@@ -2426,7 +2426,7 @@ trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apan
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **fechada** (Dev + QA + Revisor; suíte C 132/0 sobre o build pós-patch; secção em `TASKS-fechado.md`) |
-| T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **na fila** — escrita, handoff só depois de a T70 fechar |
+| T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **fechada** (19/11 16:16→16:46: Dev → QA **PASS 8/8** → Revisor «nada a assinalar»; 598 testes/34 ficheiros; secção em `TASKS-fechado.md`) |
 | A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado; resta `SMOKE_DATABASE_URL`, que o token não escreve. Registo em `relatorios/A7-rotacao.md`) |
 
 A **A7** não é código e não segue a fila: foi autorizada por ele para correr **quando a T70 fechar**, com
@@ -3742,46 +3742,4 @@ esconde a origem de uma falha) · não commites nem empurres.
 
 ---
 
-## T71 — `logicalCount` escrito duas vezes
 
-**Aberta a pedido do utilizador (19/11), ponto 3.** Registada no relatório como **3.1**, com uma
-justificação que se verificou **falsa**: «precisava de um módulo novo» — o `@repo/shared` já é importado
-nos dois ficheiros vizinhos.
-
-**Factos medidos hoje:**
-
-1. Os dois corpos são a **mesma regra**: `transaction-bulk-actions.tsx:59-67` e
-   `transactions-actions.ts:715-721` fazem `Set` dos `transferGroupId` não nulos **+** contagem das linhas
-   com `transferGroupId === null`. Diferem só no nome do parâmetro e no tipo (`TransactionView` vs
-   `BulkRow`), e ambos acedem `.transferGroupId`.
-2. Importar runtime do `@repo/shared` num *client component* não é surpresa: `components/amount.tsx:3`
-   já importa `formatCurrency` e é usado na mesma árvore.
-3. **A família de categoria não é a mesma duplicação** e fica de fora: a versão cliente
-   (`transaction-bulk-actions.tsx:47-56`) devolve `'expense' | 'income' | 'other' | 'mixed'` sobre strings
-   com `.toLowerCase()`; a do servidor (`transactions-actions.ts:706-712`) devolve `'expense' | 'income' |
-   null` sobre o enum `TransactionKind`. Unificá-las **mudaria comportamento** e ninguém o pediu. Fica
-   escrito porque é a pergunta que o próximo fará ao olhar para o mesmo bloco.
-
-**Critério de aceitação (verificável)**
-
-1. `grep -rn "function logicalCount" apps/` → **0**; `grep -rn "logicalCount" packages/shared/src` → a
-   definição e o export.
-2. Teste novo em `packages/shared/src/finance/__tests__/` com pelo menos: par de transferência (2 linhas,
-   1 grupo) = **1**; dois pares = **2**; três linhas soltas = **3**; 1 par + 1 solta = **2**; um grupo com
-   3 linhas = **1**; lista vazia = **0**.
-3. **Prova de mutação colada:** trocar `groups.size + soltas` por `rows.length` e mostrar o teste novo
-   vermelho (e qualquer teste que conte `affected`); repor e mostrar verde.
-4. `pnpm test` continua com **591** verdes, `typecheck` 4/4, gate completo, e `34-acoes-em-massa.spec.ts`
-   passa sem ser tocado.
-5. `packages/shared` não passa a importar nada de `apps/`; zero dependências novas.
-
-**Ficheiros que pode escrever:** um módulo em `packages/shared/src/finance/` (novo ou o `rows.ts`, o que
-couber melhor na estrutura), o índice do pacote, um teste em `packages/shared/src/finance/__tests__/`, e as
-**duas** linhas de import + a remoção da função local em `transaction-bulk-actions.tsx` e
-`transactions-actions.ts`. Mais nada.
-
-**O que NÃO fazer:** não unificar a `categoryFamily`/família de categoria (facto 3); não mudar a origem do
-`affected` do toast (é o ponto **3.2** do relatório, outra pergunta e outra prova); não alterar testes
-existentes; não refactorizar à volta; não commites nem empurres.
-
-**Prova esperada:** `relatorios/T71-dev.md` com os dois `grep`, o teste novo, a mutação colada e o gate.

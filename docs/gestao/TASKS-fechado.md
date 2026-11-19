@@ -9,6 +9,95 @@ Ordem: mais recente primeiro.
 
 ---
 
+## Bloco de fecho — T71 (fechada 19/11, 16:46)
+
+- **Fechado:** T71 — *`logicalCount` escrito duas vezes*: a regra passa a viver num sítio só,
+  `packages/shared/src/finance/selection.ts` (24 linhas, zero imports, tipo de aceitação `SelectableRow`
+  com `transferGroupId: string | null`), exportada por `finance/index.ts` → `@repo/shared`; os dois
+  consumidores importam e as cópias local do *client* e do *server* desaparecem.
+- **Prova:** cadeia completa Dev → QA → Revisor entre as 16:38 e as 16:46, um handoff de cada vez.
+  Dev (`relatorios/T71-dev.md`, 311 linhas, comando colado em cada número): `git grep` «0 definições em
+  `apps/`» (exit 1) e «definição + teste» em `packages/shared/src`; mutação literal `return rows.length`
+  com **4 asserções vermelhas em 7** no unit; mutação da mesma classe que compila com **6 failed** no
+  unit e **1 failed · 4 passed** no e2e (spec 34, `Expected substring: "Apagar este lançamento?"` /
+  `Received: "Apagar estes 2 lançamentos?…"`), reposta e verde; `pnpm test` **598 verdes / 34 ficheiros**
+  sem tocar em nenhum teste existente. QA (`relatorios/T71-qa.md`, 119 linhas): **PASS nos 8 pontos**,
+  tudo executado por ele — spec 34 → **5 passed (38,5 s)** e ficheiro intacto (`git status` vazio para a
+  spec); `packages/shared` sem importar de `apps/`; lockfile e `package.json` sem alterações.
+  Revisor (`relatorios/T71-revisor.md`): **«nada a assinalar»**, com leitura integral dos cinco ficheiros
+  e verificação de que `BulkRow` e `TransactionView` satisfazem `SelectableRow` estruturalmente.
+- **O que isto não resolve:** a família de categoria continua escrita duas vezes — unificá-la mudaria
+  comportamento (facto 3 da tarefa) e foi excluída de caso pensado; a origem do `affected` do toast
+  (ponto **3.2** do `NAO-IMPLEMENTADO.md`) não foi tocada, é outra pergunta com outra prova; o critério
+  5.3 ficou cumprido pela via da Nota do Lead («mutação que deixe o gate compilável») — a mutação
+  literal prova o unit, não a app, e isso ficou escrito para critérios futuros.
+- **Aberto:** nada dentro da tarefa. **`SMOKE_DATABASE_URL`** (GitHub Actions) continua com a
+  palavra-passe velha da Neon e precisa do utilizador: o token não escreve segredos (403 medido duas
+  vezes); o workflow do fumo é manual, por isso nada rebenta sozinho.
+- **Repositório:** `main` em `5d5e053` à partida; dois commits nesta volta — código + os três relatórios,
+  e gestão (`TASKS.md` + arquivo) — e push. O push na `main` dispara o build automático da Vercel, que
+  apanha este refactor puro; nenhum deploy foi feito por nós.
+- **Decisão:** nada para fechar esta tarefa. A fila autorizada («faz 1, 2 e 3» — T70, A7, T71) termina
+  aqui; abrir a vaga seguinte (alerta do cron, **A5** — base em projeto Neon próprio, ponto **3.2** do
+  relatório) precisa de autorização dele.
+
+---
+
+## T71 — `logicalCount` escrito duas vezes
+
+**Aberta a pedido do utilizador (19/11), ponto 3.** Registada no relatório como **3.1**, com uma
+justificação que se verificou **falsa**: «precisava de um módulo novo» — o `@repo/shared` já é importado
+nos dois ficheiros vizinhos.
+
+**Factos medidos hoje:**
+
+1. Os dois corpos são a **mesma regra**: `transaction-bulk-actions.tsx:59-67` e
+   `transactions-actions.ts:715-721` fazem `Set` dos `transferGroupId` não nulos **+** contagem das linhas
+   com `transferGroupId === null`. Diferem só no nome do parâmetro e no tipo (`TransactionView` vs
+   `BulkRow`), e ambos acedem `.transferGroupId`.
+2. Importar runtime do `@repo/shared` num *client component* não é surpresa: `components/amount.tsx:3`
+   já importa `formatCurrency` e é usado na mesma árvore.
+3. **A família de categoria não é a mesma duplicação** e fica de fora: a versão cliente
+   (`transaction-bulk-actions.tsx:47-56`) devolve `'expense' | 'income' | 'other' | 'mixed'` sobre strings
+   com `.toLowerCase()`; a do servidor (`transactions-actions.ts:706-712`) devolve `'expense' | 'income' |
+   null` sobre o enum `TransactionKind`. Unificá-las **mudaria comportamento** e ninguém o pediu. Fica
+   escrito porque é a pergunta que o próximo fará ao olhar para o mesmo bloco.
+
+**Critério de aceitação (verificável)**
+
+1. `grep -rn "function logicalCount" apps/` → **0**; `grep -rn "logicalCount" packages/shared/src` → a
+   definição e o export.
+2. Teste novo em `packages/shared/src/finance/__tests__/` com pelo menos: par de transferência (2 linhas,
+   1 grupo) = **1**; dois pares = **2**; três linhas soltas = **3**; 1 par + 1 solta = **2**; um grupo com
+   3 linhas = **1**; lista vazia = **0**.
+3. **Prova de mutação colada:** trocar `groups.size + soltas` por `rows.length` e mostrar o teste novo
+   vermelho (e qualquer teste que conte `affected`); repor e mostrar verde.
+4. `pnpm test` continua com **591** verdes, `typecheck` 4/4, gate completo, e `34-acoes-em-massa.spec.ts`
+   passa sem ser tocado.
+5. `packages/shared` não passa a importar nada de `apps/`; zero dependências novas.
+
+**Ficheiros que pode escrever:** um módulo em `packages/shared/src/finance/` (novo ou o `rows.ts`, o que
+couber melhor na estrutura), o índice do pacote, um teste em `packages/shared/src/finance/__tests__/`, e as
+**duas** linhas de import + a remoção da função local em `transaction-bulk-actions.tsx` e
+`transactions-actions.ts`. Mais nada.
+
+**O que NÃO fazer:** não unificar a `categoryFamily`/família de categoria (facto 3); não mudar a origem do
+`affected` do toast (é o ponto **3.2** do relatório, outra pergunta e outra prova); não alterar testes
+existentes; não refactorizar à volta; não commites nem empurres.
+
+**Prova esperada:** `relatorios/T71-dev.md` com os dois `grep`, o teste novo, a mutação colada e o gate.
+
+**Nota do Lead (19/11, 16:38Z) — sobre o ponto 3 do critério:** a mutação literal (`return rows.length`)
+não compila no lado da app, porque `groups` fica por usar e o `noUnusedLocals: true` da raiz rebenta o
+`next build` do `webServer` do Playwright. O Dev provou as duas metades com medição: a literal no unit
+(4 asserções vermelhas em 7) e uma mutação **da mesma classe que compila** (`groups.size + linhas
+ligadas` em vez das soltas) no unit (6 failed) e no e2e (spec 34, 1 failed com `Expected substring:
+"Apagar este lançamento?"` / `Received: "Apagar estes 2 lançamentos?…"`), reposta e verde de novo.
+A medição vence: o ponto 3 considera-se cumprido. Para a próxima vez que se escrever um critério destes,
+a formulação certa é «uma mutação da regra que deixe o gate compilável» — a literal prova o unit, não a app.
+
+---
+
 ## Bloco de fecho — T70 (fechada 19/11, 15:45)
 
 - **Fechado:** T70 — *Recorrências vencidas geram-se sozinhas*: a rota `GET /api/cron/recurrences`
