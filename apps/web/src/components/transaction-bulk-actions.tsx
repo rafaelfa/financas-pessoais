@@ -1,5 +1,6 @@
 'use client';
 
+import { logicalCount } from '@repo/shared';
 import { Tags, Trash, Wallet, WalletMinimal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -53,17 +54,6 @@ function selectionFamily(selected: readonly TransactionView[]): Family {
   const [kind] = [...families];
 
   return kind === 'expense' || kind === 'income' ? kind : 'other';
-}
-
-/** Quantas operações a seleção representa: o par de uma transferência conta como uma. */
-function logicalCount(selected: readonly TransactionView[]): number {
-  const groups = new Set(
-    selected.flatMap((transaction) =>
-      transaction.transferGroupId === null ? [] : [transaction.transferGroupId],
-    ),
-  );
-
-  return groups.size + selected.filter((t) => t.transferGroupId === null).length;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   addMonths,
   createTransactionSchema,
   createTransferSchema,
+  logicalCount,
   splitInstallments,
   updateTransactionSchema,
 } from '@repo/shared';
@@ -709,15 +710,6 @@ function categoryFamily(kind: TransactionKind): 'expense' | 'income' | null {
   }
 
   return kind === TransactionKind.INCOME ? 'income' : null;
-}
-
-/** Quantas operações a seleção representa: o par de uma transferência conta como uma. */
-function logicalCount(rows: readonly BulkRow[]): number {
-  const groups = new Set(
-    rows.flatMap((row) => (row.transferGroupId === null ? [] : [row.transferGroupId])),
-  );
-
-  return groups.size + rows.filter((row) => row.transferGroupId === null).length;
 }
 
 /**
