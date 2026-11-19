@@ -2419,7 +2419,9 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 # Vaga 5 — «o que ficou de fora e foi pedido» (sem tabelas, sem migrações)
 
 Objetivo: três coisas que o relatório `relatorios/NAO-IMPLEMENTADO.md` deixou escritas e o utilizador
-pediu a 19/11, por esta ordem: **(1)** rodar a palavra-passe da Neon, **(2)** T70, **(3)** T71.
+pediu a 19/11: **(1)** rodar a palavra-passe da Neon, **(2)** T70, **(3)** T71. Na prática ele aceitou
+trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apanhe a suíte no ar: fica
+**T70 → A7 → T71**.
 
 | ID  | Tarefa                                                                 | Dono | Estado                      |
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
@@ -2429,8 +2431,9 @@ pediu a 19/11, por esta ordem: **(1)** rodar a palavra-passe da Neon, **(2)** T7
 
 A **A7** não é código e não segue a fila: foi autorizada por ele hoje para correr **quando a T70 fechar**, com
 o passo da Vercel nas minhas mãos depois do link do scope. O mapa de consumidores está completo e medido em
-`DECISOES.md` — e diz uma coisa que a nota de 01/11 não previa: **a palavra-passe é uma só para três ramos**,
-por isso a janela derruba também a produção do diário do chofer.
+`DECISOES.md`, e diz uma coisa que a nota de 01/11 não previa: **a palavra-passe é uma só para três ramos**,
+por isso a janela derruba também a produção do diário do chofer. Apresentei-lhe esse preço e a alternativa
+(mudar a base para um projeto Neon próprio — a dívida **A5**), e **a escolha dele foi rodar mesmo assim**.
 
 ## T52 — Navegação 15 → 8 destinos (D7)
 

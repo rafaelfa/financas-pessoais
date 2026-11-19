@@ -155,6 +155,12 @@ baixo; se o passo 2 falhar a meio, continua em baixo até se resolver, e é por 
 momento, não com horas de antecedência (é de uma vez e expira em 10 minutos). Se a T70 se arrastar, a A7
 arrasta-se com ela — e a ligação de 01/11 continua viva nesse tempo todo, o que é o custo de adiar.
 
+**Reconfirmada com o preço real (19/11, segundo bloco):** apresentei a tabela de consumidores — a janela
+derruba **as duas produções**, esta e a do diário — e propus a alternativa A5 (projeto Neon próprio primeiro,
+que fecha a fuga para os nossos dados sem tocar no diário). **A escolha dele foi rodar a palavra-passe quando
+a T70 fechar**, aceitando os minutos das duas apps em baixo. A **A5 continua aberta** como dívida: é a coisa
+que torna a próxima rotação barata, não é o remédio desta.
+
 Urgência: alta. Não é código — é produção, e por isso não segue a fila das tarefas.
 
 **Medido hoje (19/11), através da API do Neon:** a `neondb_owner` do projeto `old-fire-26176066` tem **uma
@@ -197,6 +203,11 @@ facto de a ligação colada a 01/11 dar acesso total às duas bases.
 4. `.env` desta máquina atualizado com a mesma palavra-passe → verificar: `/api/health` com
    `database.reachable: true` em produção, e uma corrida e2e local.
 5. Escrever aqui a data, o que ficou coberto e o que não (se o diário não foi apanhado, diz-se).
+
+**Estado de antes da janela, medido às 13:51 UTC de 19/11** — é com isto que se compara o depois, para não
+haver «penso que voltou»: `GET https://financas-pessoais-psi-lac.vercel.app/api/health` → **200**,
+`environment: production`, `dependencies.database = { provider: postgresql, configured: true,
+reachable: true }`.
 
 **Não se roda antes de o passo 2 estar pronto:** sem ele, o passo 1 deita a produção abaixo sem saída à vista.
 O gatilho passa a ser **a T70 fechada** — e nessa altura peço-lhe o link outra vez, porque o de hoje expira.
