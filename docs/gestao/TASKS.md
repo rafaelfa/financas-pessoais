@@ -2414,6 +2414,23 @@ Objetivo: três coisas que não partem nada hoje e que, no dia em que partirem, 
 | T67 | **O executor de SQL genérico nos testes:** apertar antes que alguém o use para inventar dados | Dev  | **fechada** (PASS QA; SQL livre a 0; órfãos 0 durante a corrida) |
 | T68 | **O teste do invólucro não corre no CI:** a proteção existe e não morde | Dev  | **fechada** (PASS QA; passo 9 do job ; morde, provado) |
 
+---
+
+# Vaga 5 — «o que ficou de fora e foi pedido» (sem tabelas, sem migrações)
+
+Objetivo: três coisas que o relatório `relatorios/NAO-IMPLEMENTADO.md` deixou escritas e o utilizador
+pediu a 19/11, por esta ordem: **(1)** rodar a palavra-passe da Neon, **(2)** T70, **(3)** T71.
+
+| ID  | Tarefa                                                                 | Dono | Estado                      |
+| --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
+| T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **aberta** (handoff 19/11) |
+| T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **na fila** — escrita, handoff só depois de a T70 fechar |
+| A7  | **Rodar a palavra-passe da Neon** — não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **bloqueada** (à espera do consentimento Vercel) |
+
+A **A7** vai primeiro na prática, mas não pode: a palavra-passe é **uma só para os três ramos** do
+projeto `old-fire-26176066`, por isso rodá-la parte também o diário do chofer. Sem saber onde mais
+ela vive, rodar é deitar produção abaixo à sorte. Ver a secção A7 em `DECISOES.md`.
+
 ## T52 — Navegação 15 → 8 destinos (D7)
 
 **Porque:** a barra lateral tem 15 destinos e o uso diário é de quatro. A decisão D7 fixou a
@@ -3716,3 +3733,117 @@ esconde a origem de uma falha) · não commites nem empurres.
 **O nome do job também mentia por omissão:** dizia «format · lint · typecheck · test · build» e passou a correr o invólucro dos e2e sem o dizer. É o mesmo defeito do `MAPA`, num sítio mais pequeno; agora diz `qa`.
 
 **Nota de método do QA:** o PyYAML lê a chave `on:` como `True` (YAML 1.1) — artefacto do parser, não do ficheiro. Fica escrito para ninguém «corrigir» um workflow que está certo.
+
+---
+
+## T70 — Recorrências vencidas geram-se sozinhas (a rota que a A3 pedia)
+
+**Aberta a pedido do utilizador (19/11), ponto 2 de «faça 1, 2 e 3».** A decisão **A3** estava aberta
+desde 01/11 com duas saídas — escrever a rota ou retirar a variável. Ele escolheu a rota.
+
+**O defeito:** `generateDueRecurrences()` (`apps/web/src/server/recurrences-actions.ts:302`) existe, é
+idempotente e protege-se contra corrida, mas só corre quando alguém abre a app e carrega no botão
+(`recurrence-generate-button.tsx:28`). `apps/web/src/app/api/` tem só `health` e `auth`. Uma série com
+`nextRunDate` atrasado não gera nada sozinha.
+
+**Factos medidos hoje — a tarefa parte deles e não os pode contradizer:**
+
+1. A função começa por `await requireUser()` (`:305`): **depende da sessão**. O Vercel Cron chama por
+   HTTP sem cookies, por isso a rota **não pode chamá-la como está**. É o único trabalho de arquitetura
+   da tarefa e é obrigatório: um núcleo que recebe `userId`, chamado pela acção de sessão (comportamento
+   público igual) e pela rota (para cada utilizador com séries em atraso).
+2. A conta Vercel é **Hobby** (medido em `get_auth_user.billing.plan`, 19/11). Os docs de
+   `schedules/cron-jobs/usage-and-pricing` fixam: **intervalo mínimo de uma vez por dia**, precisão por
+   hora (±59 min), UTC. **Uma expressão que dispare mais de uma vez por dia faz o deploy falhar** — em
+   produção, não só o cron.
+3. Padrão de proteção nos docs: comparar o header `Authorization` com `Bearer ${process.env.CRON_SECRET}`
+   e devolver **401** também quando `CRON_SECRET` **não está definido**. Ou seja: sem segredo a rota fecha,
+   nunca abre.
+4. `CRON_SECRET` saiu do `.env.example` e do `turbo.json` na T32, porque não havia rota; continua no `.env`
+   desta máquina. Com a rota, a declaração volta — agora com justificação.
+5. Não existe `vercel.json` nesta árvore (verificado 19/11).
+
+**Comportamento esperado**
+
+1. `GET /api/cron/recurrences` protegido por segredo, sem sessão, que gera as ocorrências em atraso e
+   devolve contagens (`created`, `truncated`) **sem descrições, sem montantes, sem ids de utilizador**.
+2. A geração em si continua a ser a mesma lógica, com a reivindicação em transação que já existe — a rota
+   não cria duplicados se for chamada duas vezes.
+3. Uma linha em `vercel.json` agenda essa rota **uma vez por dia**, com a hora justificada contra o
+   `todayInLisbon()` que o gerador já usa.
+
+**Critério de aceitação (verificável)**
+
+1. `curl` com o header certo → **200** e `created` numérico; **sem** header → **401**; header **errado** →
+   **401**; e com `CRON_SECRET` fora do ambiente → **401** (prova: `env -u CRON_SECRET`). Quatro saídas coladas.
+2. **Idempotência pela segunda chamada:** chamar duas vezes seguidas e colar a segunda com `created: 0`.
+3. A acção de sessão continua a funcionar sem mudança de comportamento: o botão da UI e os testes/unitários
+   dessa fileira passam **sem serem tocados**.
+4. `vercel.json` faz parse e tem **exactamente uma** entrada `crons`; cola a avaliação da expressão em
+   dias/horas por semana, e prova que **não excede uma execução por dia** (plano Hobby). O `path` bate com
+   a rota real (`Test-Path` do directório).
+5. A rota não aceita `userId`, `email` nem data vindos do cliente — `grep` do `route.ts` mostra que nada é
+   lido do URL ou do body.
+6. Spec e2e nova no número livre de `e2e/`: 401 sem segredo, 200 com segredo, e **limpa o que criou** com
+   estado com dono e `finally` (a regra da T67). Nada de SQL arbitrário.
+7. Gate completo (`format:check` · `lint` · `typecheck` · `test` · `build`) e suíte e2e com `--output`
+   próprio e máquina livre; zero dependências novas.
+
+**Ficheiros que pode escrever:** `apps/web/src/app/api/cron/recurrences/route.ts` (novo),
+`apps/web/src/server/recurrences-actions.ts`, `vercel.json` (novo), `.env.example` (uma linha de
+*placeholder*), uma spec nova em `e2e/`, e o índice de `packages/shared` **só** se precisar de uma
+constante partilhada — diz antes. Mais nada.
+
+**O que NÃO fazer:** não mudar o comportamento público de `generateDueRecurrences` para a UI; não passar
+`userId` pela rota; não escrever segredo real no repositório (`.env.example` leva um *placeholder*); não
+agendar mais de uma vez por dia (Hobby rebenta o deploy); não correr `vercel` nem tocar na Vercel; não
+mexer em `.env`; não commites nem empurres.
+
+**Prova esperada:** `relatorios/T70-dev.md` com os quatro `curl`, a segunda chamada idempotente, o parse e
+a avaliação do `vercel.json`, o `grep` que prova que nada vem do cliente, a spec nova e o gate.
+
+**Gera:** fechar a A3 em `DECISOES.md` e pôr a D22 (a rota de cron como caminho privilegiado) a valer.
+
+## T71 — `logicalCount` escrito duas vezes
+
+**Aberta a pedido do utilizador (19/11), ponto 3.** Registada no relatório como **3.1**, com uma
+justificação que se verificou **falsa**: «precisava de um módulo novo» — o `@repo/shared` já é importado
+nos dois ficheiros vizinhos.
+
+**Factos medidos hoje:**
+
+1. Os dois corpos são a **mesma regra**: `transaction-bulk-actions.tsx:59-67` e
+   `transactions-actions.ts:715-721` fazem `Set` dos `transferGroupId` não nulos **+** contagem das linhas
+   com `transferGroupId === null`. Diferem só no nome do parâmetro e no tipo (`TransactionView` vs
+   `BulkRow`), e ambos acedem `.transferGroupId`.
+2. Importar runtime do `@repo/shared` num *client component* não é surpresa: `components/amount.tsx:3`
+   já importa `formatCurrency` e é usado na mesma árvore.
+3. **A família de categoria não é a mesma duplicação** e fica de fora: a versão cliente
+   (`transaction-bulk-actions.tsx:47-56`) devolve `'expense' | 'income' | 'other' | 'mixed'` sobre strings
+   com `.toLowerCase()`; a do servidor (`transactions-actions.ts:706-712`) devolve `'expense' | 'income' |
+   null` sobre o enum `TransactionKind`. Unificá-las **mudaria comportamento** e ninguém o pediu. Fica
+   escrito porque é a pergunta que o próximo fará ao olhar para o mesmo bloco.
+
+**Critério de aceitação (verificável)**
+
+1. `grep -rn "function logicalCount" apps/` → **0**; `grep -rn "logicalCount" packages/shared/src` → a
+   definição e o export.
+2. Teste novo em `packages/shared/src/finance/__tests__/` com pelo menos: par de transferência (2 linhas,
+   1 grupo) = **1**; dois pares = **2**; três linhas soltas = **3**; 1 par + 1 solta = **2**; um grupo com
+   3 linhas = **1**; lista vazia = **0**.
+3. **Prova de mutação colada:** trocar `groups.size + soltas` por `rows.length` e mostrar o teste novo
+   vermelho (e qualquer teste que conte `affected`); repor e mostrar verde.
+4. `pnpm test` continua com **591** verdes, `typecheck` 4/4, gate completo, e `34-acoes-em-massa.spec.ts`
+   passa sem ser tocado.
+5. `packages/shared` não passa a importar nada de `apps/`; zero dependências novas.
+
+**Ficheiros que pode escrever:** um módulo em `packages/shared/src/finance/` (novo ou o `rows.ts`, o que
+couber melhor na estrutura), o índice do pacote, um teste em `packages/shared/src/finance/__tests__/`, e as
+**duas** linhas de import + a remoção da função local em `transaction-bulk-actions.tsx` e
+`transactions-actions.ts`. Mais nada.
+
+**O que NÃO fazer:** não unificar a `categoryFamily`/família de categoria (facto 3); não mudar a origem do
+`affected` do toast (é o ponto **3.2** do relatório, outra pergunta e outra prova); não alterar testes
+existentes; não refactorizar à volta; não commites nem empurres.
+
+**Prova esperada:** `relatorios/T71-dev.md` com os dois `grep`, o teste novo, a mutação colada e o gate.

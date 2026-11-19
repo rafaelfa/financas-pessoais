@@ -117,27 +117,64 @@ gate correr ou não em Windows.
 Sem ele, qualquer Windows com `core.autocrlf=true` vê 330 ficheiros "mal formatados"
 que estão corretos no git.
 
-### A3 — `CRON_SECRET` sem rota que a use
+### A3 — `CRON_SECRET` sem rota que a use — **RESOLVIDA pelo utilizador (2026-11-19): a rota**
 
-**Trava:** nada. **Decide:** utilizador.
+**Decisão dele:** escreve-se a rota que gera as recorrências vencidas. Vai como **T70** (`TASKS.md`) e o
+caminho sem sessão fica registado como **D22** logo abaixo.
 
-Está no `.env.example`, no `turbo.json` e na Vercel, mas não existe rota de cron.
-Ou se escreve a rota que gera as recorrências vencidas, ou se retira a variável.
+**Estado medido da variável:** saiu do `.env.example` e do `turbo.json` na T32, porque então não havia rota;
+continua no `.env` desta máquina. Com a T70, a declaração volta ao `.env.example` como *placeholder*.
 
-### A7 — Rodar a palavra-passe da Neon (a fazer depois da T3)
+### D22 — A rota de cron é um caminho privilegiado sem sessão — **decisão do utilizador (2026-11-19)**
 
-**Decide:** utilizador. **Urgência:** alta, mas depois da T3.
+**A decisão:** há um `GET /api/cron/recurrences` protegido **só** por `Authorization: Bearer ${CRON_SECRET}`,
+que gera as ocorrências em atraso **de todos os utilizadores** que as tenham. É o único sítio do código fora
+de `(app)` em que uma escrita não parte do `userId` da sessão: parte de `userId` lidos da própria base,
+utilizador a utilizador. O plano é **Hobby**, por isso a agenda é **uma vez por dia**, no máximo.
 
-A connection string da Neon foi colada no chat em 2026-11-01 e ficou no histórico da
-conversa. É um segredo de produção. Ação, quando a T3 fechar:
+**A alternativa rejeitada, e porquê:** ficar pelo botão da UI (o estado de hoje). Foi rejeitada porque deixa
+uma regra de negócio — «o que está em atraso gera-se» — dependente de alguém abrir a app; com um utilizador
+único, uma semana fora acumula atrasos que só se corrigem à mão. Rejeitada também a variante «a rota recebe
+o `userId` do chamador»: dava a quem chama o poder de escrever na conta alheia, que é exactamente o que a
+regra do `userId` da sessão impede em todo o resto do repositório.
 
-1. Neon → projeto `old-fire-26176066` → **Roles** → `neondb_owner` → _Reset password_.
-2. Atualizar a `DATABASE_URL` e a `DIRECT_URL` na Vercel (Production e Preview).
-3. Redeploy para a aplicação apanhar as novas variáveis.
-4. Apagar o `.env` local desta máquina (tem a palavra-passe antiga).
+**O que a torna irreversível:** o `vercel.json` entra na configuração de produção e `CRON_SECRET` passa a ter
+efeito real. A partir daqui (a) uma agenda que dispare mais de uma vez por dia **rebenta o deploy** no plano
+Hobby, não só o cron, e (b) a rota é superfície pública: quem tiver o segredo escreve na base de todos. As
+duas coisas mordem em produção, e por isso ficam escritas antes de o código existir.
 
-Enquanto não se roda, qualquer pessoa com o histórico da conversa tem acesso total à
-base de produção.
+### A7 — Rodar a palavra-passe da Neon — **a fazer, bloqueada (19/11)**
+
+**Decide:** utilizador. **Urgência:** alta. Não é código — é produção, e por isso não segue a fila das tarefas.
+
+**Medido hoje (19/11), através da API do Neon:** a `neondb_owner` do projeto `old-fire-26176066` tem **uma
+palavra-passe para os três ramos** — `production` (o diário do chofer: `app_users`, `driving_sessions`,
+`work_days`, …), `Financas_Pessoal` (a base de produção **desta** app) e `testes-e2e`. O API devolve as três
+ligações com a mesma palavra-passe, só com endpoints diferentes (`ep-frosty-water-*`, `ep-young-poetry-*`,
+`ep-spring-mud-*`). **Rodar a palavra-passe parte os três ao mesmo tempo** — o que a nota de 01/11 não dizia.
+
+**Continua viva:** a suíte e2e corre contra `testes-e2e` com ela (129/129 a 18/11), pelo que o segredo colado
+a 01/11 **não foi rodado**. E agravou-se hoje: ao pedir as três ligações para comparar, o valor voltou a
+aparecer no histórico desta conversa. Rota-lo deixou de ser uma recomendação e passou a ser a única coisa que
+serve — a conversa velha e a nova têm-no.
+
+**Consumidores conhecidos:** nesta máquina, um só — `financas-pessoais\.env` (`DATABASE_URL`, `DIRECT_URL`),
+verificado por varrimento de `D:\openbot`. Fora daqui: a Vercel desta app e o que quer que corra o diário do
+chofer. **Não os posso enumerar** — a API da Vercel responde 403 no scope `rafaelfa-projects`, e o link de
+consentimento é de uma vez e expira em 10 minutos.
+
+**A sequência, quando for autorizada** — entre o passo 1 e o passo 3 a produção está em baixo:
+
+1. Neon → `old-fire-26176066` → **Reset password** de `neondb_owner` (o Neon derruba as ligações em curso).
+2. `DATABASE_URL` e `DIRECT_URL` novas na Vercel (production **e** preview) e no diário, se partilha o
+   segredo — o que só se sabe depois de listar os projetos.
+3. `.env` desta máquina atualizado com a mesma palavra-passe.
+4. Verificar: `/api/health` com `database.reachable: true` em produção, e `pnpm db:generate` + uma corrida
+   e2e local.
+5. Escrever aqui a data, o que ficou coberto e o que não (se o diário não foi apanhado, diz-se).
+
+**Não se roda antes de o passo 2 estar pronto:** sem ele, o passo 1 deita a produção abaixo sem saída à vista.
+Por isto o estado é `bloqueada` — falta um clique dele no link da Vercel e a autorização da janela.
 
 ### A5 — A base das finanças vive dentro de um projeto de outra app
 
