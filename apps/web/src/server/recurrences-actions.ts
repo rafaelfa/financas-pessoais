@@ -4,7 +4,6 @@ import { prisma } from '@repo/db/client';
 import {
   createRecurrenceSchema,
   deleteByIdSchema,
-  dueOccurrences,
   seriesDayOfMonth,
   setActiveSchema,
   toIsoDate,
@@ -16,6 +15,11 @@ import { revalidatePath } from 'next/cache';
 import { todayInLisbon } from '@/lib/today';
 
 import { failFromWriteError } from './errors';
+import {
+  asDate,
+  gerarRecorrenciasParaUtilizador,
+  type GenerationDetail,
+} from './recurrence-generation';
 import { fail, fromZodError, ok, type ActionResult } from './result';
 import { requireUser } from './session';
 
@@ -25,8 +29,8 @@ import { requireUser } from './session';
  * O gerador é **idempotente por construção**: cria as ocorrências em atraso e
  * avança `nextRunDate` na mesma transação de base de dados. Correr duas vezes no
  * mesmo dia não cria a renda duas vezes — a segunda corrida já não encontra nada
- * em atraso. É essa a razão de a geração poder ser disparada sem medo a partir do
- * painel, e não apenas por uma tarefa agendada.
+ * em atraso. É isso que permite dispará-la sem medo de dois lados: do painel,
+ * pelo botão, e uma vez por dia pelo Vercel Cron (`/api/cron/recurrences`).
  */
 
 function revalidateRecurrenceViews(): void {
@@ -40,10 +44,6 @@ const FREQUENCY_BY_INPUT = {
   monthly: 'MONTHLY',
   quarterly: 'QUARTERLY',
 } as const;
-
-function asDate(value: string): Date {
-  return new Date(`${value}T00:00:00.000Z`);
-}
 
 /** Confirma que a conta existe e é do utilizador. */
 async function ownsAccount(userId: string, accountId: string): Promise<boolean> {
@@ -293,121 +293,28 @@ export async function deleteRecurrence(input: unknown): Promise<ActionResult<{ i
   return ok({ id: parsed.data.id });
 }
 
-export interface GenerationDetail {
-  readonly recurrenceName: string;
-  readonly dates: string[];
-}
-
-/** Gera as ocorrências em atraso de todas as séries ativas. Idempotente. */
+/**
+ * Gera as ocorrências em atraso de todas as séries ativas **do utilizador da
+ * sessão**. Idempotente.
+ *
+ * O ciclo de geração vive em `./recurrence-generation`, partilhado com o Vercel
+ * Cron (`/api/cron/recurrences`, T70). A partilha é só do corpo: a origem do
+ * `userId` continua a ser a única diferença — aqui é a sessão, na rota é a base,
+ * e nada do que o chamador envia chega ao gerador. O comportamento público é o
+ * de sempre: mesmas mensagens, mesma contagem, mesma revalidação, e nada é
+ * revalidado quando uma série falhou a meio.
+ */
 export async function generateDueRecurrences(): Promise<
   ActionResult<{ created: number; truncated: boolean; details: GenerationDetail[] }>
 > {
   const user = await requireUser();
-  const today = todayInLisbon();
+  const outcome = await gerarRecorrenciasParaUtilizador(user.id, todayInLisbon());
 
-  const recurrences = await prisma.recurrence.findMany({
-    where: {
-      userId: user.id,
-      isActive: true,
-      nextRunDate: { lte: new Date(`${today}T00:00:00.000Z`) },
-    },
-    orderBy: [{ nextRunDate: 'asc' }],
-  });
-
-  const details: GenerationDetail[] = [];
-  let created = 0;
-  let truncated = false;
-
-  for (const recurrence of recurrences) {
-    /*
-     * A conversão vive no motor e falha alto: um `YEARLY` gravado na base (o enum
-     * admite-o) deixava de cair numa cauda `else` que o tornava mensal. Era aqui
-     * o pior dos quatro sítios — o gerador criava **doze ocorrências por ano**.
-     */
-    const frequency = toRecurrenceFrequency(recurrence.frequency);
-
-    const result = dueOccurrences({
-      nextRunDate: toIsoDate(recurrence.nextRunDate),
-      frequency,
-      interval: recurrence.interval,
-      dayOfMonth: recurrence.dayOfMonth ?? undefined,
-      endDate: recurrence.endDate === null ? undefined : toIsoDate(recurrence.endDate),
-      today,
-    });
-
-    if (result.dates.length === 0) {
-      continue;
-    }
-
-    truncated = truncated || result.truncated;
-
-    try {
-      const claimed = await prisma.$transaction(async (tx) => {
-        /*
-         * Reserva a série **antes** de criar nada.
-         *
-         * A leitura das séries em atraso acontece fora da transação, por isso duas
-         * gerações em paralelo (dois separadores, um duplo clique, o painel e o
-         * botão ao mesmo tempo) viam as duas a mesma `nextRunDate` e criavam as
-         * mesmas ocorrências: a verificação adversarial mediu **18 lançamentos em
-         * vez de 10**. Um avanço condicional na data que foi lida resolve-o sem
-         * esquema novo — a segunda transação avança zero linhas e desiste sem
-         * escrever. Sem esta condição, o comentário do motor ("gerar nunca pode
-         * duplicar") era verdade sequencial e falso concorrente.
-         */
-        const claimed = await tx.recurrence.updateMany({
-          where: { id: recurrence.id, nextRunDate: recurrence.nextRunDate },
-          data: { nextRunDate: asDate(result.nextRunDate) },
-        });
-
-        if (claimed.count !== 1) {
-          return false;
-        }
-
-        for (const date of result.dates) {
-          await tx.transaction.create({
-            data: {
-              userId: user.id,
-              kind: recurrence.kind,
-              status: 'CONFIRMED',
-              amountInCents: recurrence.amountInCents,
-              date: asDate(date),
-              description: recurrence.description ?? recurrence.name,
-              financialAccountId: recurrence.financialAccountId,
-              categoryId: recurrence.categoryId,
-              recurrenceId: recurrence.id,
-              paymentMethod: 'DEBIT',
-              paymentCondition: 'RECURRING',
-              // Uma ocorrência gerada é um movimento que já aconteceu: conta no
-              // saldo. Séries que ainda não ocorreram têm `nextRunDate` no
-              // futuro e por isso não são geradas.
-              settled: true,
-              settledOn: asDate(date),
-            },
-          });
-        }
-
-        return true;
-      });
-
-      // Não reclamada: outra geração chegou primeiro. Não é um erro, e não se
-      // conta nada — quem perdeu a corrida não criou lançamento nenhum.
-      if (!claimed) {
-        continue;
-      }
-
-      created += result.dates.length;
-      details.push({ recurrenceName: recurrence.name, dates: result.dates });
-    } catch (error) {
-      console.error(`[recorrências] falhou a série ${recurrence.name}:`, error);
-
-      return fail(
-        `Não consegui gerar as ocorrências de "${recurrence.name}". Nada foi alterado nessa série.`,
-      );
-    }
+  if (outcome.failure !== null) {
+    return fail(outcome.failure);
   }
 
   revalidateRecurrenceViews();
 
-  return ok({ created, truncated, details });
+  return ok({ created: outcome.created, truncated: outcome.truncated, details: outcome.details });
 }

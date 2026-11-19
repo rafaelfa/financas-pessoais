@@ -51,6 +51,7 @@ playwright-report/
 playwright/.cache/
 e2e/.auth/
 e2e/.results/
+e2e/.results*/
 e2e/.tmp/
 
 # Rascunhos de QA (logs, capturas e JSON de trabalho; os relatórios é que são prova)
