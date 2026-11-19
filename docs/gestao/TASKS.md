@@ -2427,7 +2427,7 @@ trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apan
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **fechada** (Dev + QA + Revisor; suíte C 132/0 sobre o build pós-patch; secção em `TASKS-fechado.md`) |
 | T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **fechada** (19/11 16:16→16:46: Dev → QA **PASS 8/8** → Revisor «nada a assinalar»; 598 testes/34 ficheiros; secção em `TASKS-fechado.md`) |
-| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado; resta `SMOKE_DATABASE_URL`, que o token não escreve. Registo em `relatorios/A7-rotacao.md`) |
+| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado. `SMOKE_DATABASE_URL` escrito pelo utilizador às 18:45Z — os nossos tokens levam 403 na API de segredos; e provou-se que nunca tinha existido: `smoke.yml` com 0 execuções desde 18/10. Registo em `relatorios/A7-rotacao.md` e em `DECISOES.md`) |
 
 A **A7** não é código e não segue a fila: foi autorizada por ele para correr **quando a T70 fechar**, com
 o passo da Vercel nas minhas mãos depois do link do scope. Correu. O mapa de consumidores de

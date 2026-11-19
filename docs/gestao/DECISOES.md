@@ -160,6 +160,18 @@ escrevem segredos (`403 “Resource not accessible by integration”`), e o work
 rebenta sozinho. **Peça nova no procedimento:** alterar variáveis na Vercel não toca na instância que
 está a servir; sem `redeploy` as apps ficam em baixo mesmo com as variáveis repostas.
 
+**Correcção de 19/11, 18:45Z — o nº 3 não estava «desactualizado», nunca existiu.** Medido: o workflow
+`Fumo em produção` tem **0 execuções** desde que entrou no repositório (`gh api …/workflows/smoke.yml/runs`
+→ `total_count: 0`; o ficheiro vem do commit `b980ed0`, 18/10), e a lista de segredos do utilizador não
+tinha a entrada. O `SMOKE_DATABASE_URL` foi **criado agora, pelo utilizador**, no ecrã
+*Settings → Secrets and variables → Actions*, com a *pooled connection string* do ramo `Financas_Pessoal`.
+Nunca foi lido por nós para confirmar o que lá ficou (`403`), por isso o valor só se prova à primeira
+corrida do fumo. **Duas peças novas no procedimento de rotação:** (a) variáveis escritas na Vercel como
+`sensitive` **não se voltam a ler** — nem pela consola, nem pela API (devolve `value: ""`); em rotação, a
+fonte do valor é o **Neon**, nunca a Vercel; (b) o `gh secret set` com os tokens desta máquina **não
+escreve** segredos — são precisos uns `403` à partida; fica a ser passo do utilizador, ou de um
+*fine-grained token* com *Secrets: read and write*.
+
 ---
 
 **O que estava escrito antes da execução (19/11, com a inferência que se provou errada):**
@@ -205,8 +217,11 @@ serve — a conversa velha e a nova têm-no.
 
 Fontes: tabela de ramos acima; `gh api repos/rafaelfa/diario_chofer/contents/README.md` (a linha do
 parágrafo inicial, consultada 19/11); `gh secret list` responde **403 “Resource not accessible by
-integration”**, por isso o segredo nº 3 está confirmado por *referência no workflow*, não por listagem — e
-o fumo já correu (T8.2), o que diz que ele existe.
+integration”**, por isso o segredo nº 3 está confirmado por *referência no workflow*, não por listagem.
+~~e o fumo já correu (T8.2), o que diz que ele existe.~~ — **inferência retirada em 19/11:** a T8.2 é a
+auditoria de autorização e o limite de tentativas (`docs/spec/T8.2-auditoria-autorizacao.md`, 11 POST
+seguidos a `/api/auth/sign-in/email`); não corre o workflow do fumo. Medido nesse dia: **0 execuções** de
+`smoke.yml`. O nº 3 existia como linha num ficheiro, não como segredo na conta.
 
 O nº 4 é o que a nota de 01/11 não previa: rodar a palavra-passe **derruba a produção do diário** com a
 desta app, e a janela deixa de ser «minutos desta aplicação» para ser «duas aplicações em baixo até às
@@ -218,7 +233,9 @@ facto de a ligação colada a 01/11 dar acesso total às duas bases.
 1. Neon → `old-fire-26176066` → **Reset password** de `neondb_owner` (o Neon derruba as ligações em curso).
 2. Escrever `DATABASE_URL` e `DIRECT_URL` novas na Vercel **das duas apps** (production **e** preview onde
    existir) — as do diário só se escrevem depois do link do scope, porque hoje não sei o nome do projecto.
-3. Actualizar `SMOKE_DATABASE_URL` neste repo (`gh secret set SMOKE_DATABASE_URL -R rafaelfa/financas-pessoais`).
+3. Actualizar `SMOKE_DATABASE_URL` neste repo — **pelo browser, pelo utilizador**: os tokens desta máquina
+   levam `403` na API de segredos, por isso `gh secret set` não escreve. Valor copiado do **Neon**
+   (ramo `Financas_Pessoal` → *pooled connection string*), nunca da Vercel, que o guarda como `sensitive`.
 4. `.env` desta máquina atualizado com a mesma palavra-passe → verificar: `/api/health` com
    `database.reachable: true` em produção, e uma corrida e2e local.
 5. Escrever aqui a data, o que ficou coberto e o que não (se o diário não foi apanhado, diz-se).
@@ -240,6 +257,20 @@ A base do `financas-pessoais` é o ramo `Financas_Pessoal` dentro do projeto Neo
 projeto também chamado `diario_chofer` (`patient-field-12858176`), inativo.
 Risco: abrir o console e ficar no ramo errado. Cada ramo tem o seu `public`, portanto
 não há mistura de dados — mas há risco de operar no sítio errado.
+
+**Mapa completo, medido por API a 19/11 às 18:20Z** (deixa de haver «penso que é este»):
+
+| Projeto Neon | Região | Ramo | Endpoint | Conteúdo | Quem o usa |
+| --- | --- | --- | --- | --- | --- |
+| `old-fire-26176066` `diario_chofer` | eu-central-1 | `production` (`br-snowy-dew`) | `ep-frosty-water-b1nyzzpu` | — | diário do chofer (produção dele) |
+| `old-fire-26176066` `diario_chofer` | eu-central-1 | `Financas_Pessoal` (`br-patient-mud`) | `ep-young-poetry-b1nqzwit` | **27 tabelas, 2 utilizadores** | **esta app, produção e o `SMOKE_DATABASE_URL`** |
+| `old-fire-26176066` `diario_chofer` | eu-central-1 | `testes-e2e` (`br-damp-math`) | `ep-spring-mud-b11fe546` | — | `.env` desta máquina, suíte e2e |
+| `cold-pond-15149007` `Financas_Pessoal` | us-east-2 | `production` (`br-rough-bird`) | `ep-wispy-sky-b4e0sr8e` | **0 tabelas em `public`**, 9 em `neon_auth` | **ninguém** — projeto nosso, vazio desde 01/11 |
+
+Consequência para a proposta abaixo: **o projeto próprio já existe e tem a Neon Auth montada** — o trabalho
+de A5 não é criar nada, é `pg_dump`/`restore` do ramo `Financas_Pessoal` para `ep-wispy-sky-b4e0sr8e`,
+repor as duas Vercel e só depois apagar o ramo emprestado. E é esse o motivo estrutural da janela de
+19/11 ter derrubado duas apps: os dados do `financas-pessoais` estavam dentro do projeto do chofer.
 
 Proposta: criar um projeto Neon próprio (`financas-pessoais`), fazer `pg_dump` + `restore`
 do ramo, trocar a `DATABASE_URL`/`DIRECT_URL` na Vercel e apagar o ramo antigo — depois
