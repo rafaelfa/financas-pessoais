@@ -619,3 +619,61 @@ em lado nenhum, e o guião das capturas do Dev não existe em disco.
 **Alternativa rejeitada.** Commitar as PNG e confiar em revisão humana a cada fecho: foi
 exactamente o que falhou no `21dae72`, e uma imagem é o único artefacto desta casa que um
 revisor não consegue ler em diff.
+
+### D27 — Previews da Vercel desligados: o build de branch nunca funcionou e não é trabalho por fazer agora — **decisão do Lead (2026-11-20)**
+
+**O que se mediu, às 18:30UTC.** O projecto `financas-pessoais`
+(`prj_OILikkukEulXSmf2gjnfKz00MXLM`, equipa `team_2g32eqT8bqCq0eVzG28wBD5Z`) tem **58
+deployments**; **3 são previews e os 3 estão `ERROR`**, todos de `fix/t73-parcelamentos-cartoes`
+(`21dae72` 16:03, `330432a` 18:22, `ebd16d2` 18:30). Produção está `READY` em `2acacbc`
+(`dpl_5pTDrZH48Z1kutw8KsXX1aL9EMzf`) e não se mexeu.
+
+Os três falham na mesma linha, com os mesmos 37 eventos de log:
+
+```
+@repo/db:db:generate: Failed to load config file "/vercel/path0/packages/db" as a
+  TypeScript/JavaScript module. Error: PrismaConfigEnvError: Cannot resolve environment variable: DIRECT_URL.
+Failed:    @repo/db#db:generate
+Error: [BUILD_UTILS_SPAWN_1] Command "turbo run build" exited with 1
+```
+
+**Não é dependência de pacotes.** O `pnpm install` passou (`Detected pnpm-lock.yaml version 9`,
+`pnpm@10.17.1`, *Done in 3s*), o Next foi detectado (16.4.6) e a cache foi restaurada do deploy
+de produção. Rebenta dentro do `turbo run build`, porque `turbo.json` declara
+`build.dependsOn = ["^build", "^db:generate"]` e `packages/db/prisma.config.ts:39` faz
+`url: env('DIRECT_URL')`. Sem essa variável no âmbito, não há código que salve o build.
+
+**A origem é um passo pendente, feito a meio.** `docs/gestao/DECISOES.md` § A7, passo 2 da
+sequência de rotação: «Escrever `DATABASE_URL` e `DIRECT_URL` novas na Vercel **das duas apps**
+(production **e** preview onde existir)». As linhas medidas por id às 18:50:
+
+| Chave | `target` | Última escrita |
+| --- | --- | --- |
+| `CRON_SECRET` (`6bxoHWSFRHAgewl4`) | production+preview+development | 19/11 15:59 |
+| `DIRECT_URL` (`v1BPFmXbv0veJyhF`) | **production** | 19/11 19:38:53 |
+| `DATABASE_URL` (`sjWw6XxSZJuIoOQn`) | **production** | 19/11 19:38:52 |
+| `BETTER_AUTH_URL` / `BETTER_AUTH_SECRET` | production | 10/10 |
+
+Ambientes personalizados: `[]`. Ou seja: a rotação de 19/11 escreveu a palavra-passe nova onde
+servia, e a metade `preview` do passo 2 nunca foi feita — nunca se notou porque **o primeiro
+push de um branch na história deste projecto é o de hoje**.
+
+**O que fiz.** `PATCH /projects/…` com `previewDeploymentsDisabled: true` às **18:53:35Z**
+(`updatedAt` `1795200815447`). A resposta do MCP não ecoa a chave, por isso a prova não é a
+resposta: é o **push deste mesmo commit não criar deployment** (registado no commit seguinte).
+
+**Porque não a outra saída.** Havia `commandForIgnoringBuildStep`, mas essa corre também em
+produção: um erro de aspas no guião salta silenciosamente o próximo deploy real, e o que estava
+em causa era precisamente não mexer em produção. O interruptor das previews não toca no `main`.
+
+**O que NÃO apaguei.** Os 3 deployments `ERROR` ficam. Não me serve de nada apagar: não têm
+`target`, não servem tráfego, e o registo do falhanço é a prova desta decisão. E apagar não
+recolhe nada do GitHub — o objecto `21dae72` continua alcançável por SHA até ao GC.
+
+**Quando voltarmos a ligar** (fica à espera, não é esquecido): só com as quatro chaves também
+em `preview`, apontadas para o ramo `testes-e2e`, **e** com as duas condições que já sei
+estarem hoje em falta — (1) *Deployment Protection* ligado, senão cada preview é uma URL
+pública, e (2) o ramo de teste deixar de ter a conta real do utilizador lá dentro (medido
+hoje: `neondb` de `ep-spring-mud-*` tem `rafaelfa.aguiar@gmail.com` com **60 lançamentos**
+entre 2026-08-03 e 2027-04-20). Enquanto isso não estiver pronto, preview a buildar é uma
+superfície nova com os dados dentro, exactamente o que a D26 tratou de fechar.
