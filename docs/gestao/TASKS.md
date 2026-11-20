@@ -3944,12 +3944,13 @@ mesma razão).
 
 | ID  | Tarefa | Dono | Estado |
 | --- | --- | --- | --- |
-| T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; prova em `relatorios/T73.md` e `relatorios/T73-QA.md`; arquivo em `TASKS-fechado.md`. Push indevido do `21dae72` desfeito às 16:48Z; **`merge`/`push` à espera de ti**, D25) |
-| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **em mão** (handoff ao Dev 2026-11-20 17:25Z; T73 fechada primeiro, cadeia de uma só vez — D25) |
+| T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada e publicada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; arquivo em `TASKS-fechado.md`. Branch `fix/t73-parcelamentos-cartoes` empurrada às 18:22Z em `330432a` (reflog
+`refs/remotes/origin/…@{2026-11-20 18:22:33 +0000}`), **0 PNG** no conteúdo remoto; `21dae72` reescrito fora da história local, backup em `backup/t73-historia-com-capturas`. `merge` em `main` **não**: é por bloco, D25 b. Emenda do QA à linha 28 de `T73-QA.md` em `7d6df4e`; política das capturas em **D26**) |
+| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **entregue, em QA** (handoff ao Dev 17:25Z; entrega do Dev `3a583f59`; contra-prova do Lead: **13 órfãos = 11 sem `id` + 2 sem referência, 0 no ficheiro**, reproduzido pela minha sonda; 8 `FieldError` / 7 props `aria-describedby` (a 8.ª é comentário, linha 400); base `testes-e2e` com 0 linhas `e2e-t74-dev-%`. Handoff ao QA `9d970482`) |
 | T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px quando a régua é 44 px | Dev | **Pendente (mão)** |
 | T72 | **N1 — diálogos sem limite de altura:** um `DialogContent` de 1761 px num ecrã de 844 | Dev | **Pendente (mão)** |
 
-### T73 — F1: os planos de parcelas não aparecem em `/cartoes` (Dev) — **fechada**
+### T73 — F1: os planos de parcelas não aparecem em `/cartoes` (Dev) — **fechada e publicada**
 
 Cadeia completa a 2026-11-20, à primeira volta: Dev `c52a0e2` → QA **`PASS`** nas quatro alíneas →
 Revisor **`OK`**. A secção inteira — com o apuramento do push indevido do `21dae72` e as cinco voltas
@@ -3957,7 +3958,7 @@ de verificação da minha própria escrita — está arquivada em `docs/gestao/T
 cabeçalho **«Fecho T73»**. Prova: `relatorios/T73.md` (356 linhas, Dev) e `relatorios/T73-QA.md`
 (141 linhas, QA).
 
-### T74 — N2 + N3: `transaction-quick-add` (Dev) — **em mão**
+### T74 — N2 + N3: `transaction-quick-add` (Dev) — **entregue, em QA**
 
 **Porquê.** Dois defeitos no formulário mais usado do produto, medidos hoje no ficheiro:
 
