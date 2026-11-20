@@ -1,7 +1,8 @@
 'use client';
 
+import { formatDate } from '@repo/shared';
 import { CalendarDays, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
 import { Amount } from '@/components/amount';
 import { EmptyState } from '@/components/empty-state';
@@ -101,11 +102,18 @@ export function InstallmentList({
 
           <TableBody>
             {plans.map((plan) => (
-              <InstallmentRow
-                key={plan.planId}
-                plan={plan}
-                card={cards.find((candidate) => candidate.id === plan.cardId)}
-              />
+              <Fragment key={plan.planId}>
+                <InstallmentRow
+                  plan={plan}
+                  card={cards.find((candidate) => candidate.id === plan.cardId)}
+                />
+                {plan.invoices.map((parcela) => (
+                  <InstallmentParcelRow
+                    key={`${plan.planId}-${parcela.installmentNumber}`}
+                    parcela={parcela}
+                  />
+                ))}
+              </Fragment>
             ))}
           </TableBody>
         </Table>
@@ -230,6 +238,31 @@ function InstallmentRow({
             }}
           />
         ) : null}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/**
+ * Uma linha por parcela do plano.
+ *
+ * O ecrã mostrava apenas a parcela em curso; as outras ficavam na base de dados
+ * sem que ninguém as visse. A data é a de vencimento da fatura que recebe a
+ * parcela, e meio-dia UTC evita que o fuso do browser atrase o dia.
+ */
+function InstallmentParcelRow({ parcela }: { readonly parcela: InstallmentInvoiceRef }) {
+  return (
+    <TableRow>
+      <TableCell colSpan={8} className="py-2 text-xs text-muted-foreground">
+        <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:pl-6">
+          <span>{`Parcela ${parcela.installmentNumber}`}</span>
+          <Amount amountInCents={parcela.amountInCents} tone="neutral" />
+          {parcela.dueDate === '' ? null : (
+            <span className="font-numeric tabular-nums">
+              {formatDate(`${parcela.dueDate}T12:00:00Z`)}
+            </span>
+          )}
+        </span>
       </TableCell>
     </TableRow>
   );
