@@ -89,11 +89,17 @@ Estas vêm do projeto e não são negociáveis.
 
 ## Quem escreve o quê
 
-- Lead de Projeto: `docs/gestao/MAPA.md`, `docs/gestao/TASKS.md`, `docs/gestao/DECISOES.md`
-  e **todo o git** (`commit`, `push`) — só depois de QA `PASS` + Revisor `OK`
+- Lead de Projeto: `docs/gestao/MAPA.md`, `docs/gestao/TASKS.md`, `docs/gestao/DECISOES.md`,
+  os inventários `docs/gestao/EVIDENCIA-T*.md` (D26) e **todo o git** (`commit`, `push`) —
+  só depois de QA `PASS` + Revisor `OK`
 - Dev: código em `apps/`, `packages/` e configuração do projeto — **sem git**
 - QA: `e2e/`, `relatorios/` e os relatórios `docs/spec/T*` — **sem git**
 - Revisor: nada (só lê)
+
+**Capturas de evidência: fora do índice, sempre.** `relatorios/*.png` está no `.gitignore`
+(D26): o repositório é público e uma captura é o ecrã com os dados dessa máquina em pixel.
+A prova que entra no git é o inventário de hashes do Lead; publicar uma imagem é um acto
+nomeado com `git add -f`.
 
 Dois membros nunca escrevem no mesmo ficheiro ao mesmo tempo: cada tarefa declara os
 ficheiros que pode escrever.

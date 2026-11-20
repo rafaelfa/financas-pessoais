@@ -589,3 +589,33 @@ de o QA medir**, e quem a limpa sou eu.
 **Alternativa rejeitada.** Manter o commit no Dev e proibir só o push: não serve, porque foi o commit
 de outra mão que levou os meus documentos para dentro do trabalho dele, e o push foi consequência
 automática do mesmo mecanismo.
+
+### D26 — As capturas de evidência ficam fora do índice; o que entra no git é a hash — **decisão do Lead (2026-11-20)**
+
+**O que ficou decidido.** Nenhum `.png` de `relatorios/` entra no índice (`.gitignore`:
+`relatorios/*.png`). Cada tarefa fechada passa a ter um inventário do Lead em
+`docs/gestao/EVIDENCIA-T<id>.md` com, por ficheiro, bytes, dimensões e SHA-256, mais o dono
+de cada captura e a marca de tempo. Publicar uma imagem deliberadamente continua possível
+com `git add -f`, e passa a ser um acto nomeado, não um acidente de `git add -A`.
+
+**Porquê, medido.** O repositório é público (`gh api repos/rafaelfa/financas-pessoais` →
+`visibility: public`) e o texto da página de `/cartoes` contém «Televisor 4K (T73)», «Cartão
+Millennium» e 10 montantes em euros numa só configuração (`relatorios/.qa-t73/depois.json`,
+campo `texto`). Uma captura é esse texto em pixel. Já esteve público uma vez: as 6 PNG do
+`21dae72` viveram no remoto 45 minutos (16:03 → 16:48Z), e o objecto continua acessível por
+SHA até o GitHub fazer GC — nada do que eu faça agora o recolhe.
+
+**Onde vive o inventário, e porquê lá.** Em `docs/gestao/`, não em `relatorios/`: esta é
+pasta do QA (`AGENTS.md` § Quem escreve o quê) e o Lead não assina provas na pasta de outra
+pessoa. O primeiro exemplar é `docs/gestao/EVIDENCIA-T73.md`.
+
+**O que a geração do inventário apanhou, e ficou escrito nele.** (1) A linha 28 de
+`T73-QA.md` citava um JSON com duas configurações para sustentar uma tabela de quatro — o
+QA emendou-a em edição própria de 4 linhas. (2) Os bytes idênticos entre as capturas do Dev
+e as do QA não provavam corrida: provam-na as marcas de tempo dos guiões do QA (criados às
+17:04:47 e 17:05:20, com as capturas 9-21 s depois). (3) Não há versão de browser registada
+em lado nenhum, e o guião das capturas do Dev não existe em disco.
+
+**Alternativa rejeitada.** Commitar as PNG e confiar em revisão humana a cada fecho: foi
+exactamente o que falhou no `21dae72`, e uma imagem é o único artefacto desta casa que um
+revisor não consegue ler em diff.

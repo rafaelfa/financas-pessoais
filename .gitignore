@@ -54,6 +54,14 @@ e2e/.results/
 e2e/.results*/
 e2e/.tmp/
 
+# Capturas de evidência — ficam no disco, nunca no índice.
+# O repositório é público e uma captura é o ecrã com os dados dessa máquina: a de `/cartoes`
+# mostra «Cartão Millennium» e montantes (medido em relatorios/.qa-t73/depois.json). A prova
+# que entra no git é a lista de SHA-256, bytes e dimensões de cada ficheiro — o primeiro
+# exemplar é relatorios/EVIDENCIA-T73.md, e cada tarefa fechada passa a ter o seu. Para
+# publicar uma captura *deliberadamente*: git add -f.
+relatorios/*.png
+
 # Rascunhos de QA (logs, capturas e JSON de trabalho; os relatórios é que são prova)
 relatorios/.qa-*/
 # artefactos de corridas e2e falhadas (traces, capturas) — ver T65
