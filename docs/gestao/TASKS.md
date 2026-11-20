@@ -4,6 +4,9 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
+**Próximo ID livre: T84.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; as
+tarefas fechadas das vagas 1–6 estão em `TASKS-fechado.md`.
+
 | ID  | Tarefa                                                                                                                          | Dono | Estado                                                          | Prova              |
 | --- | ------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------- | ------------------ |
 | T1  | Repor o install e a formatação: lockfile com `react-hook-form`/`@hookform/resolvers`, 12 ficheiros formatados, `.gitattributes` | Dev  | **fechada** (Dev + QA + Revisor)                                | `relatorios/T1.md` |
@@ -3882,3 +3885,355 @@ commit da A5. Se ele os quiser no repo, diz — mas é mudar um padrão, não li
 ---
 
 
+---
+
+# Vaga 7 — auditoria de design (três passes), autorizada 2026-11-20
+
+**Origem.** Três passes de auditoria de design, só leitura, sobre os 17 ecrãs autenticados da sessão
+demo, contra **build de produção**, a 390×844 e 1440×900, claro e escuro. Saíram **22 itens + 2
+recuperadas**, montados em **nove blocos**. As medições em que cada item se apoia foram citadas no
+plano entregue no chat ao utilizador a 2026-11-20; **o texto integral de cada item está nesse
+plano**, não num ficheiro deste repositório. Uma tarefa desta vaga que cite um id (`F5`, `V1`,
+`R1`…) vale pelo id e pelo bloco: o Dev confirma a afirmação no código **antes** de escrever e
+escreve o que encontrou no post de mão.
+
+**Autorização (D24).** O utilizador escolheu **a lista completa (22 + 2)** e ordenou o arranque.
+Três escolhas saíram daí: o limite de altura dos diálogos vai **na classe base** `ui/dialog.tsx`
+(C2); **A4 resolve-se só no tema claro** (C1), o escuro fica registado como não resolvido; o
+`Card size="sm"` **não se toca agora** e decide-se no bloco da densidade (C3).
+
+**Contrapartidas, escritas antes do primeiro commit.** Um bloco aberto de cada vez. **Zero deploy**
+— o `next start` de verificação corre nesta máquina e **pára no fim de cada bloco**, porque bloqueia
+o `next build` do passo seguinte no Windows. **Nenhuma migração** de base de dados. **Nenhum push
+pelo Dev**: commit e push são do Lead, com o gate (`format:check` → `lint` → `typecheck` → `test` →
+`build`) verde e prova do QA e do Revisor. As imagens de evidência vão para `relatorios/` e **não se
+versionam** (padrão de hoje: 82 `.md` em git, zero `.png`).
+
+**Dois baldes, e o que trava.** Os passos **(a)** — ficheiros de ecrã e de componente de domínio,
+sem tocar em `components/ui/` nem em `app/globals.css` — correm já. Os passos **(b)** — os que
+reescrevem a biblioteca ou o shell comum dos 17 ecrãs (T72, T75, T78, T79, T80, T81, T82, T83) —
+têm número e critério, mas **só abrem mão com o «vai» do Dr. Eggbot no post de handoff**, porque o
+que muda neles vê-se em todo o lado ao mesmo tempo. Nada nesta vaga reabre a **T23** nem a **T25**:
+uma string pt-BR encontrada a meio do caminho é tarefa nova, não correcção de âmbito.
+
+**Fila (os (a), por ordem):** **T73 → T74 → T76 → T77**. Interdição de sobreposição que vem do
+plano: o **T76 corre antes do T78**, senão o lote de tipografia do T78 reescreve as linhas que o
+T76 acabou de tocar. A partir daí entram os (b), na ordem do plano: **T72 → T78 → T75 → T79 → T80 →
+T81 → T82 → T83** (T78 antes de T82/T83 porque ambos escrevem `ui/card.tsx`; T82 antes de T83 pela
+mesma razão).
+
+## Mapa de colisões (uma só mão por ficheiro)
+
+| Ficheiro | Tarefas que o escrevem | Ordem obrigatória |
+| --- | --- | --- |
+| `app/globals.css` | T78 (A4 → V2 → V1 → V4 → V3, dentro do mesmo lote) | cinco mudanças **num só passo**, nesta sequência |
+| `components/ui/dialog.tsx` | T72 (N1), T78 (V4, V1) | **T72 primeiro**; o T78 não volta à linha do `DialogContent` |
+| `components/ui/card.tsx` | T78 (V2, V3), T82 (V5, V6), T83 (C3) | T78 → T82 → T83 |
+| `components/ui/button.tsx`, `ui/input.tsx` | T75 (F2) | depois do T72, para a altura não anular a do diálogo |
+| `components/transaction-quick-add.tsx` | T74 (N2, N3), T77 (N5) | T74 fecha antes de abrir o T77 |
+| `app/(app)/calendario/page.tsx` | T77 (N5), T79 (F7), T81 (N6) | três mãos na mesma linha de tempo, **sem sobreposição** |
+| `components/mobile-nav.tsx` | T77 (F9), T78 (V3) | T77 escreve os rótulos, T78 só as classes |
+| `components/dashboard-forecast-chart.tsx` | T79 (F5, F6) | uma tarefa, dois itens |
+| `server/reports-export.ts` | T79 (N4, F7) | idem |
+| `components/installment-list.tsx`, `app/(app)/cartoes/page.tsx` | T73 (F1), T76 (R2) | T73 primeiro; o T76 apanha o título já corrigido |
+| 9 ficheiros de diálogo (`rule-dialog`, `recurrence-dialog`, `transaction-edit-dialog`…) | T76 (F4) | o T74 toca em `transaction-quick-add` **antes** do T76 |
+
+---
+
+## Vaga 7 · Bloco B1/B2 — o que se vê primeiro
+
+| ID  | Tarefa | Dono | Estado |
+| --- | --- | --- | --- |
+| T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; prova em `relatorios/T73.md` e `relatorios/T73-QA.md`; arquivo em `TASKS-fechado.md`. Push indevido do `21dae72` desfeito às 16:48Z; **`merge`/`push` à espera de ti**, D25) |
+| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **em mão** (handoff ao Dev 2026-11-20 17:25Z; T73 fechada primeiro, cadeia de uma só vez — D25) |
+| T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px quando a régua é 44 px | Dev | **Pendente (mão)** |
+| T72 | **N1 — diálogos sem limite de altura:** um `DialogContent` de 1761 px num ecrã de 844 | Dev | **Pendente (mão)** |
+
+### T73 — F1: os planos de parcelas não aparecem em `/cartoes` (Dev) — **fechada**
+
+Cadeia completa a 2026-11-20, à primeira volta: Dev `c52a0e2` → QA **`PASS`** nas quatro alíneas →
+Revisor **`OK`**. A secção inteira — com o apuramento do push indevido do `21dae72` e as cinco voltas
+de verificação da minha própria escrita — está arquivada em `docs/gestao/TASKS-fechado.md` sob o
+cabeçalho **«Fecho T73»**. Prova: `relatorios/T73.md` (356 linhas, Dev) e `relatorios/T73-QA.md`
+(141 linhas, QA).
+
+### T74 — N2 + N3: `transaction-quick-add` (Dev) — **em mão**
+
+**Porquê.** Dois defeitos no formulário mais usado do produto, medidos hoje no ficheiro:
+
+- **N2:** o botão de submeter está desactivado por
+  `disabled={pending || needsTwoAccounts || amountInCents === null || creditNeedsCard}`
+  (`transaction-quick-add.tsx:691`). `amountInCents === null` vale enquanto o utilizador escreve o
+  primeiro dígito: o formulário diz «não» sem dizer porquê, e o teclado já comeu o ecrã todo.
+- **N3:** `<FieldError>` sem `id` e portanto sem `aria-describedby` no controlo. Varredura de hoje
+  aos **17** ficheiros que usam `<FieldError>` (**80** ocorrências): **17 erros órfãos** — 14 sem
+  `id` nenhum e 3 com `id` que ninguém refere. Quatro deles estão no
+  `transaction-quick-add.tsx` (linhas 474, 501, 526, 552 — a de 501 tem `id="lancamento-conta-erro"`
+  que nenhum `aria-describedby` refere). Um leitor de ecrã anuncia o campo inválido e não a razão.
+
+**Ficheiros que pode escrever:** `apps/web/src/components/transaction-quick-add.tsx` **só**. Os
+outros 13 órfãos ficam no **T76** — mão única no mesmo ficheiro.
+
+**Critério de aceitação.**
+1. O botão de submeter passa a estar activo com montante inválido e a explicar o motivo no campo
+   (`aria-invalid` + erro ligado por id), em vez de desactivar em silêncio. Teste: escrever
+   `1`, depois `1,`, depois `12,34` — o botão nunca fica desactivado sem uma razão escrita.
+2. Os **4** `<FieldError>` do ficheiro passam a ter `id` único **e** esse id aparece num
+   `aria-describedby` do controlo correspondente. Prova: a mesma varredura do Lead dá
+   `transaction-quick-add.tsx` com **0** órfãos.
+3. Gate completo verde; nada de `components/ui/`.
+
+**O que não fazer:** não tocar no desenho do formulário nem no comportamento de parcelas
+(`installmentCountNumber`); isso é o T77.
+
+**Cadeia.** Dev → QA (leitor de ecrã: um erro de validação é anunciado com a razão) → Revisor → fecho.
+
+**Dois números meus que o Dev emendou no post de mão (`96bc5778`, verificados por mim):** no ficheiro há
+**8** `<FieldError>` (422, 439, 474, 501, 526, 552, 651, 671), não 6 como escrevi no handoff — os 4
+problemas e as suas linhas não mudam. E o `lancamento-descricao-erro` (671) está ligado por
+`describedBy` → `aria-describedby` em `description-combobox.tsx:173`, uma **indirecção por prop**: um
+`grep` ao literal `aria-describedby` conta-o como órfão e inflaciona a medição. Vale para o **T76**, que
+são os outros 13: a varredura tem de procurar a **string do id** no ficheiro, não o atributo. A sonda do
+Dev reproduz os meus números-mãe (**17 órfãos = 14 sem id + 3 sem referência, em 80 ocorrências /
+17 ficheiros**), pelo que o quadro acima mantém-se.
+
+### T75 — F2: alvos de toque a 44 px (Dev) — **Pendente (mão)**
+
+**Porquê, com os números de hoje.** A base é pequena: `ui/button.tsx:24` tem o predefinido a `h-8`
+(32 px) e `ui/input.tsx:10` idem; os tamanhos `xs`/`sm` descem a 24/28 px. A equipa já conhece o
+problema e tapou-o à mão com `min-h-11` (44 px) — **84 ocorrências em 49 ficheiros** e **37 cópias
+de uma constante local `TOUCH`**, cada uma à sua maneira (uns `sm:min-h-0`, outros `sm:min-h-8`).
+Ficar a remendar sítio a sítio é o que produz as 37 variantes.
+
+**Ficheiros que pode escrever:** `apps/web/src/components/ui/button.tsx`, `ui/input.tsx`,
+`ui/select.tsx`, `ui/checkbox.tsx` e as cópias de `TOUCH` que passam a sobrar.
+
+**Âmbito, em três passos pequenos, cada um com a sua medição:**
+1. **Base:** `Button` predefinido e `Input` predefinido sobem de 32 px para **44 px** só em
+   viewport estreito (`min-h-11 sm:min-h-8`), para não partir a densidade do painel de 1440 px.
+2. **Sobra:** cada `min-h-11 sm:min-h-0` / `const TOUCH` que passa a não fazer nada é removido no
+   mesmo lote — medido antes e depois (84 e 37 são a linha de base de hoje).
+3. **Prova objectiva (é isto que fecha o item, não o olho):** um spec do Playwright no projecto
+   `telemovel` (`devices['Pixel 5']`) que percorre as rotas autenticadas e mede
+   `getBoundingClientRect()` de cada elemento interactivo visível, a falhar se algum for mais baixo
+   ou mais estreito que **44 px**. O número de falhas **antes** e **depois** vai no post de mão do
+   Dev; sem o «antes» medido, o critério não é verificável e a tarefa volta.
+
+**Risco a escrever no handoff:** subir a base mexe na altura de barras de ferramentas, tabelas e
+linhas de 17 ecrãs. Por isso é (b) e por isso vem **depois** do T72 (o limite de altura dos
+diálogos já tem de estar dentro da nova régua).
+
+### T72 — N1: limite de altura na classe base dos diálogos (Dev) — **Pendente (mão)**
+
+**Porquê.** Medido a 390×844 em produção: o diálogo de recorrência tem **1761 px** de conteúdo para
+uma janela de 844, o botão de submeter fica a **y = 1118 → 1190**, e não há **um único contentor com
+`overflow`** — o utilizador não chega ao botão sem que alguma coisa esbarre. O do dialogador de
+regras: **2211 px**. Cartão: 1118. Objetivo: 849 (ainda dentro, por pouco).
+
+**Escolha C2 (decidida).** Conter **na classe base**, e não 28 ficheiros: dos **35** ficheiros fora
+de `components/ui/` que usam `<DialogContent>` (**114** ocorrências no total), **28 não têm limite
+de altura** e **7 têm-no num `div` interior** (listados na varredura de hoje:
+`account-group-dialog`, `goal-detail-dialog`, `installment-edit-dialog`, `invoice-detail-dialog`,
+`rule-apply-dialog`, `transaction-bulk-actions`, `transaction-edit-dialog` — este último com o
+padrão correcto `max-h-[85vh] overflow-y-auto`). Uma linha na base cobre os 35.
+
+**Ficheiros que pode escrever:** `apps/web/src/components/ui/dialog.tsx` (a classe base do
+`DialogContent`, hoje em `:56`, sem `max-h` nem `overflow`).
+
+**Critério de aceitação.**
+1. `DialogContent` passa a `flex max-h-[85dvh] flex-col` com o corpo a `overflow-y-auto`, e o
+   `DialogFooter` (`:91-93`) fica fora da área com scroll — o botão de submeter está sempre
+   acessível. (Os 7 `div` interiores com `max-h` próprio **não** se alteram nesta tarefa; ficam a
+   ser redundantes e vêem-se no T78.)
+2. Prova: os quatro diálogos medidos voltam a medir-se a 390×844 e **o botão de submeter fica
+   visível sem rolar a janela** (rola o corpo). Escrever os quatro números no post de QA.
+3. Um teste de regresso novo: abrir o diálogo de recorrência no projecto `telemovel` e afirmar que
+   `DialogFooter` está dentro da viewport.
+
+**Cadeia.** Dev → QA → Revisor → fecho. **Bloqueia o T78** (`ui/dialog.tsx` é a mesma mão).
+
+---
+
+## Vaga 7 · Bloco B3 e B5 — o que falta entre o pedido e o resultado
+
+| ID  | Tarefa | Dono | Estado |
+| --- | --- | --- | --- |
+| T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **Pendente** |
+| T77 | **N5 + F9:** o calendário que não responde à mesma altura que o resto, e o rótulo a 11 px | Dev | **Pendente** |
+| T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
+
+### T76 — F3 + F4 + R2 (Dev) — **Pendente**
+
+Três itens que não se tocam em ficheiros e que faz sentido fechar num só passo, porque nenhum deles
+muda desenho: são coisas que estão partidas em silêncio.
+
+**(a) F3 — `loading.tsx`: zero rotas com esqueleto.** Varredura de hoje a `apps/web/src/app`:
+**19** ficheiros `page.tsx`, **0** com `loading.tsx`, **11** com `error.tsx` — incluindo o
+`(app)/error.tsx` do grupo, que tem `reset`, voltar ao painel e diz que nada é escrito sem ação
+explícita. A equipa desenhou o estado de erro e não desenhou o de carregamento. Das 19 páginas, as
+que são ecrã autenticado com dados do servidor entram no lote, e o Dev lista-as no post de mão
+**antes** de criar ficheiros; as de `(auth)` e as de API ficam de fora. A medição que dá sentido ao
+item: `/transacoes` com
+**LCP 944 ms** e **TTFB 803 ms** e **zero skeletons** — 800 ms de branco sem nenhuma resposta visual.
+
+- Ficheiros: `apps/web/src/app/(app)/**/loading.tsx` (novos), em cima de `components/ui/skeleton.tsx`
+  **que já existe** — não se cria primitiva nova nesta tarefa.
+- Critério: cada rota com dados mostra espinhas com a **mesma caixa** do conteúdo real (sem salto
+  de layout: medir a altura do primeiro bloco antes e depois, `cls` 0 no ecrã a 390 e a 1440).
+- Prova: captura de `/transacoes` com a rede lenta (Playwright `route` atrasado) em
+  `relatorios/T76-transacoes-skeleton-390.png`, e o número de rotas cobertas.
+
+**(b) F4 — os 13 erros de validação que um leitor de ecrã nunca lê.** Do total de **17 órfãos em 9
+ficheiros** (varredura de hoje), 4 são do `transaction-quick-add.tsx` e vão no **T74**; ficam aqui:
+
+| Ficheiro | Órfãos |
+| --- | --- |
+| `rule-dialog.tsx` | 3 (linhas 323, 503, 528) |
+| `transaction-edit-dialog.tsx` | 3 (276, 303, 325) |
+| `recurrence-dialog.tsx` | 2 (336, 425) |
+| `budget-limit-dialog.tsx` | 1 (202) |
+| `invoice-pay-dialog.tsx` | 1 (299) |
+| `receivable-payable-pay-dialog.tsx` | 1 (183) |
+| `category-dialog.tsx` | 1 (329 — tem `id="categoria-cor-erro"`, mas nada o refere) |
+| `import-export-panel.tsx` | 1 (150 — `id="exportar-de-erro"`, idem) |
+
+- Critério: os **13** passam a ter `id` único e a aparecer num `aria-describedby` do controlo (nos
+  dois casos de «id sem referência», é o controlo que passa a referi-lo, não o id que se apaga).
+- Prova objectiva: o script de varredura do Lead volta a correr e dá **0** órfãos em `apps/web/src`
+  (excluíndo `field.tsx`), com a lista antes/depois no post de QA. Não há critério de gosto aqui.
+
+**(c) R2 — o que a T73 deixou visto em `/cartoes`.** R2 é a segunda metade do F1: com as parcelas a
+aparecer, o título e o texto do estado vazio passam a ser lidos por alguém e têm de estar certos. É
+o único passo desta vaga cujo critério depende do que a T73 mostrar no ecrã; o Dev escreve-o no
+post de mão **depois** de ver o resultado da T73, e o Lead aprova a formulação antes do commit.
+
+### T77 — N5 + F9 (Dev) — **Pendente**
+
+**(a) N5 — o calendário.** Vive em `apps/web/src/app/(app)/calendario/page.tsx` e partilha o
+`transaction-quick-add.tsx` com a T74, por isso **abre depois de a T74 fechar**. A definição do que
+está mal está no plano; a âncora verificável é esta: o painel de dia do calendário abre um
+`<DialogContent>` sem limite de altura (é o único dos 35 que não o usa de todo) e a interacção de
+lançar um movimento a partir do dia tem de ficar igual à do formulário rápido depois do T72 e do
+T74. Critério de aceitação: (1) a 390×844, abrir um dia com movimentos e lançar um — o botão de
+submeter fica visível e a validação é anunciada por leitor de ecrã; (2) o calendário não ganha um
+segundo caminho de dados nem um segundo `quick-add`.
+
+**(b) F9 — rótulos a 11 px.** `components/mobile-nav.tsx:37` usa `text-[11px]`, o único texto do
+`src` abaixo de 12 px que está no caminho principal de navegação (a varredura de hoje encontra
+também `text-[0.7rem]`/`text-[0.65rem]` num `page.tsx` e `text-[0.8rem]` em `button.tsx:26`,
+`calendar.tsx:78,84` — esses pertencem ao lote de tipografia do **T78**, não a esta tarefa).
+Critério: o rodapé móvel sobe para o token de tamanho legível que o tema tiver depois do T78 — **se
+o T78 ainda não correu**, usa-se `text-xs` (12 px) e a passagem para o token fica escrita no fecho
+da tarefa como dívida do T78, não como trabalho extra escondido. Prova: medir a altura do texto com
+`getBoundingClientRect()` a 390 px, antes e depois, e dizer o número.
+
+### T78 — A4 + V2 + V1 + V4 + V3 + V7: o lote do tema (Dev) — **Pendente (mão)**
+
+Um só passo em `apps/web/src/app/globals.css` (e o que os tokens dele puxam em `components/ui/`),
+porque cinco mudanças no mesmo ficheiro em tarefas separadas são cinco mãos na mesma linha — e o
+`MAPA.md` já avisa que este ficheiro foi o campo de batalha das últimas vagas.
+
+**Sequência interna obrigatória** (é a ordem do plano, e inverter invalida medições):
+
+1. **A4 — bordas não textuais, só no tema claro.** O contraste entre `--input`/`--border` e o fundo
+   está nos **1,22–1,35:1** medidos, muito abaixo do mínimo de 3:1 para limites de controlos. A
+   decisão **C1** é esta: corrigir **no `:root` do tema claro**, duas linhas de tokens, e **não**
+   no escuro, que hoje está a **1,32:1** mas onde escurecer a borda custa o contraste do texto que
+   lá vive. **O handoff e o fecho têm de dizer por extenso que o tema escuro fica por resolver** —
+   escrevê-lo como «resolvido» é mentira de relatório.
+2. **V2 / V1 — tokens de superfície e de raio** (o que está no plano). Antes de escrever, o Dev
+   lista no post de mão os tokens existentes em `globals.css` e os valores que cada um tem hoje;
+   nenhum número de contraste, raio ou sombra entra num commit sem esta lista.
+3. **V4 — os 28 diálogos sem limite de altura** entram aqui **só como re-verificação**: o T72 pôs a
+   regra na classe base, portanto não há 28 ficheiros para editar; há 28 para confirmar um por um
+   que não ficaram piores (o `div` interior com `max-h` dos 7 que já tinham limite é o caso a
+   olhar). Critério: os quatro diálogos medidos no T72 voltam a medir-se e os números batem certo;
+   lista dos 28 no post de QA com `ok`/`não ok`.
+4. **V3 — raios.** O inventário de hoje, no `src` todo: `rounded-lg` ×84, `rounded-xl` ×52,
+   `rounded-md` ×33, `rounded-full` ×19, `rounded-none` ×6, `rounded-sm` ×5, `rounded-4xl` ×1, e
+   **13 ocorrências de raio arbitrário** — `rounded-[2px]` ×3, `rounded-[4px]` ×1,
+   `rounded-[min(var(--radius-md),10px)]` ×3, `rounded-[min(var(--radius-md),12px)]` ×2,
+   `rounded-[calc(var(--radius)-3px)]` ×2, `rounded-[calc(var(--radius)-5px)]` ×1,
+   `rounded-[inherit]` ×1. Critério: **0 raios arbitrários** fora de `components/ui/` (dentro da
+   biblioteca ficam os que são do desenho da própria primitiva, e esses contam-se e justificam-se
+   uma a uma no post de mão); as quatro famílias de `rounded-N` do ecrã passam a vir de tokens.
+   Nota honesta: a medição de raios **renderizados** (9,6 px ×412, 12 ×174, 16,8 ×119, 31,2 ×95) é
+   do passe de auditoria e exigia o servidor em produção; se for preciso remedi-la, **o Lead pede
+   autorização antes de levantar o `next start`** — não se mexe no `.next` de ninguém de véspera.
+
+5. **V7 (achado do Revisor na T73, `56ca442c`) — a dupla redundante `font-numeric tabular-nums`.**
+   `globals.css:206-208` já define `font-variant-numeric: tabular-nums` dentro de `.font-numeric`, e a
+   ferramenta Tailwind `tabular-nums` escreve a mesma propriedade: onde as duas classes vêm juntas,
+   uma sobra. Medido por mim: **8 ocorrências em 8 ficheiros em `2acacbc`**
+   (`amount.tsx:64`, `card-summary.tsx:171`, `goal-card.tsx:206`, `goal-detail-dialog.tsx:184`,
+   `installment-edit-dialog.tsx:320`, `installment-list.tsx:151`, `invoice-table.tsx:100`,
+   `recurrence-list.tsx:269`) e **9 no HEAD**, todas em 8 ficheiros, porque a T73 seguiu o padrão da
+   casa em `installment-list.tsx:261`. Critério: decidir **uma** das duas mãos (ficar com o token
+   `.font-numeric`
+   ou com a ferramenta Tailwind), aplicar em todo o `src` e deixar **0** ficheiros com as duas classes;
+   sem mudança visual — prova é o `before`/`after` da mesma linha renderizada.
+
+**O que não fazer neste passo:** não tocar em `ui/card.tsx` mais do que os tokens exigirem (V5/V6 é
+o T82, C3 é o T83); não tocar em `ui/button.tsx`/`ui/input.tsx` (T75); não reabrir a **T23** — se o
+lote de tipografia encontrar uma string pt-BR, abre-se tarefa nova.
+
+---
+
+## Vaga 7 · Blocos B6 a B9 — o resto da lista, com o âmbito a confirmar no arranque
+
+Estas cinco tarefas têm id, bloco, ficheiros e lugar na fila. **Não têm critério de aceitação
+escrito**, e não vou inventar um: o que cada item diz, na formulação com que foi aprovado, está no
+plano entregue no chat a 2026-11-20 (ver § O que falta prender em ficheiro, no fim da vaga). O Dev
+que abrir uma delas escreve primeiro o post de mão com **o que o item afirma e onde o viu no
+código**, e o Lead confirma antes da primeira linha mudar.
+
+| ID  | Tarefa | Dono | Estado |
+| --- | --- | --- | --- |
+| T79 | **F5 + F6 + F7 + N4 (B6):** painel de previsões e exportação | Dev | **Pendente (mão) — critério por escrever** |
+| T80 | **F10 + R1 (B7):** os dois itens que sobraram do 2.º e 3.º passes | Dev | **Pendente (mão) — critério por escrever** |
+| T81 | **F8 + N6 (B8):** calendário (segunda passagem) | Dev | **Pendente (mão) — critério por escrever** |
+| T82 | **V5 + V6 (B9):** densidade do `Card` e `CardFooter` | Dev | **Pendente (mão) — critério por escrever** |
+| T83 | **C3 (B9):** o `Card size="sm"` — decidir depois do T82 | Lead | **Pendente — à espera do T82** |
+
+Ficheiros por tarefa, para o mapa de colisões continuar a valer:
+
+- **T79** — `components/dashboard-forecast-chart.tsx` (F5, F6), `server/reports-export.ts` (N4, F7),
+  `app/(app)/calendario/page.tsx` (F7). **Abre depois do T77**: os dois escrevem no calendário. F5 e
+  F6 no mesmo ficheiro é aceitável porque é uma mão só; N4 e F7 em `reports-export.ts` idem.
+- **T80** — ficheiros a declarar no post de mão. Se algum cair em `components/ui/` ou
+  `globals.css`, **solapa o T78** e o Lead decide a ordem antes de a tarefa abrir.
+- **T81** — `app/(app)/calendario/page.tsx` (terceira mão nesta linha de tempo: T77 → T79 → T81) e
+  o que o F8 pedir.
+- **T82** — `components/ui/card.tsx` e `components/kpi-card.tsx`. A base medida hoje: **36**
+  ocorrências de `<Card>` em **26** ficheiros, e **0 de 36** usam `size="sm"`. Critério mínimo que
+  já se pode escrever: qualquer tamanho/densidade que entre aqui tem de ser usado por pelo menos uma
+  chamada real no fim do passo — uma variante sem uso é o que o C3 passou a ser.
+- **T83** — a decisão em si, não código: com o T82 fechado e medido, escolher entre **apagar** o
+  ramo `size="sm"` (é código morto hoje) ou **dar-lhe uso**. Quem decide é o utilizador; o Lead traz
+  os dois caminhos com o custo de cada um.
+
+---
+
+## O que falta prender em ficheiro
+
+A vaga inteira apoia-se numa lista de 24 itens que **só existe no chat** — os três passes de
+auditoria foram entregues como mensagem, não como documento. Isto é um risco de gestão conhecido:
+quando este contexto compactar, ficam os ids e os números medidos, mas perde-se a frase que define
+cada `F5`, `V1` ou `R1`. Enquanto isso não estiver num ficheiro, as tarefas T79–T82 não têm critério
+e não podem ser mandadas para o Dev.
+
+Ação do Lead, pedida ao utilizador: colar o plano (a secção com os 22 + 2 itens) em
+`docs/gestao/AUDITORIA-DESIGN-2026-11-20.md`, ou autorizar o Lead a reescrevê-lo a partir do passe
+de auditoria que estiver à mão — reescrever **com os números reapresentados**, não de memória. A
+fila (a) não espera por isto: **T73, T74, T76 e T77 têm critério e começam já.**
+
+**Atualização da mesma hora (22:40 locais):** a opção «de memória» ficou a zeros — os três passes
+**existem** no meu histórico como mensagens enviadas (`outbox-245542c1` 2.º passe, 9 930 caracteres;
+`outbox-3c64bff8` 3.º passe, 12 958). Portanto o ficheiro escreve-se **citando essas mensagens,
+palavra por palavra**, sem reapresentar números de cabeça. Falta só o utilizador dizer se quer isso
+(1 min de trabalho meu) ou se cola ele o texto.
+
+**Âmbito novo que a lista não tem, e que precisa de decisão dele (T84, ainda não criada):** as datas
+curtas sem ano. Medido hoje: **22 cópias** do helper `formatDay` em `apps/web/src` (23 ficheiros, 71
+ocorrências), mais `formatDayLong`. Não é um item dos 22+2 — foi um achado do trabalho da T73. Ou vira
+tarefa com critério, ou fica explicitamente fora de âmbito e deixa de ser citado em relatórios.

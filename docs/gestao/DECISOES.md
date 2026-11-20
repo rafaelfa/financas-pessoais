@@ -525,3 +525,67 @@ dos commits desta vaga repõe as ligações antigas na Vercel, e a origem não f
 do segredo — nem com máscara, porque a máscara falha. Escrita de segredo em variável da Vercel faz-se
 dentro do mesmo `execute`, e a verificação é `updatedAt`, não o valor.
 
+
+
+### D24 — A vaga 7 é a lista completa da auditoria de design, com os passos (b) à espera de confirmação um a um — **decisão do utilizador (2026-11-20)**
+
+**O que se decidiu.** Avançar para implementação com **os 22 itens + 2 recuperadas**, sem cortar
+nada, na ordem de prova B1 → B2 → B3 → B5 → B4 → B6 → B7 → B8 → B9. Três escolhas que vinham como
+(c) saíram assim: **C2** — o limite de altura dos diálogos entra **na classe base**
+`components/ui/dialog.tsx`, o que baixa o item de tamanho de M para S e transforma os 28 ecrãs sem
+limite em **re-verificação**, não em edição; **C1** — o contraste das bordas não textuais (A4)
+resolve-se **só no tema claro**, duas linhas de tokens no `:root`, e o tema escuro (1,32:1) fica
+escrito como **não resolvido** em cada relatório; **C3** — o `Card size="sm"` **não se toca agora**,
+decide-se no bloco da densidade (T82 → T83) com o custo dos dois caminhos medido.
+
+**Alternativa rejeitada e porquê.** Fazer só o balde (a) e deixar a biblioteca para depois: barata
+de aprovar, mas deixa os dois piores defeitos (diálogos de 1761 px e alvos de toque a 32 px) onde
+estão, porque ambos só se curam na base — remendar 28 ecrãs à mão é o que produziu as **37 cópias**
+locais da constante `TOUCH` e os **84** `min-h-11` desalinhados que a varredura de hoje contou.
+
+**O que trava.** Os passos que escrevem `components/ui/` ou `app/globals.css` ou o shell dos 17
+ecrãs — **T72, T75, T78, T79, T80, T81, T82, T83** — têm número, ficheiros e lugar na fila, mas só
+abrem mão com o «vai» explícito do Dr. Eggbot no post de handoff. Correm já, sem nova aprovação,
+**T73, T74, T76, T77**.
+
+**Regras que ficam da preparação desta fila.** (1) Zero deploy: o `next start` de verificação pára
+no fim de cada bloco, porque no Windows ele bloqueia o `next build` seguinte. (2) Nenhuma migração e
+nenhuma consulta nova nesta vaga — um item que precise de dados do servidor volta para o Lead
+(T73). (3) Itens que mudam a régua visual (toque, raios, tipografia) só entram em commit com o
+«antes» medido; «subjetivo» não é critério de aceitação. (4) Uma string pt-BR encontrada a meio do
+caminho **não** reabre a T23 nem a T25: é tarefa nova. (5) A definição de cada item tem de sair do
+chat e ir para `docs/gestao/` antes de o bloco dela abrir.
+
+---
+
+### D25 — Git é uma mão só: só o Lead commita e faz push, e só depois de QA `PASS` + Revisor `OK` — **decisão do utilizador (2026-11-20)**
+
+**O que mudou.** A 17/11 tinha ficado autorização permanente para eu empurrar trabalho já provado
+sem voltar a pedir. Hoje, depois de um push que ninguém autorizou, o utilizador substituiu-a por
+**«só faça push e commit depois de for aprovado pela equipe»** e **«e somente vc pode fazer isso»**.
+Ou seja: a autorização deixou de ser sobre *empurrar depressa* e passou a ser sobre *quem empurra e
+quando*.
+
+**Regras que ficam.** (1) `git commit`, `git push`, `add`, `merge`, `rebase` e `reset` são
+exclusivamente do Lead. Dev, QA e Revisor trabalham na árvore de trabalho e entregam prova — diff,
+números, capturas — sem tocar na história do repositório. (2) A ordem é fixa: Dev entrega → QA assina
+`PASS` com a saída do comando → Revisor dá `OK` contra o critério → **só então** o Lead commita e,
+com o gate verde, faz push. Sem assinatura não há commit, nem para os meus `docs/gestao/`. (3) Nunca
+`--force`, nunca `reset --hard`, nunca reescrever história partilhada. (4) O `git add` do Lead usa
+caminhos explícitos, nunca `-A`. (5) Verificar `local` vs `origin` depois de cada push. Escrito em
+`AGENTS.md` § Git e § Quem escreve o quê.
+
+**O que a motivou, medido.** `pushed_at = 2026-11-20T16:03:17Z`, **8 segundos** depois do commit
+`21dae72` que nem eu nem o Dev fizemos; o branch `fix/t73-parcelamentos-cartoes` ficou no GitHub com
+a minha vaga 7 e 6 capturas dentro. `main` não se mexeu (`2acacbc`), zero PRs, zero runs de CI para o
+branch, zero redeploy. O branch foi apagado do remoto por mim às 16:48Z com cartão de aprovação dele
+(`push-t73-remediar`); os dois commits continuam locais.
+
+**Consequência prática na cadeia.** Os artefactos que o Dev entregava em commit passam a ser a árvore
+de trabalho mais o relatório. Isto fecha o risco de `21dae72` — uma mão a commitar docs alheios no
+commit de outra — mas abre outro: **a árvore partilhada tem de estar limpa de escrita cruzada antes
+de o QA medir**, e quem a limpa sou eu.
+
+**Alternativa rejeitada.** Manter o commit no Dev e proibir só o push: não serve, porque foi o commit
+de outra mão que levou os meus documentos para dentro do trabalho dele, e o push foi consequência
+automática do mesmo mecanismo.

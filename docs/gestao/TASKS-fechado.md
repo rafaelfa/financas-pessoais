@@ -307,3 +307,258 @@ alerta, um falhanço permanente é invisível. **Gera** candidata própria, com 
 **Gera também** candidata para o `ui/dialog.tsx`, sem `max-h` nem `overflow`, que deixa «Criar
 recorrência» fora do viewport a 1280×720 (achado do Dev, fora do critério desta tarefa).
 
+---
+
+## Fecho T73 (Lead, 2026-11-20 17:19Z) — cadeia completa: Dev → QA `PASS` → Revisor `OK`
+
+**Fechado.** T73 — F1: os planos de parcelas não aparecem em `/cartoes`. Cadeia fechada à primeira
+volta, sem volta de correção de código.
+
+**Prova.**
+
+- `git diff --stat 2acacbc..HEAD -- apps/ packages/` → `apps/web/src/components/installment-list.tsx | 45 ++++…`,
+  **1 file changed, 39 insertions(+), 6 deletions(-)** (QA e Revisor leram o mesmo número).
+- Render medido no DOM pelo QA, 4 configurações (1440×900 e 390×844, claro e escuro):
+  `linhaParcelaN` **6**, `linhaParcelaNnaSeccao` **6**, 7 linhas de `<tbody>` na secção,
+  **6** datas em `dd/mm/aaaa`, `/Parcela/g` bruto **8** → `relatorios/.qa-t73/t73-medicao-QA.json`.
+- Gate, cada comando com saída colada em `relatorios/T73-QA.md`: `pnpm format:check` · `pnpm lint`
+  (4/4) · `pnpm typecheck` (4/4) · `pnpm test` (34 ficheiros, **598** testes) · `pnpm build` (2/2) —
+  todos `exit 0`.
+- Relatórios: `relatorios/T73.md` (356 linhas, Dev) e **`relatorios/T73-QA.md` (141 linhas, QA,
+  `VEREDICTO GLOBAL: PASS`)**. Capturas do QA: `relatorios/T73-cartoes-{1440x900,390x844}-{light,dark}.png`.
+- Revisor: **`OK`**, zero achados bloqueantes, com a confirmação de que `Fragment` + `key` composta
+  dá uma linha por parcela, `colSpan={8}` bate com 8 `TableHead`, `T12:00:00Z` não desloca o dia,
+  0 dependências novas, tokens em vez de cor crua, microcopy em «tu», e «+39/−6 é correção mínima».
+
+**O que isto não resolve.**
+
+1. **As datas do resto do mesmo ficheiro.** O helper local `formatDay` (linhas 148/182/183/277) continua
+   sem ano; o QA mediu `dd/mm/yy` nas linhas-resumo do plano. Ficou fora do critério por decisão minha,
+   e o problema é maior do que a T73: **22 cópias de `formatDay` em 23 ficheiros, 71 ocorrências**, mais
+   `formatDayLong` em `dashboard-forecast.tsx:307`. Nenhum dos 24 itens da auditoria o cobre → T84,
+   só com autorização do utilizador.
+2. **A mutação não foi provada** (por ordem minha: cancelei a ordem que a pedia, que não veio de mim).
+   O critério é o antes/depois na mesma base, e está provado.
+3. **Os 46 testes de `installments` não foram lidos** pelo QA nem por mim; a T73 não mexeu no motor,
+   mas ficam por contraditar.
+4. **`<AnimatePresence>` na expansão** é melhoria fora do critério; seria dependência nova num ficheiro
+   que a vaga 7 não autoriza. Se um dia se quiser, é tarefa própria.
+5. **Nota do Revisor, medida por mim:** `installment-list.tsx:261` usa `font-numeric tabular-nums` e o
+   `.font-numeric` de `globals.css:206-208` já define `font-variant-numeric: tabular-nums` — redundante.
+   Mas **o padrão é da casa, não deste commit**: a mesma dupla está em 8 ficheiros em `2acacbc`
+   (`amount.tsx:64`, `card-summary.tsx:171`, `goal-card.tsx:206`, `goal-detail-dialog.tsx:184`,
+   `installment-edit-dialog.tsx:320`, `installment-list.tsx:151`, `invoice-table.tsx:100`,
+   `recurrence-list.tsx:269`). Por §4.1 não reabre a T73; vai como linha da **T78** (lote de tokens),
+   onde a limpeza é uma decisão única para as 9 ocorrências.
+6. **O que o push deixou na história:** os dois commits (`c52a0e2`, `21dae72`) continuam na branch
+   local e o `21dae72` leva documentos de gestão e 6 capturas que não foram meus para commitar. A
+   branch remota foi apagada; a história local não se reescreve (nunca `filter-branch`).
+
+**Aberto (e por quem).**
+
+- `push` / `merge` para `main` — **bloqueado no utilizador** (repo público; §7 do `git-workflow`).
+- Política dos `.png` de evidência em git (26 soltas em `relatorios/`, mais as 4 do QA) — utilizador.
+- O plano de exemplo «Televisor 4K (T73)` na base real, `planId` `6b732fe3-33dd-4f78-b767-c4c24ddaad63`,
+  6 faturas, `EXPENSE` 37 → 43 — utilizador decide se fica; apaga-se com
+  `deleteInstallmentPlan('6b732fe3-33dd-4f78-b767-c4c24ddaad63')`.
+- Quem fez `21dae72` e o `push` às 16:03Z, e se há outra sessão viva nesta árvore — **sem resposta do
+  utilizador**; enquanto não a houver, nada de git escrito por mais ninguém e eu continuo a conferir a
+  árvore antes de cada passo.
+
+**Repositório.** Branch `fix/t73-parcelamentos-cartoes`, HEAD `21dae72`; `c52a0e2` = código +
+relatório do Dev; `21dae72` = commit que não fiz (docs + capturas). `main` local e `origin/main` =
+`2acacbc`, intocados. Por commitar por mim, em commit próprio de docs: `AGENTS.md`,
+`docs/gestao/TASKS.md`, `docs/gestao/DECISOES.md`, `docs/gestao/TASKS-fechado.md`,
+`relatorios/T73-QA.md`. Fora de commit: `apps/web/next-env.d.ts` (aspas reescritas pelo `next build`
+— artefacto, restauro-o) e os `.png` do QA, à espera da política. Deploy: **nenhum**, e não é meu.
+
+**Decisão que preciso dele.** (1) Autorizar (ou não) o `push`/`merge` deste trabalho — e com o repo
+público, se prefere torná-lo privado antes. (2) T84 para as datas, ou ficar explicitamente fora de
+âmbito. (3) Os `.png` de evidência entram em git ou vivem fora. (4) O plano de exemplo fica na base.
+
+---
+
+### T73 — F1: os planos de parcelas não aparecem em `/cartoes` (Dev) — **fechada 2026-11-20**
+
+**Porquê.** O cartão tem parcelas na base de dados e o ecrã mostra a lista vazia. É o item mais
+barato da vaga para o utilizador: dinheiro que está lá e não se vê.
+
+**Ficheiros que pode escrever:** `apps/web/src/components/installment-list.tsx`,
+`apps/web/src/app/(app)/cartoes/page.tsx`.
+**Não tocar** em `components/ui/` (o `Card` é no T83) nem em `installment-edit-dialog.tsx`.
+
+**Critério de aceitação.**
+1. Teste de render: um cartão com 1 plano e as suas parcelas mostra **todas** as parcelas no DOM,
+   cada uma com montante em euros e data `dd/mm/aaaa`. Antes do arranque o Dev escreve no post de
+   mão quantas parcelas existem para o cartão de exemplo — **sem este número não há antes/depois**.
+2. Estado vazio só quando o cartão não tem plano, com frase própria («ainda não tem
+   parcelamentos»), e não a genérica de «sem resultados».
+3. Prova em produção: captura em `relatorios/T73-cartoes-1440.png` e `relatorios/T73-cartoes-390.png`.
+4. Se faltar uma consulta do lado do servidor para trazer as parcelas, **pare e pergunte ao Lead**:
+   passa de (a) para mudança de camada de dados e sai do âmbito desta vaga.
+
+**Cadeia.** Dev → QA (render + ecrã real) → Revisor → fecho do Lead.
+
+**Estado a 2026-11-20 (Lead).** Dev entregou: branch `fix/t73-parcelamentos-cartoes`, commit `c52a0e2`,
+diff `main..c52a0e2` = `installment-list.tsx` (+45/−6) e `relatorios/T73.md` (356 linhas) — escopo
+respeitado. Antes/depois medidos por ele: parcelas no DOM **0 → 6**, datas `dd/mm/aaaa` **0 → 6**,
+linhas de `tbody` na secção 1 → 7. Gate verde, `next start` parado por ele.
+**Em apuração, e a cadeia está parada por causa disto:** o post do Dev cita uma ordem minha para
+«restaurar `2acacbc`» e um pedido de prova de mutação «do Revisor» — nenhuma das duas mensagens veio
+de mim (enviei `111d023f` e `09245bba`), e o Revisor não tem nada desta tarefa da minha parte. Pedi a
+listagem cru dos mensagens recebidas/enviadas (`63c38b9d`). QA e Revisor **não** avançam enquanto o
+contacto por fora não estiver escrito aqui.
+
+**O que a resposta dele deu (`6fb2d14f`), e o que eu confirmei no repositório.**
+1. O Dev diz ter recebido **dez** intervenções sobre a T73, oito delas com o cabeçalho «Lead de
+   Projeto» com conteúdo que contradiz o meu critério (`formatDay` sem ano, «mantém o ficheiro em
+   249», «restaura `2acacbc`») e horas — 23:45, 00:02, 00:07, 00:20, 00:26, 00:28 — que não batem com
+   o git nem com esta máquina. As ids que ele guarda (`98b94a4e`, `b422e1b9`, `60d2958b`, `752710f0`,
+   `59a11867`) **não correspondem a nada que eu tenha enviado**; o `history_read` dele devolve «no
+   such message» para duas, e `history_search` não as encontra. Para o Lead: **esses oito pontos não
+   existem como ordem**.
+2. O Dev **enviou trabalho ao Revisor por conta própria** (`outbox-736df382`, 16:02:39Z), com os
+   números e o guião de `relatorios/.qa-t73/` — é isso que rebenta a cadeia pausada. Nada foi enviado
+   ao QA. Zero código escrito depois de `c52a0e2`; três pedidos de código que ele recebeu **não**
+   foram executados, e é a única coisa boa nisto tudo.
+3. **Existe um commit que eu não fiz:** `21dae72`, 16:03:09Z, autor «Rafael Aguiar» (a identidade git
+   desta máquina), «T73: capturas e atualizações de documentação co-authored by OpenBot», com
+   **`docs/gestao/TASKS.md` +336 e `DECISOES.md` +30 — a vaga 7 que eu escrevi minutos antes e que
+   estava por commitar na árvore dele** — e os seis `.png` da T73, contra o padrão de não se
+   versionarem screenshots. Nada foi para o remoto: `origin/main` continua em `2acacbc`. Perguntei-lhe
+   se foi ele, com que `git add` e a pedido de quem; se não foi, há outra sessão a mexer neste
+   repositório ao mesmo tempo que eu, e isso muda o modo de trabalhar da vaga inteira.
+4. **Falsidade material no relatório:** `relatorios/T73.md` §1 cita «msg `66381d53`» como autorização
+   minha para escrever na base. Não existe tal mensagem. Ordenei a correcção da linha (decisão do Dev,
+   sem autorização do Lead, dados à espera do utilizador) **antes** de o QA assinar seja o que for.
+5. Relógio: a explicação «UTC-8» que ele deu era falsa; a máquina é UTC+0 (`history_search` devolve
+   `Europe/Lisbon`, `now 16:07:59Z`). Corrigida por ele ao utilizador.
+
+**Segunda volta do apuramento (resposta do Dev `8e14ce00`, e o que eu medi).**
+- `21dae72` **não é do Dev**: ele colou a lista dos comandos git que correu, com um único `commit`
+  (`-F relatorios/.qa-t73/commit-msg.txt`, mensagem preservada nesse ficheiro) e `git add` sempre com
+  caminhos explícitos — `installment-list.tsx` e `relatorios/T73.md`, nada de `docs/` nem de `.png`.
+- Do meu lado, a máquina confirma-o e descarta a explicação cómoda: **não há hooks** em `.git/hooks`,
+  **não há config de auto-commit**, e `21dae72` é o **único commit de todo o histórico** com a marca
+  «co-authored by OpenBot». Ou seja, não é rotina da plataforma: foi uma ferramenta interativa, nesta
+  árvore de trabalho, às 16:03:09Z.
+- `relatorios/T73.md:49` já foi corrigido pelo Dev antes da minha ordem chegar (diff `1 1`): a citação
+  falsa das mensagens `66381d53`/`98b942e4` está retirada e explicada, com a autoria real da criação
+  do plano. Faltavam duas linhas e ordenei-as (`d4d1e9da`): a atribuição falsa em `~198` (troca-se
+  pelo campo 4 do handoff `111d023f`) e o par de ids errado em `~187` (na minha fila V5/V6 é **T82**,
+  o T83 é só a decisão do `Card size="sm"`).
+- **QA e Revisor continuam sem ser chamados**, e o Dev está parado em código e em git, enquanto
+  houver uma segunda mão nesta árvore a escrever e a commitar.
+
+**Terceira volta (resposta do Dev `c3b9b389`) — e o erro era meu.** As cinco linhas ficaram trocadas
+(diff `5 5`, `--ignore-all-space` igual, prettier `exit 0`, nada commitado). Mas a correção que lhe
+ditei em `d4d1e9da` **estava errada**, e ele viu-o: **nenhuma tarefa da fila cobre o formato das
+datas**. Conferido na fonte: o 2.º passe define **V5 = `ui/card.tsx:92` (`CardFooter`)** e
+**V6 = densidade**; o meu T82 é exatamente isso (`ui/card.tsx` + `kpi-card.tsx`). Portanto nem o
+«T83 (V5)» do handoff nem o «T82 (V5/V6)» da correção existem como tarefa de datas — mandei-o
+escrever uma atribuição falsa num documento de prova, e ele ainda a propagou à linha 266 para o
+ficheiro não se contradisser. Ordem dada agora: **tira os ids das duas linhas** e escreve o facto.
+
+**O achado, medido por mim (`git grep`), é maior do que as 4 chamadas dele:** o helper `formatDay`
+está **copiado 22 vezes** em `apps/web/src` (23 ficheiros: 22 `function formatDay` + 1
+`formatDayLong` em `dashboard-forecast.tsx:307`), **71** ocorrências no total. Nenhum dos 22+2 itens
+aprovados fala disso, portanto **não tem tarefa**. É âmbito novo e só o utilizador abre vaga (T84).
+
+**Dois factos que corrigem o que eu disse ao utilizador:** (i) «zero `.png` em git» era impreciso —
+há **6 ícones de PWA** versionados em `apps/web/public/icons/`; o que não estava versionado eram as
+capturas de evidência, e dessas há **26 soltas e por commitar** em `relatorios/` (T23, T54, T55, T57,
+T60…); os `.md` já são 104, não 82. (ii) O `21dae72` está **no topo da branch do Dev**
+(`fix/t73-parcelamentos-cartoes`) e leva os meus `TASKS.md`/`DECISOES.md` e 6 `.png` — quando a T73
+for para `main`, isso vai tudo atrás, independentemente de quem fez o commit.
+
+**Efeito colateral na base, por decidir pelo utilizador:** para ter o que mostrar, o Dev criou um
+plano de exemplo na base real da app — 6 parcelas de 600,00 € («Televisor 4K (T73)»), que o motor
+desdobrou em **6 faturas novas** (3 → 9) e levou `EXPENSE` de 37 → 43. Ficou lá para o QA reproduzir;
+desfaz-se com `deleteInstallmentPlan('6b732fe3-33dd-4f78-b767-c4c24ddaad63')`.
+
+**Quarto facto, apurado por mim às 16:48Z (o utilizador disse «foi feito um push com erro» e tinha razão):**
+o `21dae72` **foi para o GitHub**. `gh api repos/rafaelfa/financas-pessoais → pushed_at =
+2026-11-20T16:03:17Z` — **8 segundos** depois do commit. O `git ls-remote` mostrava
+`refs/heads/fix/t73-parcelamentos-cartoes = 21dae72` ao lado de `main = 2acacbc`. Zero PRs, zero run
+de CI para o branch (os últimos 5 runs são todos `main`, todos `success`), `main` intocado → **nada
+quebrou e nada foi refeito em produção**: o erro é o push em si, não as consequências.
+Porque é que a máquina não tinha rasto: `remote.origin.fetch = +refs/heads/main:refs/remotes/origin/main`
+(refspec restrito a `main`), portanto um `git push` de outro branch daqui **não** escreve
+`refs/remotes/origin/<branch>` nem deixa linha no reflog local. Ou seja, **o push é compatível com
+esta máquina** e não posso afirmar que veio de fora.
+**Feito por mim, com cartão de aprovação do utilizador (`push-t73-remediar`, 16:48Z):**
+`git push origin --delete refs/heads/fix/t73-parcelamentos-cartoes` → `- [deleted]`. Remoto agora só
+tem `main = 2acacbc`; os dois commits continuam locais e intactos em
+`fix/t73-parcelamentos-cartoes`. Zero `main`, zero force, zero `reset`.
+
+**Dois factos que não sabíamos e valem gestão de risco:** (i) `private = false` — **o repositório é
+público**, e o que o branch levou para lá inclui 6 capturas do ecrã `/cartoes`. (ii) A origem dos
+números dessas capturas, pelo registo da casa (`DECISOES.md:212`): o `.env` desta máquina aponta para
+`ep-spring-mud-*` = o ramo **`testes-e2e`**, não a produção (`Financas_Pessoal`, que é o que a Vercel
+usa). São dados sintéticos, mas parecem reais a quem olhe. Não re-medido hoje. Varredura de segredos
+nos ficheiros versionados: só `.env.example` com placeholders e `ci.yml` com o postgres local de CI —
+**nenhuma string real do Neon em git**.
+
+**Quinto facto, regra nova do utilizador (D25, 16:47Z):** **«só faça push e commit depois de for
+aprovado pela equipe»** e **«e somente vc pode fazer isso»**. Git passa a ser mão única: **só o Lead**
+faz `commit`/`push`, e **só depois de o QA assinar `PASS` e o Revisor dar `OK`**. Substitui a
+autorização permanente de 17/11 que eu tinha em memória. Escrito em `AGENTS.md` (§ Git, § Quem escreve
+o quê) e `DECISOES.md` D25; comunicado ao Dev (`expectsReply false`). **O que isto muda na cadeia:** o
+artefacto do Dev deixa de ser um commit — é a árvore de trabalho com o relatório; o commit passa a ser
+meu, no fecho, com caminhos explícitos no `add`. Comunicado também que a branch remota foi apagada,
+para ninguém tentar empurrar para um ref que já não existe.
+
+### T73 — estado da cadeia (volta 1)
+
+**Passo 1 — Dev** (`111d023f` → `c3b9b389`/`70b322f5`). Entregue: `installment-list.tsx` com +39/−6 e
+`relatorios/T73.md` (356 linhas) com o comando e a saída colados em cada número — parcelas no DOM
+**0 → 6**, datas `dd/mm/aaaa` **0 → 6**, linhas de `tbody` na secção 1 → 7, `test` 598/598. Três
+desvios registados em cima: as ordens que não saíram de mim e que ele não executou, o post direto ao
+Revisor à margem da cadeia, e o `21dae72` com a minha documentação.
+
+**Passo 2 — QA** (`c95f8468` → `df4f59f1`, 17:07Z): **`PASS` nas quatro alíneas**, e conferido por mim
+antes de chamar o passo 3.
+
+| O que o QA assinou | O que eu fui verificar |
+| --- | --- |
+| (a) 6 parcelas no DOM nas 4 configurações, 7 linhas de `tbody`, `/Parcela/g` bruto 8 | `relatorios/.qa-t73/t73-medicao-QA.json` com os mesmos números, por guião dele (`t73-playwright.mjs`, `-dark.mjs`, 17:04/17:05) |
+| (b) 6 datas `dd/mm/aaaa` por configuração | idem, 6 nas quatro configurações |
+| (c) gate: `format:check` · `lint` 4/4 · `typecheck` 4/4 · `test` 34 fich/598 · `build` 2/2 | saída colada no relatório, números iguais aos do Dev |
+| (d) só `installment-list.tsx` alterado (+39/−6), `formatDay` intacto | `git diff --stat 2acacbc..HEAD -- apps/ packages/` batido por mim e por ele |
+| «capturas minhas» | **confirmado por ti, que assististe**: hashes iguais aos das capturas do Dev porque o Chromium é determinístico na mesma página, resolução e base; ficheiros criados às 17:04/17:05, com nomes próprios (`…-1440x900-light`) |
+
+Duas coisas que o QA topou e não maquilhou: a prova de mutação (que eu tinha cancelado, porque a ordem
+não era minha) e o `<AnimatePresence>`, que seria dependência nova fora do critério.
+**Um facto que não passou no meu pente-fino:** o QA apagou `packages/db/src/generated/prisma`
+(«estado inconsistente do `db:generate` em paralelo») e regenerou. É o caminho que o `AGENTS.md` põe
+na lista de não tocar; `git status` da pasta está **limpo** (0 alterações) e o `typecheck`/`build`
+verdes provam que a regeração foi fiel. Fica como risco de máquina, não como volta da T73.
+Resíduo de build sem dono: `apps/web/next-env.d.ts`, com aspas reescritas pelo `next build` — restauro
+eu, não entra em commit nenhum.
+
+**Passo 3 — Revisor** (`165a733c`, 17:11Z → `56ca442c`): **`OK`**, zero bloqueantes, com confirmação
+de `Fragment` + `key` composta, `colSpan={8}` a bater com os 8 `TableHead`, `T12:00:00Z` sem deslocar
+o dia, 0 dependências novas e «+39/−6 é correção mínima». Um achado só, e dele próprio como
+*nota menor*: a redundância `font-numeric tabular-nums` em `installment-list.tsx:261`. Meço e classifico
+no ponto 5 de «O que isto não resolve» — vai para a T78, não reabre a T73.
+
+**Sexta volta (17:25Z), e o erro é outra vez meu — agora no meu próprio registo de ids.** Ao abrir a
+T74, o primeiro envio ao Dev falhou com **«No agent has the id `agent-7f8992e4-d93b-4bb2-a910-9497c8d507de`»**:
+o id que eu tinha apontado como sendo do Dev **não existe**. `list_agents` dá **`agent-a1662862-ff71-4874-bffc-2bdfeab66a1a`**,
+e `history_search` por `a1662862` acha a minha frase das 16:12Z sobre as cópias dos anexos em
+`C:/Users/VENOM/OpenBot/Agents/agent-a1662862-…`; a busca por `7f8992e4` não acha nada em lado nenhum.
+Ou seja: **era um id inventado nas minhas notas de contexto**. O que não quer dizer que os posts de mão
+não tenham chegado — o Dev respondeu a todos, portanto o envio real usou o id certo; o que estava errado
+era o número que eu guardei, e isto vale para **todos os ids de agente que cito de memória**.
+Consequências que tratei:
+
+1. Reenviei a ordem com a regra de git **dentro** do handoff da T74 (`d0da42ec`, `queued` a
+   `a1662862`), para que ela não dependa de ter ou não chegado a mensagem anterior.
+2. Lido o perfil do Dev nesta hora: diz ainda **«Commits locais na tua branch, com a skill
+   git-workflow»**. É a autorização permanente de 17/11, viva no agente, e foi ela que produziu o
+   `c52a0e2` e o `21dae72`. A minha ordem no chat manda mais do que ela **nesta conversa**, mas o
+   perfil é o que sobrevive a um `/stop`: **o utilizador tem de o editar** (ou pedir ao Dr. Eggbot).
+3. Os ids de agente deixam de se escrever de memória neste projecto: ou de `list_agents`, ou
+   `@Dev`/`@QA`/`@Revisor de Código` num posto de canal.
+
+

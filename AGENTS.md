@@ -65,6 +65,20 @@ Estas vêm do projeto e não são negociáveis.
 - Vocabulário fixado no glossário de `docs/spec/F1-regras-financeiras.md` (pt-PT:
   "parcela", "fatura" com fecho e vencimento, "travar saldo"); microcopy em "tu".
 
+### Git — só o Lead, e só depois de a equipa aprovar
+
+- **`git commit` e `git push` são exclusivamente do Lead de Projeto.** Dev, QA e Revisor não
+  correm `commit`, `push`, `add`, `merge`, `rebase` nem `reset`: trabalham na árvore de
+  trabalho e entregam prova (diff, números, capturas). A história do repositório escreve-a
+  uma mão só.
+- **Nada entra em git antes da cadeia fechar**: primeiro o Dev entrega com prova, depois o QA
+  assina `PASS` com a saída do comando, depois o Revisor dá `OK` contra o critério. Só então
+  o Lead commita e, se o gate estiver verde, faz push. Sem assinatura não há commit.
+- Proibido a toda a gente, sem exceção: `push --force`, `reset --hard`, apagar ou reescrever
+  história já partilhada, e `push` de `main` fora deste procedimento.
+- Um `git add` do Lead usa caminhos explícitos, nunca `-A`: os ficheiros sujos de outra tarefa
+  não entram no commit de ninguém.
+
 ## Armadilhas desta máquina (Windows)
 
 - `core.autocrlf=true` global entrega CRLF e faz o `format:check` falhar em ~330
@@ -76,12 +90,18 @@ Estas vêm do projeto e não são negociáveis.
 ## Quem escreve o quê
 
 - Lead de Projeto: `docs/gestao/MAPA.md`, `docs/gestao/TASKS.md`, `docs/gestao/DECISOES.md`
-- Dev: código em `apps/`, `packages/` e configuração do projeto
-- QA: `e2e/`, `relatorios/` e os relatórios `docs/spec/T*`
+  e **todo o git** (`commit`, `push`) — só depois de QA `PASS` + Revisor `OK`
+- Dev: código em `apps/`, `packages/` e configuração do projeto — **sem git**
+- QA: `e2e/`, `relatorios/` e os relatórios `docs/spec/T*` — **sem git**
 - Revisor: nada (só lê)
 
 Dois membros nunca escrevem no mesmo ficheiro ao mesmo tempo: cada tarefa declara os
 ficheiros que pode escrever.
+
+**Id de agente: nunca de memória — meu incluído.** Estive a apontar `agent-7f8992e4-…` como sendo o
+do Dev e **esse agente não existe** (o envio falhou por sorte: `send_message` valida). Antes de
+escrever um id, confirma em `list_agents`; num posto de canal, `@Dev`, `@QA` e `@Revisor de Código`
+são à prova de memória.
 
 ## Estado
 
