@@ -660,7 +660,22 @@ push de um branch na história deste projecto é o de hoje**.
 
 **O que fiz.** `PATCH /projects/…` com `previewDeploymentsDisabled: true` às **18:53:35Z**
 (`updatedAt` `1795200815447`). A resposta do MCP não ecoa a chave, por isso a prova não é a
-resposta: é o **push deste mesmo commit não criar deployment** (registado no commit seguinte).
+resposta — é o comportamento.
+
+**Prova, às 18:59:01Z.** Empurrei o commit deste documento (`be387ea`, push concluído às ~18:56,
+`ls-remote` a confirmá-lo no remoto) e esperei 150 s. `list_deployments` continua com
+`ebd16d2` (18:30:24) na ponta: **zero deployments para `be387ea`**. Como os três anteriores
+foram criados 10–20 s depois do push (`330432a` → 18:22:13, `ebd16d2` → 18:30:24), a ausência
+depois de três minutos é o interruptor a funcionar, não atraso do webhook.
+
+**Efeito colateral que medi aqui, e fica registrado porque volto a precisar.** Este clone tem
+`remote.origin.fetch = +refs/heads/main:refs/remotes/origin/main` — refspec de ramo único. O
+ref `refs/remotes/origin/fix/t73-parcelamentos-cartoes` existe só de um `fetch` avulso que eu
+corri uma vez, e estava **velho em um commit** (`330432a` quando o remoto já tinha `ebd16d2`).
+Ou seja: «isto já está no remoto?» **não** se mede com `origin/<branch>` nem com `git fetch`
+simple nesta configuração; mede-se com `git ls-remote origin refs/heads/<branch>`. Os `git log
+origin/<branch>..HEAD` que corri hoje com este ref são suspeitos por causa disto e foram
+reconfirmados por `ls-remote` — ficam sãos.
 
 **Porque não a outra saída.** Havia `commandForIgnoringBuildStep`, mas essa corre também em
 produção: um erro de aspas no guião salta silenciosamente o próximo deploy real, e o que estava

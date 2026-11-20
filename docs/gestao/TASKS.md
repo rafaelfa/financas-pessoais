@@ -2430,7 +2430,7 @@ trocar a ordem dos dois primeiros (ver A7 abaixo) para que a rotação não apan
 | --- | ---------------------------------------------------------------------- | ---- | --------------------------- |
 | T70 | **Recorrências vencidas geram-se sozinhas:** a rota de cron que a A3 pedia | Dev | **fechada** (Dev + QA + Revisor; suíte C 132/0 sobre o build pós-patch; secção em `TASKS-fechado.md`) |
 | T71 | **`logicalCount` escrito duas vezes:** o par de uma transferência conta uma vez, num sítio só | Dev | **fechada** (19/11 16:16→16:46: Dev → QA **PASS 8/8** → Revisor «nada a assinalar»; 598 testes/34 ficheiros; secção em `TASKS-fechado.md`) |
-| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado. `SMOKE_DATABASE_URL` escrito pelo utilizador às 18:45Z — os nossos tokens levam 403 na API de segredos; e provou-se que nunca tinha existido: `smoke.yml` com 0 execuções desde 18/10. Registo em `relatorios/A7-rotacao.md` e em `DECISOES.md`) |
+| A7  | **Rodar a palavra-passe da Neon** - não é código, é produção: meu e do utilizador, fora de fila | Lead + utilizador | **fechada** (19/11, 15:59Z → 16:12Z: três ramos rodados, Vercel das duas apps repostas **e reimplantadas**, `.env` local atualizado, `CRON_SECRET` criado. `SMOKE_DATABASE_URL` escrito pelo utilizador às 18:45Z — os nossos tokens levam 403 na API de segredos; e provou-se que nunca tinha existido: `smoke.yml` com 0 execuções desde 18/10. Registo em `relatorios/A7-rotacao.md` e em `DECISOES.md`. **Ressalva medida 20/11 18:50Z:** o passo 2 da sequência foi executado a meio — `DATABASE_URL`/`DIRECT_URL`/`BETTER_AUTH_*` ficaram só com `target: production`, nunca em `preview`. Não se notou porque o projecto não tinha tido um único build de preview até hoje; ver `DECISOES.md` § D27) |
 
 A **A7** não é código e não segue a fila: foi autorizada por ele para correr **quando a T70 fechar**, com
 o passo da Vercel nas minhas mãos depois do link do scope. Correu. O mapa de consumidores de
@@ -4238,3 +4238,25 @@ palavra por palavra**, sem reapresentar números de cabeça. Falta só o utiliza
 curtas sem ano. Medido hoje: **22 cópias** do helper `formatDay` em `apps/web/src` (23 ficheiros, 71
 ocorrências), mais `formatDayLong`. Não é um item dos 22+2 — foi um achado do trabalho da T73. Ou vira
 tarefa com critério, ou fica explicitamente fora de âmbito e deixa de ser citado em relatórios.
+
+---
+
+## Nota do Lead — 20/11 19:00Z: os pushes deixaram de gerar preview (D27)
+
+O erro que ele viu na Vercel era do nosso lado mas **não era do nosso código**: `previewDeploymentsDisabled`
+estava ligado por omissão e as variáveis não cobriam o âmbito `preview`, pelo que qualquer push de branch
+rebentava no `prisma generate`. Desliguei os previews (`DECISOES.md` § D27) e provei com o push de
+`be387ea`: **0 deployments criados em três minutos**, produção intocada.
+
+Dois efeitos para a forma de trabalhar, a partir de agora:
+
+1. **A prova visual continua a ser local** (`next dev` na 3100 + Playwright em `e2e/`). Isto era já o que
+   o Dev, o QA e o Revisor vinham a fazer — o que muda é que passa a ser *a única coisa possível*, e por
+   isso «tens um link da Vercel?» deixa de ser pergunta. Ninguém precisa de pedir nada ao utilizador.
+2. **«Está no remoto?» mede-se com `git ls-remote origin refs/heads/<branch>`, não com `origin/<branch>`.**
+   Este clone tem `remote.origin.fetch` de ramo único (`main`), por isso o ref remoto do nosso branch
+   estava um commit velho sem que nada o avisasse. Os `git log origin/<branch>..HEAD` que corri antes
+   disto foram todos reconfirmados por `ls-remote`.
+
+Quando ligarmos os previews outra vez (passo 2 completo da A7, com as duas condições da D27), isso volta
+a mudar e esta nota é reescrita.
