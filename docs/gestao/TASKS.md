@@ -3946,7 +3946,7 @@ mesma razão).
 | --- | --- | --- | --- |
 | T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada e publicada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; arquivo em `TASKS-fechado.md`. Branch `fix/t73-parcelamentos-cartoes` empurrada às 18:22Z em `330432a` (reflog
 `refs/remotes/origin/…@{2026-11-20 18:22:33 +0000}`), **0 PNG** no conteúdo remoto; `21dae72` reescrito fora da história local, backup em `backup/t73-historia-com-capturas`. `merge` em `main` **não**: é por bloco, D25 b. Emenda do QA à linha 28 de `T73-QA.md` em `7d6df4e`; política das capturas em **D26**) |
-| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **entregue, em QA** (handoff ao Dev 17:25Z; entrega do Dev `3a583f59`; contra-prova do Lead: **13 órfãos = 11 sem `id` + 2 sem referência, 0 no ficheiro**, reproduzido pela minha sonda; 8 `FieldError` / 7 props `aria-describedby` (a 8.ª é comentário, linha 400); base `testes-e2e` com 0 linhas `e2e-t74-dev-%`. Handoff ao QA `9d970482`) |
+| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **entregue, em QA** (handoff ao Dev 17:25Z; entrega do Dev `3a583f59`; contra-prova do Lead: **13 órfãos = 11 sem `id` + 2 sem referência, 0 no ficheiro**, reproduzido pela minha sonda; 8 `FieldError` / 7 props `aria-describedby` (a 8.ª é comentário, linha 400); base `testes-e2e` com 0 linhas `e2e-t74-dev-%`. Handoff ao QA `9d970482`. **QA `PASS` (`8adacc5a`, 18:57Z), devolvido pelo Lead (`efb2f461`) antes do Revisor** por 4 coisas medidas: alínea 4 graduada como cumprida sem o estar (`AGENTS.md:96` dá `e2e/` ao QA, e o QA apagou o harness); linha 156 do relatório diz «temporários da T73» quando são 4 PNG seus das 18:35; linha 165 aponta `test-results/t74-qa/` onde medi 0 ficheiros `t74`; e `temp-t74-debug.html` + `temp-t74-medicao.mjs` ficaram na raiz do repo, untracked e sem regra de ignore. Contra-prova do QA que o Lead confirmou: gate 5/5 com exit 0, `t74-focado.log` com `1 passed (11.6s)` e o `aria-describedby` real no DOM, porta 3000 livre. **Segunda volta do QA (`7838a621`, 19:13Z): spec permanente `e2e/75-…` criado (3/3 verde), raiz limpa, relatório emendado. Devolvido outra vez pelo Lead (`e9c7b61f`) com uma regressão medida: `pnpm exec playwright test e2e/30-transacoes.spec.ts` → exit 1, 1 passed / **3 failed** (linhas 85, 106, 142, todas `toBeDisabled()` → `Received: enabled`). O código está conforme o critério 1 (`TASKS.md:3979`), portanto são as 3 asserções que codificam o defeito N2 e têm de ser reescritas — `e2e/` é do QA (`AGENTS.md:96`). Pedidos: suite completa `pnpm test:e2e` verde com stdout, teste 2 do spec 75 sem asserções condicionais/tautológicas (o utilizador de teste tem 1 conta, logo o caminho transferência não chega ao `createTransferSchema`), e nomes dos dois logs corrigidos. Estado: **T74 bloqueada no QA**.) |
 | T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px quando a régua é 44 px | Dev | **Pendente (mão)** |
 | T72 | **N1 — diálogos sem limite de altura:** um `DialogContent` de 1761 px num ecrã de 844 | Dev | **Pendente (mão)** |
 
@@ -3988,6 +3988,19 @@ outros 13 órfãos ficam no **T76** — mão única no mesmo ficheiro.
 (`installmentCountNumber`); isso é o T77.
 
 **Cadeia.** Dev → QA (leitor de ecrã: um erro de validação é anunciado com a razão) → Revisor → fecho.
+
+**Consequência que o meu handoff não previa, medida 20/11 19:19Z.** O critério 1 mata três asserções de um
+spec que já estava no índice: `e2e/30-transacoes.spec.ts` linhas **85**, **106** e **142** afirmam
+`toBeDisabled()` no botão `Lançar` — exactamente o comportamento que o N2 manda tirar. Corrido por mim:
+`pnpm exec playwright test e2e/30-transacoes.spec.ts --reporter=list` → **exit 1, 1 passed / 3 failed**,
+todas com `Received: enabled` (log `C:/Users/VENOM/AppData/Local/Temp/opencode/lead-t74-spec30.log`,
+artefactos em `test-results/`, pasta ignorada por `.gitignore:49`). O código do Dev está conforme o
+critério; os specs é que estão desactualizados, e `e2e/` é do QA (`AGENTS.md:96`). **Lição de processo:**
+um critério que muda um estado observável (`disabled` → `enabled`) exige, no handoff, a varredura dos
+specs que afirmam o estado antigo. Desta vez apanhei-o eu na verificação, não o QA no gate — porque o
+gate de 5 comandos (`format:check`, `lint`, `typecheck`, `test`, `build`) **não corre a suite e2e**, e o
+`pnpm test` são os 598 Vitest de `packages/shared`, que não tocam neste componente. Fica para os
+handoffs seguintes: «critério que muda comportamento visível → correr `pnpm test:e2e`, não só o gate».
 
 **Dois números meus que o Dev emendou no post de mão (`96bc5778`, verificados por mim):** no ficheiro há
 **8** `<FieldError>` (422, 439, 474, 501, 526, 552, 651, 671), não 6 como escrevi no handoff — os 4
