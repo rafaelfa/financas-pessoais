@@ -366,3 +366,20 @@ Cinco coisas que custaram tempo e que não se vêem em nenhum ficheiro do repo.
 lado a lado. Na A5 bateram-se 12 tentativas de entrada em produção e o `seq_scan` de `user`
 subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/health` só faz
 `SELECT 1` e não distingue uma base da outra, por isso não serve de prova sozinho.
+
+## Armadilhas medidas a 2026-11-20 (vaga 7, T73–T74)
+
+1. **`next dev` sobre um `.next` que já tem build de produção entra em ciclo de reload.**
+   Sintoma: `GET /contas` a cada ~150 ms no log, `Compiled in 2ms` por pedido, a página a
+   recarregar-se sozinha. Causa medida com `FileSystemWatcher` pelo Dev na T74:
+   `.next/dev/logs/next-development.log` é escrito pelo próprio dev server **e** vigiado
+   pelo Turbopack. Receita: `rm -rf apps/web/.next/dev` e reiniciar o dev server. O build
+   de produção não é tocado. Custou ~20 minutos a quem não sabia.
+2. **`Field` também renderiza `role="group"`** (`components/ui/field.tsx:76`), portanto uma
+   sonda que procure `closest('[role=group]')` a partir do campo apanha o `Field` e dá falso
+   positivo. Medir com `div[role=group]:not([data-slot="field"])`.
+3. **`input.value = x` + `dispatchEvent(new Event('input'))` não chega ao React** nos testes:
+   o *value tracker* já tem o valor quando o evento chega, `updateValueIfChanged` devolve
+   `false` e o `handleChange` do componente nunca corre — o formulário submete vazio e o
+   teste passa por engano. Usar `getByLabel(...).fill(...)` do Playwright, que usa o setter
+   do protótipo. Isto mascarou uma prova que já tinha sido assinada como `PASS`.

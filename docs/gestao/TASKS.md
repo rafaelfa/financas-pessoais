@@ -3946,7 +3946,7 @@ mesma razão).
 | --- | --- | --- | --- |
 | T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada e publicada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; arquivo em `TASKS-fechado.md`. Branch `fix/t73-parcelamentos-cartoes` empurrada às 18:22Z em `330432a` (reflog
 `refs/remotes/origin/…@{2026-11-20 18:22:33 +0000}`), **0 PNG** no conteúdo remoto; `21dae72` reescrito fora da história local, backup em `backup/t73-historia-com-capturas`. `merge` em `main` **não**: é por bloco, D25 b. Emenda do QA à linha 28 de `T73-QA.md` em `7d6df4e`; política das capturas em **D26**) |
-| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **entregue, em QA** (handoff ao Dev 17:25Z; entrega do Dev `3a583f59`; contra-prova do Lead: **13 órfãos = 11 sem `id` + 2 sem referência, 0 no ficheiro**, reproduzido pela minha sonda; 8 `FieldError` / 7 props `aria-describedby` (a 8.ª é comentário, linha 400); base `testes-e2e` com 0 linhas `e2e-t74-dev-%`. Handoff ao QA `9d970482`. **QA `PASS` (`8adacc5a`, 18:57Z), devolvido pelo Lead (`efb2f461`) antes do Revisor** por 4 coisas medidas: alínea 4 graduada como cumprida sem o estar (`AGENTS.md:96` dá `e2e/` ao QA, e o QA apagou o harness); linha 156 do relatório diz «temporários da T73» quando são 4 PNG seus das 18:35; linha 165 aponta `test-results/t74-qa/` onde medi 0 ficheiros `t74`; e `temp-t74-debug.html` + `temp-t74-medicao.mjs` ficaram na raiz do repo, untracked e sem regra de ignore. Contra-prova do QA que o Lead confirmou: gate 5/5 com exit 0, `t74-focado.log` com `1 passed (11.6s)` e o `aria-describedby` real no DOM, porta 3000 livre. **Segunda volta do QA (`7838a621`, 19:13Z): spec permanente `e2e/75-…` criado (3/3 verde), raiz limpa, relatório emendado. Devolvido outra vez pelo Lead (`e9c7b61f`) com uma regressão medida: `pnpm exec playwright test e2e/30-transacoes.spec.ts` → exit 1, 1 passed / **3 failed** (linhas 85, 106, 142, todas `toBeDisabled()` → `Received: enabled`). O código está conforme o critério 1 (`TASKS.md:3979`), portanto são as 3 asserções que codificam o defeito N2 e têm de ser reescritas — `e2e/` é do QA (`AGENTS.md:96`). Pedidos: suite completa `pnpm test:e2e` verde com stdout, teste 2 do spec 75 sem asserções condicionais/tautológicas (o utilizador de teste tem 1 conta, logo o caminho transferência não chega ao `createTransferSchema`), e nomes dos dois logs corrigidos. Estado: **T74 bloqueada no QA**.) |
+| T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **fechada** (Dev + QA `PASS` + Revisor `OK`, 2 voltas de correção) | `relatorios/T74.md`, `relatorios/T74-qa.md` |
 | T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px quando a régua é 44 px | Dev | **Pendente (mão)** |
 | T72 | **N1 — diálogos sem limite de altura:** um `DialogContent` de 1761 px num ecrã de 844 | Dev | **Pendente (mão)** |
 
@@ -3958,7 +3958,7 @@ de verificação da minha própria escrita — está arquivada em `docs/gestao/T
 cabeçalho **«Fecho T73»**. Prova: `relatorios/T73.md` (356 linhas, Dev) e `relatorios/T73-QA.md`
 (141 linhas, QA).
 
-### T74 — N2 + N3: `transaction-quick-add` (Dev) — **entregue, em QA**
+### T74 — N2 + N3: `transaction-quick-add` (Dev) — **fechada**
 
 **Porquê.** Dois defeitos no formulário mais usado do produto, medidos hoje no ficheiro:
 
@@ -4010,6 +4010,23 @@ problemas e as suas linhas não mudam. E o `lancamento-descricao-erro` (671) est
 são os outros 13: a varredura tem de procurar a **string do id** no ficheiro, não o atributo. A sonda do
 Dev reproduz os meus números-mãe (**17 órfãos = 14 sem id + 3 sem referência, em 80 ocorrências /
 17 ficheiros**), pelo que o quadro acima mantém-se.
+
+**Fecho T74 — 20/11, cadeia completa com duas voltas de correção.** Dev → QA `PASS` → Revisor `OK CONDICIONAL` (4 achados de volta) → Dev e QA corrigem → Revisor segunda leitura: os quatro fechados, **0 achados novos**, «o diff cumpre o critério no conjunto: sim».
+
+Os quatro achados, todos medidos por mim antes de os devolver, e todos reais:
+
+1. O `aria-invalid` não chegava ao `<input>`: o Dev embrulhou o `MoneyInput` num `<div role="group">` e escreveu no código que «o `MoneyInput` não expõe `aria-invalid`» — **falso**, o componente já tinha `invalid` e `describedBy` desde antes (`money-input.tsx:25-29`, aplicados em `:141-144`).
+2. O `?? 0` transformava campo vazio em zero antes do `safeParse`: campo vazio dizia «O valor não pode ser zero.». Agora há guarda no `onSubmit`, antes dos dois ramos, com «Escreve o valor.»; zero a sério mantém a mensagem de zero.
+3. `e2e/30-transacoes.spec.ts` tinha ficado com `toBeEnabled()` antes **e** depois do blur: enabled→enabled não distingue valor por confirmar de valor confirmado. Apagar o `onValueChange?.(value)` deixava o teste verde.
+4. O helper `preencherValorDOM` do spec 75 escrevia `input.value = …` + `dispatchEvent`: o *value tracker* do React já tinha o valor e o `handleChange` nunca corria, portanto o formulário submetia vazio e a asserção «não pode ser zero» era a do **campo vazio**. A sequência `1` → `1,` → `12,34` do critério 1 não estava provada em lado nenhum.
+
+**Porque é que o meu gate não os apanhou:** o gate de 5 comandos não corre `e2e/` e o `pnpm test` são os 598 Vitest de `packages/shared`. Lição que passa a valer: critério que mexe em `e2e/` → o handoff pede `pnpm test:e2e` e o handoff do QA pede a asserção que fica **vermelha** sem a correção. Segunda lição, minha: aceitei um `PASS` cuja prova central era vazia, e só o Revisor, a ler o código do helper, o viu.
+
+**Prova do fecho (medida pelo Lead, não pelo relatório de ninguém):** `pnpm exec playwright test e2e/30-transacoes.spec.ts e2e/75-transaction-quick-add-aria-describedby.spec.ts` → **10 passed (25.0s)**, limpeza `0 restante(s)`; spec 30 com 4 testes (o `Percurso 2` reposto **verbatim** do `HEAD`, `diff` das linhas 20-73 sem diferenças), spec 75 com 6; `pnpm format:check` exit 0; `eslint` nos dois specs exit 0; suite completa `138 passed (7.9m)` em `relatorios/t74-suite-e2e-v2.log` (138 linhas `ok`, 0 `failed`); gate do Dev lint 0 / typecheck 0 / test 598 sem cache / build 0.
+
+**Duas candidatas a tarefa nova (por aprovar, sem ID):**
+- Escrever `abc` no Valor e clicar Lançar mostra **duas** mensagens ao mesmo tempo («Não consegui ler este valor…» do `MoneyInput` e «Escreve o valor.» da guarda): a guarda fala como se o campo estivesse vazio quando está preenchido com lixo. Medido em `relatorios/.qa-t74/t74b-medicao.log`.
+- O erro de um submit anterior continua visível depois de o utilizador corrigir o valor (o `setFieldErrors` pré-existente, `transaction-quick-add.tsx:164`). Aparece na T77 como «limpar erro ao digitar»; o one-liner ficou pronto no `relatorios/T74.md` do Dev.
 
 ### T75 — F2: alvos de toque a 44 px (Dev) — **Pendente (mão)**
 

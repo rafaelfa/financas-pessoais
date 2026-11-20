@@ -163,6 +163,11 @@ export function TransactionQuickAdd({
     setFormError(null);
     setFieldErrors({});
 
+    if (amountInCents === null) {
+      setFieldErrors({ amountInCents: ['Escreve o valor.'] });
+      return;
+    }
+
     const trimmedDescription = description.trim();
 
     if (mode === 'transfer') {
@@ -396,22 +401,17 @@ export function TransactionQuickAdd({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field data-invalid={errorFor('amountInCents') !== undefined}>
               <FieldLabel htmlFor={amountFieldId}>Valor</FieldLabel>
-              {/* O `MoneyInput` não expõe `aria-invalid`; a mensagem segue por
-                  `aria-describedby` e o estado inválido veste o `Field`. */}
-              <div
-                role="group"
-                aria-describedby={
+              <MoneyInput
+                key={amountResetKey}
+                id={amountFieldId}
+                valueInCents={amountInCents}
+                onValueChange={setAmountInCents}
+                autoFocus={amountResetKey > 0}
+                invalid={errorFor('amountInCents') !== undefined}
+                describedBy={
                   errorFor('amountInCents') === undefined ? undefined : 'lancamento-valor-erro'
                 }
-              >
-                <MoneyInput
-                  key={amountResetKey}
-                  id={amountFieldId}
-                  valueInCents={amountInCents}
-                  onValueChange={setAmountInCents}
-                  autoFocus={amountResetKey > 0}
-                />
-              </div>
+              />
               <FieldDescription>
                 {mode === 'expense'
                   ? 'Escreve o valor sem sinal: um gasto é sempre subtraído.'
@@ -460,6 +460,9 @@ export function TransactionQuickAdd({
                     aria-required
                     className={`w-full ${TOUCH}`}
                     aria-invalid={errorFor('cardId') !== undefined || creditNeedsCard}
+                    aria-describedby={
+                      errorFor('cardId') === undefined ? undefined : 'lancamento-cartao-erro'
+                    }
                   >
                     <SelectValue placeholder="Escolhe o cartão" />
                   </SelectTrigger>
@@ -471,7 +474,7 @@ export function TransactionQuickAdd({
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError>{errorFor('cardId')}</FieldError>
+                <FieldError id="lancamento-cartao-erro">{errorFor('cardId')}</FieldError>
               </div>
             ) : null}
 
@@ -486,6 +489,11 @@ export function TransactionQuickAdd({
                   className={`w-full ${TOUCH}`}
                   aria-invalid={
                     errorFor('accountId') !== undefined || errorFor('fromAccountId') !== undefined
+                  }
+                  aria-describedby={
+                    (errorFor('accountId') ?? errorFor('fromAccountId')) === undefined
+                      ? undefined
+                      : 'lancamento-conta-erro'
                   }
                 >
                   <SelectValue />
@@ -512,6 +520,9 @@ export function TransactionQuickAdd({
                     aria-required
                     className={`w-full ${TOUCH}`}
                     aria-invalid={errorFor('toAccountId') !== undefined}
+                    aria-describedby={
+                      errorFor('toAccountId') === undefined ? undefined : 'lancamento-destino-erro'
+                    }
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -523,7 +534,7 @@ export function TransactionQuickAdd({
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError>{errorFor('toAccountId')}</FieldError>
+                <FieldError id="lancamento-destino-erro">{errorFor('toAccountId')}</FieldError>
               </div>
             ) : (
               <div className="space-y-1">
@@ -537,6 +548,9 @@ export function TransactionQuickAdd({
                     aria-required
                     className={`w-full ${TOUCH}`}
                     aria-invalid={errorFor('categoryId') !== undefined}
+                    aria-describedby={
+                      errorFor('categoryId') === undefined ? undefined : 'lancamento-categoria-erro'
+                    }
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -549,7 +563,7 @@ export function TransactionQuickAdd({
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError>{errorFor('categoryId')}</FieldError>
+                <FieldError id="lancamento-categoria-erro">{errorFor('categoryId')}</FieldError>
               </div>
             )}
 
@@ -688,7 +702,7 @@ export function TransactionQuickAdd({
             <Button
               type="submit"
               className={`w-full sm:w-auto ${TOUCH}`}
-              disabled={pending || needsTwoAccounts || amountInCents === null || creditNeedsCard}
+              disabled={pending || needsTwoAccounts || creditNeedsCard}
             >
               {pending
                 ? 'A lançar…'
