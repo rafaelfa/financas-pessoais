@@ -25,7 +25,10 @@ Capturas guardadas:
 - `relatorios/T73-cartoes-390x844-light.png`
 - `relatorios/T73-cartoes-390x844-dark.png`
 
-Resultado JSON: `relatorios/.qa-t73/t73-medicao-QA.json`
+Resultado JSON: `relatorios/.qa-t73/t73-medicao-QA.json` (apenas duas configurações: `1440x900:light`, `390x844:light`).
+As duas linhas `dark` vêm do stdout do meu `t73-playwright-dark.mjs` — as linhas 61-64 medem e imprimem, stdout esse que não foi gravado por parte nenhuma.
+O registo de quatro configurações que existe (`relatorios/.qa-t73/depois.log`, mtime 15:52:56) é a corrida do Dev, com os mesmos 6/6/8/8/6/2/7 — coincidência esperada, porque é o mesmo código e a mesma página, não a minha assinatura.
+O meu veredicto a) e b) não muda: o critério é a contagem, presente em ficheiro para as duas claras e em log para as quatro.
 
 ---
 
