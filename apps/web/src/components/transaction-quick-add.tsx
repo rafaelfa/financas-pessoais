@@ -61,6 +61,7 @@ export function TransactionQuickAdd({
   descriptions,
   today,
   initialCardId,
+  initialDate,
 }: {
   readonly accounts: readonly AccountView[];
   readonly cards: readonly CardView[];
@@ -71,6 +72,8 @@ export function TransactionQuickAdd({
   readonly today: string;
   /** Cartão pré-escolhido, quando se chega do ecrã dos cartões. */
   readonly initialCardId?: string;
+  /** Data pré-preenchida, quando se lança a partir de um dia do calendário. */
+  readonly initialDate?: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -95,7 +98,7 @@ export function TransactionQuickAdd({
     () => accounts.find((account) => account.id !== defaultAccountId(accounts))?.id ?? '',
   );
   const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate ?? today);
   const [description, setDescription] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);

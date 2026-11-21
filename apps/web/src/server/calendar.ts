@@ -37,6 +37,16 @@ export interface CalendarItem {
 export interface CalendarDay {
   readonly date: string;
   readonly items: readonly CalendarItem[];
+  /**
+   * Movimentos do dia **já liquidados**. Aparecem no painel do dia e ficam
+   * fora de `items` de propósito: os totais do mês são o que falta pagar.
+   */
+  readonly settledItems: readonly CalendarItem[];
+  /**
+   * Compras do dia metidas numa fatura de cartão. Também fora de `items` e de
+   * qualquer soma: neste dia não sai dinheiro da conta, sai na fatura.
+   */
+  readonly cardItems: readonly CalendarItem[];
   readonly inflowInCents: number;
   readonly outflowInCents: number;
   readonly balanceInCents: number;
@@ -121,7 +131,7 @@ export async function getMonthCalendar(mes?: string): Promise<CalendarMonth> {
   const { start, nextStart, dayCount } = monthBounds(month);
   const isCurrentMonth = month === today.slice(0, 7);
 
-  const [payables, invoices, recurrences, unsettled] = await Promise.all([
+  const [payables, invoices, recurrences, unsettled, movimentos] = await Promise.all([
     prisma.receivablePayable.findMany({
       where: {
         userId: user.id,
@@ -163,6 +173,31 @@ export async function getMonthCalendar(mes?: string): Promise<CalendarMonth> {
         date: { gte: new Date(start), lt: new Date(nextStart) },
       },
       select: { id: true, description: true, kind: true, amountInCents: true, date: true },
+      orderBy: { date: 'asc' },
+    }),
+
+    /*
+     * Os dois grupos que o painel do dia mostra a mais, numa leitura só:
+     * **já liquidados** (dinheiro que já saiu da conta — sem isto, lançar e não
+     * ver nada) e **compras no cartão** (`invoiceId` não nulo: o dinheiro sai na
+     * fatura, não neste dia). Nenhum deles entra nos totais nem nas somas do dia.
+     */
+    prisma.transaction.findMany({
+      where: {
+        userId: user.id,
+        status: { not: 'IGNORED' },
+        date: { gte: new Date(start), lt: new Date(nextStart) },
+        OR: [{ settled: true, invoiceId: null }, { invoiceId: { not: null } }],
+      },
+      select: {
+        id: true,
+        description: true,
+        kind: true,
+        amountInCents: true,
+        date: true,
+        invoiceId: true,
+        transferGroupId: true,
+      },
       orderBy: { date: 'asc' },
     }),
   ]);
@@ -248,6 +283,87 @@ export async function getMonthCalendar(mes?: string): Promise<CalendarMonth> {
     a.date === b.date ? a.label.localeCompare(b.label, 'pt') : a.date < b.date ? -1 : 1,
   );
 
+  const invoiceById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+
+  /** Fora de `items`: ver os comentários de `CalendarDay`. */
+  const settledItems: CalendarItem[] = [];
+  const transferGroups = new Set<string>();
+
+  for (const transaction of movimentos) {
+    /*
+     * Compras no cartão são do outro grupo. Pagar a fatura é outra coisa: é um
+     * `INVOICE_PAYMENT` com `invoiceId` **e** `settled: true` — o dinheiro saiu
+     * neste dia, portanto é liquidado (`docs/spec/F1`, regra 7).
+     */
+    if (transaction.invoiceId !== null && transaction.kind !== 'INVOICE_PAYMENT') {
+      continue;
+    }
+
+    const date = transaction.date.toISOString().slice(0, 10);
+
+    /*
+     * Uma transferência são duas pernas, com sinais opostos, no mesmo dia. Duas
+     * linhas iguais que se anulam não se explicam a ninguém: fica uma, a zero.
+     */
+    if (transaction.transferGroupId !== null) {
+      if (transferGroups.has(transaction.transferGroupId)) {
+        continue;
+      }
+
+      transferGroups.add(transaction.transferGroupId);
+      settledItems.push({
+        id: transaction.transferGroupId,
+        date,
+        label: 'Transferência',
+        detail: transaction.description ?? 'Entre contas',
+        source: 'lancamento',
+        href: '/transacoes',
+        amountInCents: 0,
+        overdue: false,
+      });
+      continue;
+    }
+
+    settledItems.push({
+      id: transaction.id,
+      date,
+      label: transaction.description ?? 'Sem descrição',
+      detail: `${KIND_LABELS[transaction.kind.toLowerCase()] ?? transaction.kind} liquidado`,
+      source: 'lancamento',
+      href: '/transacoes',
+      amountInCents: transaction.amountInCents,
+      overdue: false,
+    });
+  }
+
+  const cardItems: CalendarItem[] = movimentos
+    .filter(
+      (transaction) => transaction.invoiceId !== null && transaction.kind !== 'INVOICE_PAYMENT',
+    )
+    .map((transaction): CalendarItem => {
+      const invoice = invoiceById.get(transaction.invoiceId ?? '');
+      const when =
+        invoice === undefined
+          ? null
+          : `${invoice.dueDate.slice(8, 10)}/${invoice.dueDate.slice(5, 7)}`;
+      /* Fatura paga: o dinheiro já saiu, o rótulo diz isso em vez de prometer. */
+      const verbo = invoice?.status === 'paid' ? 'saiu' : 'entra';
+
+      return {
+        id: transaction.id,
+        date: transaction.date.toISOString().slice(0, 10),
+        label: transaction.description ?? 'Compra no cartão',
+        detail:
+          when === null
+            ? 'Compra no cartão — entra na fatura'
+            : `Compra no cartão — ${verbo} na fatura de ${when}`,
+        source: 'lancamento',
+        href: '/cartoes',
+        amountInCents: transaction.amountInCents,
+        overdue: false,
+      };
+    });
+
   const days: CalendarDay[] = Array.from({ length: dayCount }, (_, index) => {
     const date = `${month}-${String(index + 1).padStart(2, '0')}`;
     const ofDay = items.filter((item) => item.date === date);
@@ -263,6 +379,8 @@ export async function getMonthCalendar(mes?: string): Promise<CalendarMonth> {
     return {
       date,
       items: ofDay,
+      settledItems: settledItems.filter((item) => item.date === date),
+      cardItems: cardItems.filter((item) => item.date === date),
       inflowInCents,
       outflowInCents,
       balanceInCents: inflowInCents - outflowInCents,

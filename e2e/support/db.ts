@@ -241,7 +241,30 @@ export interface LancamentoBruto {
   readonly description: string | null;
   readonly accountId: string | null;
   readonly transferGroupId: string | null;
+  /** Compra metida numa fatura de cartão (T84): não sai da conta neste dia. */
+  readonly invoiceId: string | null;
   readonly settled: boolean;
+}
+
+/**
+ * Uma segunda conta na carteira, para o percurso da transferência (T84).
+ *
+ * O aprovisionamento cria uma só conta; transferir precisa de duas. Campos que o
+ * produto escreve numa conta manual (`/contas`), sem SQL à escolha de quem chama.
+ */
+export async function criarContaDoSpec(email: string, nome: string): Promise<string> {
+  const { userId } = await lerContextoDoUtilizador(email);
+
+  return withClient(async (client) => {
+    const result = await client.query(
+      `INSERT INTO financial_account (id, "userId", type, name, "openingBalanceInCents", currency, origin, "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1, 'WALLET'::"AccountType", $2, 0, 'EUR', 'MANUAL'::"AccountOrigin", now(), now())
+       RETURNING id`,
+      [userId, nome],
+    );
+
+    return String(result.rows[0]?.id ?? '');
+  });
 }
 
 /** Todos os lançamentos do utilizador com esta descrição (o par de uma transferência dá 2). */
@@ -252,7 +275,8 @@ export async function lerPorDescricao(
   return withClient(async (client) => {
     const result = await client.query(
       `SELECT t.id, t.kind::text AS kind, t."amountInCents" AS amount, t.description,
-              t."financialAccountId" AS conta, t."transferGroupId" AS grupo, t.settled
+              t."financialAccountId" AS conta, t."transferGroupId" AS grupo,
+              t."invoiceId" AS fatura, t.settled
          FROM "transaction" t
          JOIN "user" u ON u.id = t."userId"
         WHERE u.email = $1 AND t.description = $2
@@ -267,6 +291,7 @@ export async function lerPorDescricao(
       description: row.description === null ? null : String(row.description),
       accountId: row.conta === null ? null : String(row.conta),
       transferGroupId: row.grupo === null ? null : String(row.grupo),
+      invoiceId: row.fatura === null ? null : String(row.fatura),
       settled: Boolean(row.settled),
     }));
   });

@@ -39,16 +39,28 @@ function diaDoMes(dia: number, mesesDeDeslocamento = 0): string {
   return data.toISOString().slice(0, 10);
 }
 
-/** Os itens de cada dia, lidos dos grupos com `aria-label` (data, itens, saldo). */
+/**
+ * Os itens de cada dia, lidos do controlo que abre o dia (T84).
+ *
+ * A célula deixou de ser `div[role="group"][tabindex="0"]`: passa a `button`
+ * com `aria-haspopup="dialog"` e o mesmo nome acessível (data, itens, saldo).
+ * O `li` é o âmbito que ainda contém a lista de itens do dia.
+ */
 async function diasDaGrelha(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll('section[aria-label="Grelha do mês"] [role="group"]')].map(
-      (dia) => ({
-        nome: dia.getAttribute('aria-label') ?? '',
+    [
+      ...document.querySelectorAll(
+        'section[aria-label="Grelha do mês"] li:has(button[aria-haspopup="dialog"])',
+      ),
+    ].map((dia) => {
+      const controlo = dia.querySelector('button[aria-haspopup="dialog"]');
+
+      return {
+        nome: controlo?.getAttribute('aria-label') ?? '',
         texto: (dia.textContent ?? '').replace(/\s+/g, ' ').trim(),
         links: [...dia.querySelectorAll('a[href]')].map((a) => a.textContent?.trim() ?? ''),
-      }),
-    ),
+      };
+    }),
   );
 }
 
@@ -201,13 +213,39 @@ test.describe('calendário do mês (T55)', () => {
       ).toEqual([]);
     }
 
-    /* Cada dia alcançável por teclado, com o nome acessível certo. */
-    const dias = page.locator('[role="group"]');
-    await expect(dias.first()).toHaveAttribute('tabindex', '0');
+    /*
+     * Cada dia alcançável por teclado, com o nome acessível certo (T84: o
+     * controlo é um `button[aria-haspopup="dialog"]`, focável por natureza).
+     */
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await abrirRota(page, '/calendario');
+
+    const dias = page.locator('section[aria-label="Grelha do mês"] button[aria-haspopup="dialog"]');
+    await expect(dias.first()).toBeVisible();
+    await expect(dias.first()).toHaveAttribute('aria-haspopup', 'dialog');
     await dias.first().focus();
     expect(await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toMatch(
       /saldo/,
     );
+
+    /*
+     * Um dia vazio não tem controlo nenhum — logo não entra na ordem de `Tab`.
+     * A grelha é a 1280; a lista a 360 só desenha dias com itens.
+     */
+    const vazios = await page.evaluate(() => {
+      const celulas = [...document.querySelectorAll('section[aria-label="Grelha do mês"] ol > li')];
+      const semControlo = celulas.filter((li) => li.querySelector('button') === null);
+
+      return {
+        total: celulas.length,
+        semControlo: semControlo.length,
+        focaveis: [...document.querySelectorAll('section[aria-label="Grelha do mês"] [tabindex]')]
+          .length,
+      };
+    });
+
+    expect(vazios.semControlo, 'há dias vazios na grelha').toBeGreaterThan(0);
+    expect(vazios.focaveis, 'nada com tabindex explícito na grelha').toBe(0);
 
     /* A palavra «Vencida» está no DOM da faixa, não só a cor. */
     await expect(page.getByRole('region', { name: 'Em atraso' })).toContainText('Vencida');
@@ -281,7 +319,11 @@ test.describe('calendário do mês (T55)', () => {
 
     /* A fatura do A aparece uma vez, nos dias, com o valor da cadeia (105,00 €). */
     const dias = await page.evaluate(() =>
-      [...document.querySelectorAll('section[aria-label="Grelha do mês"] [role="group"]')]
+      [
+        ...document.querySelectorAll(
+          'section[aria-label="Grelha do mês"] li:has(button[aria-haspopup="dialog"])',
+        ),
+      ]
         .map((d) => d.textContent?.replace(/\s+/g, ' ').trim() ?? '')
         .filter((t) => t.includes('Fatura')),
     );

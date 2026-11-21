@@ -4,9 +4,10 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T86.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T87.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
-registada no mesmo dia como achado fora do critério da T77, à espera de autorização; as
+registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
+T84 — ambas à espera de autorização; as
 tarefas fechadas das vagas 1–6 estão em `TASKS-fechado.md`.
 
 | ID  | Tarefa                                                                                                                          | Dono | Estado                                                          | Prova              |
@@ -3918,8 +3919,9 @@ têm número e critério, mas **só abrem mão com o «vai» do Dr. Eggbot no po
 que muda neles vê-se em todo o lado ao mesmo tempo. Nada nesta vaga reabre a **T23** nem a **T25**:
 uma string pt-BR encontrada a meio do caminho é tarefa nova, não correcção de âmbito.
 
-**Fila (os (a), por ordem):** **T73 → T74 → T76 → T77 → T84** (a T84 é a próxima). A T85 fica na fila
-só depois de autorizada. Interdição de sobreposição que vem do
+**Fila (os (a), por ordem):** **T73 → T74 → T76 → T77 → T84 — as cinco fechadas** (a última, T84, a
+2026-11-21). A **fila autorizada acabou**: o que vem a seguir precisa do «vai» do utilizador — a T85
+e a T86 (abertas, por autorizar) e os (b) do plano. A T85 fica na fila só depois de autorizada. Interdição de sobreposição que vem do
 plano: o **T76 corre antes do T78**, senão o lote de tipografia do T78 reescreve as linhas que o
 T76 acabou de tocar. A partir daí entram os (b), na ordem do plano: **T72 → T78 → T75 → T79 → T80 →
 T81 → T82 → T83** (T78 antes de T82/T83 porque ambos escrevem `ui/card.tsx`; T82 antes de T83 pela
@@ -4071,6 +4073,20 @@ de altura** e **7 têm-no num `div` interior** (listados na varredura de hoje:
 `rule-apply-dialog`, `transaction-bulk-actions`, `transaction-edit-dialog` — este último com o
 padrão correcto `max-h-[85vh] overflow-y-auto`). Uma linha na base cobre os 35.
 
+**Nota de sequência (2026-11-21, da T84 — com o parecer do Revisor):** esta tarefa **não correu
+ainda**, e é por isso que o critério da T84 foi corrigido — o painel de dia não herda limite nenhum
+hoje. Dois problemas concretos para esta tarefa, medidos no diff da T84:
+
+1. `calendar-day-dialog.tsx:181` passa `max-h-full` **depois** da classe base no `cn` (o
+   tailwind-merge resolve o conflito a favor do último), portanto quando esta tarefa escrever
+   `max-h-[85dvh]` na base **o limite é descartado** e aquele diálogo continua a 100 % da viewport.
+2. Quando o `max-h-full` sair, os ~809 px do estado «a lançar» excedem os `85dvh` (≈717 px) a
+   390×844: o corpo rola e o botão «Lançar» (`transaction-quick-add.tsx:706`, dentro do corpo) cai
+   abaixo da dobra, contra o critério 1 da T84. Saída: o submit desse estado vai para um
+   `DialogFooter`, ou esse estado mantém um limite próprio — decisão desta tarefa, não da T84.
+
+O critério «sem scroll» da T84 vale só **antes** desta tarefa.
+
 **Ficheiros que pode escrever:** `apps/web/src/components/ui/dialog.tsx` (a classe base do
 `DialogContent`, hoje em `:56`, sem `max-h` nem `overflow`).
 
@@ -4095,7 +4111,8 @@ padrão correcto `max-h-[85vh] overflow-y-auto`). Uma linha na base cobre os 35.
 | T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **fechada** (Dev + QA `PASS` + Revisor, 1 volta) | `relatorios/T76.md`, `relatorios/T76-qa.md` |
 | T77 | **F9 — rótulos a 11 px:** o rodapé móvel é o único texto abaixo de 12 px na navegação | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 0 voltas) | `relatorios/T77.md`, `relatorios/T77-qa.md` |
 | T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **não abrir sem o «vai» do utilizador** | Dev | **aberta** (por autorizar) | Revisor T77, `relatorios/T77-qa.md` |
-| T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **Pendente** (aberta a 2026-11-21, âmbito novo autorizado) |
+| T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **não abrir sem o «vai»** | Dev | **aberta** (por autorizar) | `relatorios/T84.md` §12 |
+| T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4155,37 +4172,96 @@ O que fechou, medido por mim: **16 `loading.tsx`** (as 16 `page.tsx` de `(app)` 
 
 **Dívida que o Revisor assinalou e que fica para quem mexer nas próximas vagas:** as alturas dos 16 esqueletos são números medidos contra a conta `demo` (2 por ficheiro) e **nenhum teste as guarda** — a T75 (44 px em `Button`/`Input`) e a T78 (tipografia e tokens) vão mexer exactamente nestas alturas sem ficar vermelho. Também: só 390 e 1440 foram medidos (a 640 o `sm:` troca, portanto 768/1024 usam o número de 1440 sem prova), e numa conta vazia o esqueleto sobre-reserva (`/cartoes` 1764 px para 302 de conteúdo), com `cls` 0 porque a diferença é abaixo da dobra.
 
-### T84 — N5 (reescrito): painel de dia do calendário (Dev) — **Pendente**
+### T84 — N5 (reescrito): painel de dia do calendário (Dev) — **fechada a 2026-11-21**
+
+**Fecho.** Três voltas de código e uma do spec. **Volta 1** bloqueada pelo Revisor com razão: uma
+compra a crédito lançada pelo painel nascia `settled: false` com `invoiceId`, não caía em «Por
+liquidar» nem em «Já liquidado», e o dia não mudava à frente do utilizador. **Volta 2**: grupo «No
+cartão» (fora de tudo o que soma), `detail` com o vencimento da fatura, transferência numa linha de
+0,00 €. **Volta 3**: o pagamento de fatura sai de «No cartão» e vai para «Já liquidado» com rótulo
+próprio, a célula do dia abre com qualquer dos três grupos, e o rótulo diz «entra»/«saiu» conforme a
+fatura. **Volta 4 (QA)**: a nota do pagamento no spec, senão a linha não caía na limpeza e a segunda
+corrida da suite falhava de forma determinística.
+
+Prova final: QA `PASS`; `pnpm test:e2e` **145 passed** duas vezes seguidas (baseline **145** = 138 +
+7 do spec 84), dia 21/03/2027 com **1** liquidado nas duas; gate 5/5 a 0; Revisor **0 bloqueia, 0
+opcionais**. Nada soma: o saldo do dia e os três totais saem só de `items`.
 
 **Âmbito novo, autorizado pelo utilizador a 2026-11-21.** Não é correção de nada: é construir o dia
 que se abre. O plano pedia um painel de dia com lançamento; o que existe na T55 é uma grelha em que a
 célula lista os itens e um `Link` por item, sem vista do dia e sem forma de lançar a partir dali.
 
-**A decidir antes de escrever** (na T84, não no impulso): o painel abre num `DialogContent` (que já
-traz o limite de altura da T72 — não se lhe põe um número novo por cima) e reutiliza o
-`TransactionQuickAdd` existente. Custo mínimo conhecido: o `TransactionQuickAdd` recebe `today` como
-prop e não tem data inicial; a T84 acrescenta **uma** prop opcional (`initialDate`) e mais nada no
-componente. A página passa a carregar as mesmas leituras que `/transacoes` já faz (contas, cartões,
-categorias, descrições) — **nenhuma action nova em `server/`**.
+**A decidir antes de escrever** (na T84, não no impulso): o painel abre num `DialogContent` e
+reutiliza o `TransactionQuickAdd` existente. **Correção a 2026-11-21: o limite de altura da T72 não
+existe** — `components/ui/dialog.tsx` não tem `max-h` nem `overflow` e a T72 continua `Pendente
+(mão)`; portanto o diálogo não herda limite nenhum e não se lhe põe um número de altura por cima.
+Custo mínimo conhecido: o `TransactionQuickAdd` recebe `today` como prop e não tem data inicial; a
+T84 acrescenta **uma** prop opcional (`initialDate`) e mais nada no componente. A página passa a
+carregar as mesmas leituras que `/transacoes` já faz (contas, cartões, categorias, descrições) —
+**nenhuma action nova em `server/`**.
+
+**Decisão do Lead (2026-11-21, segunda impossibilidade medida):** o calendário traz só
+`settled: false` (`server/calendar.ts:167`) e o `quick-add` grava `settled: true` — um movimento
+lançado pelo painel **nunca** apareceria no dia. Autorizada **uma** leitura a mais no mesmo
+`getMonthCalendar` (os liquidados do dia, em lista própria), com os totais de «A pagar / A receber» e
+o saldo do dia **intocados** — prova: os três totais do mês iguais antes e depois. A célula da grelha
+continua a mostrar só o que falta liquidar; o diálogo mostra os grupos com rótulo.
+
+**Segunda decisão do Lead no mesmo dia (volta 2, bloqueio do Revisor):** compra a crédito entrava em
+nenhum grupo (nasce `settled: false` com `invoiceId` resolvido — as duas leituras excluíam-na por
+lados opostos), portanto o painel passou a ter o grupo **«No cartão»**, igualmente fora de todas as
+somas, com o rótulo a dizer que o dinheiro sai na fatura. **Terceira (volta 3):** um pagamento de
+fatura (`INVOICE_PAYMENT`, `invoiceId` + `settled: true`) não é compra — vai para «Já liquidado» com
+«Pagamento de fatura liquidado», e o rótulo de fatura já paga passa a «saiu na fatura de DD/MM», não
+«entra». **E a grelha abre o dia quando há qualquer um dos três grupos**, não só `items`: um dia só
+com compras no cartão tem de abrir, senão o mês parece vazio nesse dia.
+
+**Desenho decidido pelo Lead (2026-11-21), depois de medido:** um `DialogContent`, **dois estados**
+dentro dele. (1) *Dia*: título com a data longa, saldo, lista dos itens e, no rodapé, «Lançar neste
+dia». (2) *A lançar*: o mesmo diálogo, título `sr-only` «Lançar em <data longa>», `TransactionQuickAdd`
+com `initialDate` e `p-3 gap-2`; medido a 390×844 dá **809 ≤ 844** (o formulário sozinho são 777 px,
+é o motivo da decisão: itens + formulário na mesma vista não cabem, e a alternativa era esconder o
+botão atrás de scroll, que o critério proíbe).
 
 Critério de aceitação:
 
 1. A 390×844, tocar (ou `Enter`/`Espaço`) num dia com movimentos abre o painel com os itens do dia
-   que a página já calculou; o diálogo não excede a altura do ecrã e o botão de submeter está
-   visível sem rolar o diálogo. Medir `getBoundingClientRect()` do `DialogContent` e do botão.
+   que a página já calculou. Medido **por estado**: no estado *dia* a lista de itens pode rolar, mas o
+   `DialogFooter` com «Lançar neste dia» fica sempre visível — prova no dia do mês que tiver mais
+   itens, com o número deles; no estado *a lançar* o botão «Lançar» fica inteiro dentro do ecrã **sem
+   scroll nenhum**. Medir `getBoundingClientRect()` do `DialogContent`, do rodapé e do botão.
 2. Lançar um movimento a partir do dia **X** grava com a data **X** (não `today`) e o dia passa a
    mostrá-lo depois do `router.refresh()` — prova por captura antes/depois e pelo registo na base.
-3. Um só caminho de dados: o painel recebe os itens de `getMonthCalendar` e o formulário é o
-   `TransactionQuickAdd`; diferenças no `git diff` de `server/` → zero.
+   O movimento é gravado liquidado (é o default do `quick-add`), portanto isto exige a lista de
+   liquidados autorizada acima.
+3. Um só caminho de dados, na acepção de **uma só fonte de verdade**: o painel recebe os itens de
+   `getMonthCalendar` e o formulário é o `TransactionQuickAdd`; a **única** alteração em `server/` é
+   **uma** leitura a mais dentro de `getMonthCalendar` — mesmo `userId`, mesmo intervalo do mês,
+   `status != IGNORED`, `OR: [{ settled: true, invoiceId: null }, { invoiceId: { not: null } }]`,
+   com `invoiceId` e `transferGroupId` no `select` e os pagamentos de fatura (`INVOICE_PAYMENT`)
+   contados como liquidados do dia, não como compras. Três grupos **fora** de `items`: «Por
+   liquidar» (`items`), «No cartão» (`cardItems`) e «Já liquidado» (`settledItems`), mais uma linha
+   por transferência agrupada por `transferGroupId`. Nenhuma action nova, nenhuma consulta escrita
+   fora desse módulo. Os três totais do mês medidos antes e depois: **idênticos**.
 4. Erro de validação anunciado: o controlo com `aria-invalid` e `aria-describedby` a apontar para o
    `FieldError` (`role="alert"`), o padrão que a T74 e a T76 deixaram — não um `toast`.
 5. A célula do dia deixa de ser um `div role="group" tabIndex=0`: passa a controlo com
-   `aria-haspopup="dialog"`, e um dia vazio continua fora da ordem de `Tab`.
+   `aria-haspopup="dialog"` e nome acessível, e um dia vazio continua fora da ordem de `Tab` — o
+   estado «dia vazio» fica desenhado no corpo do diálogo (defensivo), mesmo sem gatilho na interface.
+6. **Estrutura preparada para a T72:** coluna flex com corpo que pode rolar e rodapé por baixo do
+   corpo. Hoje não precisa de rolar; quando a T72 meter `max-h` na classe base, o scroll tem de cair no
+   corpo e não engolir o rodapé. Não é um número, é estrutura — e a T72 fica obrigada a re-medir este
+   diálogo (escrito na secção dela).
 
 **Não fazer:** segundo `quick-add`, action nova, número de altura novo no diálogo, refactor da
 `grelha`, mexer em `globals.css` ou em `components/ui/` (T78), mudar a tipografia da página (T78).
 Prova: `relatorios/T84.md` com as medições, os quatro estados (dia com itens, dia vazio, a lançar,
 erro) e screenshots a 1440 e 390 nos dois temas; `pnpm test:e2e` verde com o spec novo do dia.
+
+**Ficou aberto por decisão, não por falha:** a T86 (transferência com «Para a conta» vazia, que é do
+`TransactionQuickAdd` e não do painel) e as duas notas do Revisor já escritas na T78 — o dia só com
+compras no cartão anuncia «0 itens» e abre com «1 no cartão», e um `INVOICE_PAYMENT` com `settled:
+false` seria rotulado «liquidado» (nenhum escritor o produz hoje).
 
 ### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **aberta, por autorizar**
 
@@ -4198,6 +4274,23 @@ T77 subiu a fasquia em 5,5 px nesse rótulo. Não medido a 320 px pelo QA nem po
 
 **Não abrir sem o «vai» do utilizador** (§4.1 do procedimento: achado fora do critério vira linha nova
 e só se abre com autorização).
+
+### T86 — transferência: o modo abre com a conta de destino vazia (Dev) — **aberta, por autorizar**
+
+**Achado do Dev na T84 (`604b60fc`), fora do âmbito dessa tarefa — não a reabre.** Sintoma medido
+por ele: no modo Transferência do `transaction-quick-add` o `Select` «Para a conta» não mostra valor
+nenhum e submeter devolve «Falta o identificador.» (`entityIdSchema`,
+`packages/shared/src/schemas/domain/primitives.ts:67`); reproduz-se igual em `/transacoes`, e
+escolhendo a conta à mão grava bem.
+
+**Causa não diagnosticada, e uma hipótese já excluída por mim:** o `toAccountId` **não** começa vazio
+— `transaction-quick-add.tsx:97-99` pré-selecciona a primeira conta diferente da conta de origem, e só
+dá `''` quando existe **uma** conta. Portanto a explicação do ecrã vazio é outra (o `Select` com um
+`value` que não corresponde a nenhum `SelectItem`, ou uma lista de contas incompleta no contexto do
+calendário), e quem pegar nisto mede antes de corrigir. Prova pedida: lançar uma transferência sem
+tocar no select, a 390 e a 1440, e o valor que o `Select` mostra na abertura.
+
+**Não abrir sem o «vai» do utilizador** (§4.1 do procedimento).
 
 ### T78 — A4 + V2 + V1 + V4 + V3 + V7: o lote do tema (Dev) — **Pendente (mão)**
 

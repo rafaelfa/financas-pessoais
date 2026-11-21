@@ -50,10 +50,22 @@ async function faturasDaRevisao(page: Page): Promise<number> {
   });
 }
 
+/**
+ * Os dias da grelha que mostram «Fatura», pelo texto da célula (T84).
+ *
+ * O âmbito passou de `[role="group"]` (removido de propósito) para o `li` que
+ * contém o controlo do dia (`button[aria-haspopup="dialog"]`), que é onde os
+ * itens continuam desenhados. A asserção não perde força: continua a exigir o
+ * texto «Fatura» dentro da célula do dia, não no corpo da página.
+ */
 async function diasDoCalendario(page: Page, mes: string) {
   await abrirRota(page, `/calendario?mes=${mes}`);
   return page.evaluate(() =>
-    [...document.querySelectorAll('section[aria-label="Grelha do mês"] [role="group"]')]
+    [
+      ...document.querySelectorAll(
+        'section[aria-label="Grelha do mês"] li:has(button[aria-haspopup="dialog"])',
+      ),
+    ]
       .map((d) => d.textContent?.replace(/\s+/g, ' ').trim() ?? '')
       .filter((texto) => texto.includes('Fatura')),
   );

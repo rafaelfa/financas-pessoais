@@ -3,12 +3,18 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { Amount } from '@/components/amount';
+import {
+  CalendarDayDataProvider,
+  CalendarDayDialog,
+  CALENDAR_SOURCE_LABELS,
+} from '@/components/calendar-day-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@repo/shared';
+import { listAccounts } from '@/server/accounts';
 import {
   getMonthCalendar,
   shiftCalendarMonth,
@@ -16,23 +22,13 @@ import {
   type CalendarItem,
   type CalendarMonth,
 } from '@/server/calendar';
+import { listCards } from '@/server/cards';
+import { listCategories } from '@/server/categories';
+import { descriptionSuggestions } from '@/server/transactions';
 
 export const metadata: Metadata = { title: 'Calendário' };
 
-const SOURCE_LABELS: Record<CalendarItem['source'], string> = {
-  conta: 'Conta',
-  fatura: 'Fatura',
-  recorrencia: 'Recorrência',
-  lancamento: 'Lançamento',
-};
-
-/** Origem, curta, para caber na célula da grelha. */
-const SHORT_SOURCE: Record<CalendarItem['source'], string> = {
-  conta: 'Conta',
-  fatura: 'Fatura',
-  recorrencia: 'Recorrência',
-  lancamento: 'Lançamento',
-};
+const SOURCE_LABELS = CALENDAR_SOURCE_LABELS;
 
 const WEEKDAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'] as const;
 
@@ -44,6 +40,14 @@ function longDate(date: string): string {
     month: 'long',
     timeZone: 'UTC',
   }).format(new Date(`${date}T00:00:00Z`));
+}
+
+/**
+ * Um dia abre quando tem qualquer movimento — por liquidar, no cartão ou já
+ * liquidado. O nome acessível continua a contar só os por liquidar.
+ */
+function temMovimentos(day: CalendarDay): boolean {
+  return day.items.length + day.cardItems.length + day.settledItems.length > 0;
 }
 
 /** Nome acessível de um dia: data, número de itens e saldo. */
@@ -149,7 +153,15 @@ export default async function CalendarPage({
 }) {
   const params = await searchParams;
   const requested = params.mes;
-  const calendar = await getMonthCalendar(typeof requested === 'string' ? requested : undefined);
+  const [calendar, accounts, cards, categories, descriptions] = await Promise.all([
+    getMonthCalendar(typeof requested === 'string' ? requested : undefined),
+    // As mesmas leituras que `/transacoes` faz: o formulário do dia não inventa
+    // consulta nenhuma, e a página só paga as que já existem.
+    listAccounts(),
+    listCards(),
+    listCategories(),
+    descriptionSuggestions(),
+  ]);
 
   const previousMonth = shiftCalendarMonth(calendar.month, -1);
   const nextMonth = shiftCalendarMonth(calendar.month, 1);
@@ -157,7 +169,7 @@ export default async function CalendarPage({
   // Segunda-feira primeiro, como um calendário português.
   const firstWeekday = (new Date(`${calendar.month}-01T00:00:00Z`).getUTCDay() + 6) % 7;
   const leadingBlanks = calendar.days.length === 0 ? 0 : firstWeekday;
-  const daysWithItems = calendar.days.filter((day) => day.items.length > 0);
+  const daysWithItems = calendar.days.filter(temMovimentos);
   const hasAnything = daysWithItems.length > 0 || calendar.overdue.length > 0;
 
   return (
@@ -216,104 +228,61 @@ export default async function CalendarPage({
           partir de `sm` mostra a grelha. As duas vistas nunca estão visíveis ao
           mesmo tempo (`hidden`), por isso não duplicam nada para o leitor de ecrã.
         */}
-        <section className="sm:hidden" aria-label="Dias do mês em lista">
-          <ol className="space-y-3">
-            {daysWithItems.map((day) => (
-              <li key={day.date}>
-                <div
-                  role="group"
-                  tabIndex={0}
-                  aria-label={dayLabel(day)}
-                  className="rounded-xl border p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="text-sm font-semibold">{longDate(day.date)}</h3>
-                    <Amount amountInCents={day.balanceInCents} withSign className="text-sm" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {day.items.length === 1 ? '1 item' : `${day.items.length} itens`}
-                  </p>
-                  <ul className="mt-1 divide-y">
-                    {day.items.map((item) => (
-                      <ItemRow key={`${day.date}-${item.source}-${item.id}`} item={item} />
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <CalendarDayDataProvider
+          data={{ accounts, cards, categories, descriptions, today: calendar.today }}
+        >
+          <section className="sm:hidden" aria-label="Dias do mês em lista">
+            <ol className="space-y-3">
+              {daysWithItems.map((day) => (
+                <li key={day.date}>
+                  <CalendarDayDialog
+                    day={day}
+                    title={longDate(day.date)}
+                    label={dayLabel(day)}
+                    variant="list"
+                  />
+                </li>
+              ))}
+            </ol>
+          </section>
 
-        <section className="hidden sm:block" aria-label="Grelha do mês">
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {WEEKDAYS.map((weekday) => (
-              <span key={weekday} className="py-1">
-                {weekday}
-              </span>
-            ))}
-          </div>
-          <ol className="grid grid-cols-7 gap-1">
-            {Array.from({ length: leadingBlanks }, (_, index) => (
-              <li key={`vazio-${index}`} aria-hidden className="min-h-24 rounded-lg" />
-            ))}
-            {calendar.days.map((day) => (
-              <li key={day.date}>
-                <div
-                  role={day.items.length === 0 ? undefined : 'group'}
-                  /*
-                   * Só os dias com itens entram na ordem de `Tab`: um dia vazio
-                   * anunciaria «0 itens, saldo 0,00 €» sem nada para fazer.
-                   */
-                  tabIndex={day.items.length === 0 ? undefined : 0}
-                  aria-label={day.items.length === 0 ? undefined : dayLabel(day)}
-                  className={`min-h-24 rounded-lg border p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                    day.date === calendar.today ? 'ring-1 ring-primary' : ''
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between gap-1">
-                    <span className="text-xs font-semibold tabular-nums">
-                      {Number(day.date.slice(8))}
-                    </span>
-                    {day.items.length === 0 ? null : (
-                      <span className="text-[0.7rem] text-muted-foreground tabular-nums">
-                        {day.items.length}
+          <section className="hidden sm:block" aria-label="Grelha do mês">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+              {WEEKDAYS.map((weekday) => (
+                <span key={weekday} className="py-1">
+                  {weekday}
+                </span>
+              ))}
+            </div>
+            <ol className="grid grid-cols-7 gap-1">
+              {Array.from({ length: leadingBlanks }, (_, index) => (
+                <li key={`vazio-${index}`} aria-hidden className="min-h-24 rounded-lg" />
+              ))}
+              {calendar.days.map((day) => (
+                <li key={day.date}>
+                  {temMovimentos(day) ? (
+                    <CalendarDayDialog
+                      day={day}
+                      title={longDate(day.date)}
+                      label={dayLabel(day)}
+                      variant="grid"
+                    />
+                  ) : (
+                    <div
+                      className={`min-h-24 rounded-lg border p-1.5 ${
+                        day.date === calendar.today ? 'ring-1 ring-primary' : ''
+                      }`}
+                    >
+                      <span className="text-xs font-semibold tabular-nums">
+                        {Number(day.date.slice(8))}
                       </span>
-                    )}
-                  </div>
-                  {day.items.length === 0 ? null : (
-                    <p className="mt-1 text-[0.7rem] font-medium">
-                      <Amount amountInCents={day.balanceInCents} withSign />
-                    </p>
+                    </div>
                   )}
-                  {/*
-                    Todos os itens, com valor e origem — a célula rola por dentro
-                    quando o dia tem muitos. Cortar em dois e escrever «+1» como
-                    texto morto escondia um item que o saldo já contava.
-                  */}
-                  <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto">
-                    {day.items.map((item) => (
-                      <li key={`${day.date}-${item.source}-${item.id}`}>
-                        <Link
-                          href={item.href}
-                          className="block rounded text-[0.7rem] leading-tight hover:underline"
-                        >
-                          <span className="block truncate">{item.label}</span>
-                          <span className="flex items-baseline justify-between gap-1 text-[0.65rem] text-muted-foreground">
-                            <span className="truncate">
-                              {SHORT_SOURCE[item.source]}
-                              {item.overdue ? ' · Vencida' : ''}
-                            </span>
-                            <Amount amountInCents={item.amountInCents} withSign />
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </CalendarDayDataProvider>
       </div>
     </>
   );
