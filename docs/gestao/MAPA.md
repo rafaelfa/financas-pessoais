@@ -383,3 +383,13 @@ subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/heal
    `false` e o `handleChange` do componente nunca corre — o formulário submete vazio e o
    teste passa por engano. Usar `getByLabel(...).fill(...)` do Playwright, que usa o setter
    do protótipo. Isto mascarou uma prova que já tinha sido assinada como `PASS`.
+4. **Um `loading.tsx` de um segmento aplica-se aos filhos que não têm o seu**, e uma
+   página que não suspende nunca pinta o esqueleto próprio: o que aparece é o do pai
+   (`(app)/loading.tsx` é o do painel). Medido na T76: `definicoes/loading.tsx` existia
+   na árvore e nunca chegou ao DOM; o `GET /definicoes` pintava os 3 `skeleton` do
+   painel. Em `dev` isso é o tempo de compilação da rota, não a página a carregar dados.
+5. **Depois de haver `loading.tsx`, o primeiro byte de uma rota é o esqueleto.** Quem
+   escreve testes tem de esperar pelo conteúdo: `abrirRota` (`e2e/support/ui.ts`) passou
+   a exigir `main h1` visível, porque o esqueleto não tem `h1`. Toda a página de `(app)`
+   tem `h1` dentro de `main` via `PageHeader` — se uma deixar de ter, os specs que a
+   abrem falham com «element not found» e não com «a página não tem título».

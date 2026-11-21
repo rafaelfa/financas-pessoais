@@ -145,6 +145,9 @@ export function ImportExportPanel({ accounts }: { readonly accounts: readonly Ac
                 type="date"
                 value={from}
                 className={TOUCH}
+                aria-describedby={
+                  from !== '' && to !== '' && from > to ? 'exportar-de-erro' : undefined
+                }
                 onChange={(event) => setFrom(event.target.value)}
               />
               <FieldError id="exportar-de-erro">

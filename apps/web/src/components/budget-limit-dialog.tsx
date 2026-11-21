@@ -184,6 +184,9 @@ function BudgetLimitForm({
               aria-required
               className={`w-full ${TOUCH}`}
               aria-invalid={errorFor('categoryId') !== undefined}
+              aria-describedby={
+                errorFor('categoryId') === undefined ? undefined : 'limite-categoria-erro'
+              }
             >
               <SelectValue />
             </SelectTrigger>
@@ -199,7 +202,7 @@ function BudgetLimitForm({
           <p className="text-sm text-muted-foreground">
             Limites definem-se na categoria principal: o consumo das subcategorias conta para lá.
           </p>
-          <FieldError>{errorFor('categoryId')}</FieldError>
+          <FieldError id="limite-categoria-erro">{errorFor('categoryId')}</FieldError>
         </div>
       ) : (
         <div className="space-y-1">

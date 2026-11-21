@@ -262,6 +262,9 @@ function EditTransactionForm({
                 aria-required
                 className={`w-full ${TOUCH}`}
                 aria-invalid={errorFor('accountId') !== undefined}
+                aria-describedby={
+                  errorFor('accountId') === undefined ? undefined : 'editar-conta-erro'
+                }
               >
                 <SelectValue />
               </SelectTrigger>
@@ -273,7 +276,7 @@ function EditTransactionForm({
                 ))}
               </SelectContent>
             </Select>
-            <FieldError>{errorFor('accountId')}</FieldError>
+            <FieldError id="editar-conta-erro">{errorFor('accountId')}</FieldError>
           </div>
         )}
 
@@ -288,6 +291,9 @@ function EditTransactionForm({
                 id="editar-categoria"
                 className={`w-full ${TOUCH}`}
                 aria-invalid={errorFor('categoryId') !== undefined}
+                aria-describedby={
+                  errorFor('categoryId') === undefined ? undefined : 'editar-categoria-erro'
+                }
               >
                 <SelectValue />
               </SelectTrigger>
@@ -300,7 +306,7 @@ function EditTransactionForm({
                 ))}
               </SelectContent>
             </Select>
-            <FieldError>{errorFor('categoryId')}</FieldError>
+            <FieldError id="editar-categoria-erro">{errorFor('categoryId')}</FieldError>
           </div>
         ) : null}
 
@@ -311,6 +317,7 @@ function EditTransactionForm({
               id="editar-estado"
               className={`w-full ${TOUCH}`}
               aria-invalid={errorFor('status') !== undefined}
+              aria-describedby={errorFor('status') === undefined ? undefined : 'editar-estado-erro'}
             >
               <SelectValue />
             </SelectTrigger>
@@ -322,7 +329,7 @@ function EditTransactionForm({
               ))}
             </SelectContent>
           </Select>
-          <FieldError>{errorFor('status')}</FieldError>
+          <FieldError id="editar-estado-erro">{errorFor('status')}</FieldError>
         </div>
       </div>
 

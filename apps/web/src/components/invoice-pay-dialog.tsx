@@ -285,6 +285,9 @@ function PayInvoiceForm({
               aria-required
               className={`w-full ${TOUCH}`}
               aria-invalid={errorFor('accountId') !== undefined}
+              aria-describedby={
+                errorFor('accountId') === undefined ? undefined : 'pagar-conta-erro'
+              }
             >
               <SelectValue />
             </SelectTrigger>
@@ -296,7 +299,7 @@ function PayInvoiceForm({
               ))}
             </SelectContent>
           </Select>
-          <FieldError>{errorFor('accountId')}</FieldError>
+          <FieldError id="pagar-conta-erro">{errorFor('accountId')}</FieldError>
         </div>
 
         <Field data-invalid={errorFor('date') !== undefined}>

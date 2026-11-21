@@ -307,6 +307,7 @@ function CategoryForm({
             type="color"
             value={pickerColor}
             className="h-11 w-14 cursor-pointer rounded-lg border bg-transparent sm:h-8"
+            aria-describedby={errorFor('color') === undefined ? undefined : 'categoria-cor-erro'}
             onChange={(event) => {
               setPickerColor(event.target.value);
               setColor(event.target.value);

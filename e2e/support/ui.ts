@@ -19,6 +19,13 @@ import { eurosParaCentimos } from './format';
  * O `smoke.mjs` faz o mesmo por HTTP; aqui, além do estado, verifica-se que a
  * página não mostra o ecrã de exceção do Next — que em `dev` chega com o mesmo
  * `200`.
+ *
+ * **Espera pelo conteúdo, não só pela resposta (T76).** Com os `loading.tsx`
+ * (F3), o primeiro byte de uma rota é o **esqueleto**, que chega antes do
+ * conteúdo por streaming. `page.goto` devolve nesse momento, e um spec que lê a
+ * página a seguir via 0 linhas (spec 42) ou escrevia num `<input>` ainda por
+ * hidratar (spec 70). O esqueleto não tem `h1` e o conteúdo tem: esperar pelo
+ * `main h1` visível é a espera inequívoca, sem `waitForTimeout`.
  */
 export async function abrirRota(page: Page, rota: string): Promise<void> {
   const resposta = await page.goto(rota);
@@ -30,6 +37,9 @@ export async function abrirRota(page: Page, rota: string): Promise<void> {
     'Application error: a server-side exception',
   );
   await expect(page.locator('body')).not.toContainText('Internal Server Error');
+
+  // O esqueleto de `loading.tsx` não tem `h1`; o conteúdo real tem.
+  await expect(page.locator('main h1').first()).toBeVisible();
 }
 
 /**

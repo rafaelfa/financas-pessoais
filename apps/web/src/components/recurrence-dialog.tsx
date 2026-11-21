@@ -322,6 +322,9 @@ function RecurrenceForm({
               id="recorrencia-natureza"
               className={`w-full ${TOUCH}`}
               aria-invalid={errorFor('kind') !== undefined}
+              aria-describedby={
+                errorFor('kind') === undefined ? undefined : 'recorrencia-natureza-erro'
+              }
             >
               <SelectValue />
             </SelectTrigger>
@@ -333,7 +336,7 @@ function RecurrenceForm({
               ))}
             </SelectContent>
           </Select>
-          <FieldError>{errorFor('kind')}</FieldError>
+          <FieldError id="recorrencia-natureza-erro">{errorFor('kind')}</FieldError>
         </div>
 
         <Field data-invalid={errorFor('amountInCents') !== undefined || !amountIsValid}>
@@ -411,6 +414,9 @@ function RecurrenceForm({
                 id="recorrencia-frequencia"
                 className={`w-full ${TOUCH}`}
                 aria-invalid={errorFor('frequency') !== undefined}
+                aria-describedby={
+                  errorFor('frequency') === undefined ? undefined : 'recorrencia-frequencia-erro'
+                }
               >
                 <SelectValue />
               </SelectTrigger>
@@ -422,7 +428,7 @@ function RecurrenceForm({
                 ))}
               </SelectContent>
             </Select>
-            <FieldError>{errorFor('frequency')}</FieldError>
+            <FieldError id="recorrencia-frequencia-erro">{errorFor('frequency')}</FieldError>
           </div>
 
           <Field data-invalid={errorFor('interval') !== undefined || !intervalIsValid}>

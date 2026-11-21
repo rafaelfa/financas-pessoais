@@ -73,7 +73,7 @@ export default async function CartoesPage({
     <>
       <PageHeader
         title="Cartões"
-        description="Cartões geridos à mão: faturas com fecho e vencimento, o que transita de uma fatura para a seguinte e os parcelamentos ativos."
+        description="Cada cartão com as faturas por fechar, o valor que transita de uma fatura para a seguinte e os parcelamentos ativos."
         actions={
           cards.length === 0 ? null : (
             <CardDialog
@@ -90,7 +90,7 @@ export default async function CartoesPage({
         <EmptyState
           icon={CreditCard}
           title="Ainda não tens cartões"
-          description="Acrescenta um cartão com o dia de fecho e o dia de vencimento. A partir daí, cada compra a crédito cai automaticamente na fatura certa — e a primeira fatura nasce com a primeira compra."
+          description="Cria um cartão com o dia de fecho e o dia de vencimento: cada compra a crédito cai na fatura certa, e as compras divididas em parcelas aparecem em Parcelamentos ativos."
           action={
             <CardDialog
               mode="create"

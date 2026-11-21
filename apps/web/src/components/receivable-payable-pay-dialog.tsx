@@ -132,7 +132,12 @@ function PayForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4"
+      noValidate
+      aria-describedby={formError === null ? undefined : 'pagamento-form-erro'}
+    >
       <div className="space-y-1">
         <FieldLabel htmlFor="pagar-conta">Conta de pagamento</FieldLabel>
         <Select value={accountId} onValueChange={setAccountId} disabled={accounts.length === 0}>
@@ -180,7 +185,7 @@ function PayForm({
         Desliga se o movimento já estiver registado à mão e não quiseres duplicá-lo.
       </FieldDescription>
 
-      <FieldError>{formError}</FieldError>
+      <FieldError id="pagamento-form-erro">{formError}</FieldError>
 
       <DialogFooter>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -197,6 +202,7 @@ function PayForm({
             type="submit"
             className={TOUCH}
             disabled={pending || missingAccount || missingDate || accounts.length === 0}
+            aria-describedby={formError === null ? undefined : 'pagamento-form-erro'}
           >
             {pending ? 'A guardar…' : 'Confirmar pagamento'}
           </Button>

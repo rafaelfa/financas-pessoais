@@ -309,6 +309,7 @@ function RuleForm({
               id="regra-natureza"
               className={`w-full ${TOUCH}`}
               aria-invalid={errorFor('kind') !== undefined}
+              aria-describedby={errorFor('kind') === undefined ? undefined : 'regra-natureza-erro'}
             >
               <SelectValue />
             </SelectTrigger>
@@ -320,7 +321,7 @@ function RuleForm({
               ))}
             </SelectContent>
           </Select>
-          <FieldError>{errorFor('kind')}</FieldError>
+          <FieldError id="regra-natureza-erro">{errorFor('kind')}</FieldError>
         </div>
 
         <Field data-invalid={errorFor('priority') !== undefined || !priorityIsValid}>
@@ -488,6 +489,9 @@ function RuleForm({
                 id="regra-conta"
                 className={`w-full ${TOUCH}`}
                 aria-invalid={errorFor('accountId') !== undefined}
+                aria-describedby={
+                  errorFor('accountId') === undefined ? undefined : 'regra-conta-erro'
+                }
               >
                 <SelectValue />
               </SelectTrigger>
@@ -500,7 +504,7 @@ function RuleForm({
                 ))}
               </SelectContent>
             </Select>
-            <FieldError>{errorFor('accountId')}</FieldError>
+            <FieldError id="regra-conta-erro">{errorFor('accountId')}</FieldError>
           </div>
 
           <div className="space-y-1">
@@ -513,6 +517,9 @@ function RuleForm({
                 id="regra-cartao"
                 className={`w-full ${TOUCH}`}
                 aria-invalid={errorFor('cardId') !== undefined}
+                aria-describedby={
+                  errorFor('cardId') === undefined ? undefined : 'regra-cartao-erro'
+                }
               >
                 <SelectValue />
               </SelectTrigger>
@@ -525,7 +532,7 @@ function RuleForm({
                 ))}
               </SelectContent>
             </Select>
-            <FieldError>{errorFor('cardId')}</FieldError>
+            <FieldError id="regra-cartao-erro">{errorFor('cardId')}</FieldError>
           </div>
         </div>
       </fieldset>

@@ -4089,11 +4089,11 @@ padrão correcto `max-h-[85vh] overflow-y-auto`). Uma linha na base cobre os 35.
 
 | ID  | Tarefa | Dono | Estado |
 | --- | --- | --- | --- |
-| T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **Pendente** |
+| T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **fechada** (Dev + QA `PASS` + Revisor, 1 volta) | `relatorios/T76.md`, `relatorios/T76-qa.md` |
 | T77 | **N5 + F9:** o calendário que não responde à mesma altura que o resto, e o rótulo a 11 px | Dev | **Pendente** |
 | T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
 
-### T76 — F3 + F4 + R2 (Dev) — **Pendente**
+### T76 — F3 + F4 + R2 (Dev) — **fechada**
 
 Três itens que não se tocam em ficheiros e que faz sentido fechar num só passo, porque nenhum deles
 muda desenho: são coisas que estão partidas em silêncio.
@@ -4137,6 +4137,18 @@ ficheiros** (varredura de hoje), 4 são do `transaction-quick-add.tsx` e vão no
 aparecer, o título e o texto do estado vazio passam a ser lidos por alguém e têm de estar certos. É
 o único passo desta vaga cujo critério depende do que a T73 mostrar no ecrã; o Dev escreve-o no
 post de mão **depois** de ver o resultado da T73, e o Lead aprova a formulação antes do commit.
+
+**Fecho T76 — 21/11.** Dev → QA `PASS` → Revisor («cumpre o critério no conjunto: sim», 0 bloqueia, 0 deve, 1 opcional) → uma volta de correção.
+
+O que fechou, medido por mim: **16 `loading.tsx`** (as 16 `page.tsx` de `(app)` que são `async` e leem `@/server/*`; fora `(auth)/entrar`, `(auth)/registar` e `definicoes`), todos em cima do `Skeleton` que já existia e nenhuma primitiva nova; **0 órfãos** de validação em `apps/web/src` (80 ids de erro, todos referidos por um controlo — os 13 desta tarefa passaram a ter id e referência, incluindo os dois que já tinham id e ninguém referia); e os textos de `/cartoes`, com o `diff` do ficheiro a `2 2`.
+
+**A regressão que o F3 causou, e que valeu a volta:** com esqueletos, o primeiro byte de uma rota passou a ser o esqueleto, e a `abrirRota` dos testes (`e2e/support/ui.ts`) devolvia antes de haver conteúdo — o spec 42 lia 0 «Vencida» e o 70 escrevia num `<input>` ainda por hidratar. `pnpm test:e2e` deu **134 passed / 4 failed**. Correção do QA, uma linha e documentada: esperar por `main h1` visível (o esqueleto não tem `h1`). Depois: **138 passed (7.8m), exit 0**, limpeza `0 restante(s)` — corrida minha, não do relatório. O quarto spec suspeito de corrida entre workers (`29-contas-truncagem-nome`) não era corrida: lia geometria (`clientWidth 0`) no esqueleto, o mesmo mecanismo; verde em três corridas isoladas.
+
+**O 13.º erro num `<form>`:** ficou com `aria-describedby` no formulário **e** no botão de submeter («Confirmar pagamento»), mantendo o id. Eu tinha-o aceite só com o argumento do `role="alert"` do `FieldError`; o Revisor mostrou a metade que faltava — um `<form>` sem nome acessível não recebe foco, portanto a descrição nunca chegava ao utilizador.
+
+**Aceite como artefacto de desenvolvimento, não como correção (decisão do Lead):** o `/definicoes` não tem `loading.tsx` próprio e herda o do segmento pai, que é o esqueleto do painel. Um `loading.tsx` próprio **não resolve** — medido: com o ficheiro na árvore o `GET /definicoes` continua a pintar os `skeleton` do painel (`h-[120px] sm:h-[60px]`) e o esqueleto da página nunca chega ao DOM, porque a página não suspende; o que se vê é o tempo de compilação da rota em `dev`. Em produção é hipótese (a página é estática e não houve `next start`), e as duas alternativas são refactor não pedido ou dados inventados. Fica registado, não corrigido.
+
+**Dívida que o Revisor assinalou e que fica para quem mexer nas próximas vagas:** as alturas dos 16 esqueletos são números medidos contra a conta `demo` (2 por ficheiro) e **nenhum teste as guarda** — a T75 (44 px em `Button`/`Input`) e a T78 (tipografia e tokens) vão mexer exactamente nestas alturas sem ficar vermelho. Também: só 390 e 1440 foram medidos (a 640 o `sm:` troca, portanto 768/1024 usam o número de 1440 sem prova), e numa conta vazia o esqueleto sobre-reserva (`/cartoes` 1764 px para 302 de conteúdo), com `cls` 0 porque a diferença é abaixo da dobra.
 
 ### T77 — N5 + F9 (Dev) — **Pendente**
 
