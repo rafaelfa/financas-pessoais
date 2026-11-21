@@ -54,11 +54,12 @@ const NOVOS_DESTINOS: readonly (Destino & { readonly via: 'barra' | 'separador' 
 /**
  * A secção «Dia a dia», pela ordem em que aparece na barra lateral.
  *
- * Desde a T52 a barra tem oito destinos: «Consolidação» e «Cartões» saíram para
- * os separadores de `/contas`, e os quatro ecrãs de análise para o menu «Mais»
- * de `/transacoes`. As rotas não mudaram.
+ * Desde a T52 a barra tem nove destinos: «Consolidação» e «Cartões» saíram para
+ * os separadores de `/contas`, os quatro ecrãs de análise para o menu «Mais» de
+ * `/transacoes`, e a D29 devolveu «Calendário» ao «Dia a dia». As rotas não
+ * mudaram.
  */
-const SECAO_DIA_A_DIA = ['Painel', 'Transações', 'Contas', 'Contas a pagar/receber'];
+const SECAO_DIA_A_DIA = ['Painel', 'Transações', 'Calendário', 'Contas', 'Contas a pagar/receber'];
 
 /** A barra lateral de secretária (no telemóvel a navegação é o `MobileNav`). */
 function barraLateral(page: Page) {

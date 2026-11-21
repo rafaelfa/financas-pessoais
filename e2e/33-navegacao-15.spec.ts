@@ -7,7 +7,7 @@ import { abrirRota } from './support/ui';
 /**
  * Percurso 33 — o contrato das 17 rotas (T52, T54, T55).
  *
- * A barra tem 8 destinos e os outros 7 vivem noutras portas (separadores de
+ * A barra tem 9 destinos e os outros 8 vivem noutras portas (separadores de
  * `/contas`, menu «Mais» do cabeçalho, rodapé do utilizador, navegação
  * inferior). A paleta (`Ctrl+K`) tem os 17, mas `ALL_NAV_ITEMS` é **escrito à
  * mão** — duas listas para manter. Esta spec é a asserção que apanha a
@@ -55,8 +55,9 @@ async function hrefsDosMenus(page: Page): Promise<string[]> {
 
     /*
      * A porta de `/revisao` é o bloco «Por arrumar» do Painel (a barra lateral
-     * fica com oito, por decisão da T54), por isso o bloco entra aqui como
-     * qualquer outro menu.
+     * fica com nove desde a D29 — «Calendário» entrou no «Dia a dia» — e não a
+     * inclui, por decisão da T54), por isso o bloco entra aqui como qualquer
+     * outro menu.
      */
     const porArrumar = document.querySelector('section[aria-labelledby="painel-por-arrumar"]');
 

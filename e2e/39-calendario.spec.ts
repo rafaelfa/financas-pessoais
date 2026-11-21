@@ -251,7 +251,9 @@ test.describe('calendário do mês (T55)', () => {
     await expect(page.getByRole('region', { name: 'Em atraso' })).toContainText('Vencida');
   });
 
-  test('a paleta tem 17 e /calendario não está na barra lateral', async ({ page }) => {
+  test('a paleta tem 17 e /calendario está na barra lateral, a seguir a Transações', async ({
+    page,
+  }) => {
     await abrirRota(page, '/');
 
     await expect(
@@ -262,7 +264,12 @@ test.describe('calendário do mês (T55)', () => {
       const barra = document.querySelector('[data-slot="sidebar"]');
       return barra ? [...barra.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')) : [];
     });
-    expect(lateral, '/calendario fora da barra').not.toContain('/calendario');
+
+    /* D29: o Calendário entra no «Dia a dia», imediatamente a seguir a Transações. */
+    expect(lateral, '/calendario na barra').toContain('/calendario');
+    expect(lateral.indexOf('/calendario'), '/calendario depois de Transações').toBe(
+      lateral.indexOf('/transacoes') + 1,
+    );
 
     await page.keyboard.press('Control+k');
     const paleta = page.getByRole('dialog');

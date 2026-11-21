@@ -717,3 +717,26 @@ que o esqueleto dele é artefacto de `dev`). Também é a primeira vez que o cal
 aqui era só leitura. Reverter a T84 não é apagar um ficheiro, é desfazer um caminho de escrita numa
 página que hoje não tem nenhum. Ordem fixa: **T77 → T84 → T78** (o T84 antes do T78, que mexe na
 tipografia desta mesma página).
+
+### D29 — O Calendário entra no menu: nove destinos, e o D7 corrige-se só nisto — **decisão do Lead, delegada pelo utilizador (2026-11-21)**
+
+O utilizador delegou em mim a escolha («decida você o que for melhor para usabilidade»). A T84 deu ao
+Calendário um painel de dia que lê e **escreve** — lança movimentos — e o ecrã continuava a viver
+atrás de um botão «Ver o calendário» dentro do cartão «Por arrumar» do Painel. Medido hoje em
+produção, numa conta vazia: esse cartão **não existe**, e o Painel só mostra «Criar a primeira conta»
+e «Registar um lançamento». Sobravam o `Ctrl+K` e o endereço escrito à mão.
+
+**Decisão:** «Calendário» passa a destino da barra lateral, no grupo «Dia a dia», **logo a seguir a
+Transações** — as duas são vistas do mesmo dado (lista e mês), e é essa vizinhança que as torna
+descobríveis. Passa a **nove** destinos; o resto do D7 não muda: Cartões e Consolidação continuam
+dentro de Contas, Recorrências/Regras/Categorias/Importar no menu de Transações, Definições no rodapé.
+
+- **Fica:** a porta do Painel (botão «Ver o calendário») — é contexto, não duplicação cara.
+- **Não muda:** a navegação inferior do telemóvel continua com cinco destinos; o Calendário entra no
+  menu lateral, que no telemóvel é a gaveta.
+- **Cai:** o teste `e2e/39-calendario.spec.ts:254` («a paleta tem 17 e /calendario **não** está na
+  barra lateral») passa a afirmar o contrário. A paleta continua com **17** opções.
+
+**Porque não a alternativa barata** (um botão no cabeçalho do Painel): mantinha os oito destinos e o
+teste intacto, mas dava ao ecrã mais pesado um segundo esconderijo e deixava o Calendário invisível em
+todos os ecrãs que não o Painel. A barra lateral é o único sítio que está em todos.

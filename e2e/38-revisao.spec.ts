@@ -15,7 +15,7 @@ import { abrirRota } from './support/ui';
  * - o cartão «Sem categoria» e o **`total` do extrato com `?semCategoria=1`**
  *   são o mesmo número (é o defeito que a mutação prova);
  * - o filtro vive na URL: sobrevive a recarregar e o chip remove-o;
- * - a paleta tem 16 com `Revisão`, a barra lateral continua com 8 e `/revisao`
+ * - a paleta tem 17 com `Revisão`, a barra lateral continua com 9 e `/revisao`
  *   não está nela;
  * - `axe` 0 a 1280 e a 360, alvos de 44 px, sem transbordo, e o nome acessível
  *   de cada cartão traz o número.
@@ -133,7 +133,7 @@ test.describe('ecrã de Revisão (T54)', () => {
     );
   });
 
-  test('a porta existe: paleta 16 com Revisão, barra lateral 8 sem ela', async ({ page }) => {
+  test('a porta existe: paleta 17 com Revisão, barra lateral 9 sem ela', async ({ page }) => {
     await abrirRota(page, '/');
 
     /* O bloco do Painel leva à revisão. */
@@ -150,10 +150,10 @@ test.describe('ecrã de Revisão (T54)', () => {
         : [];
     });
 
-    /* Oito destinos na navegação; «Definições» vive no rodapé do utilizador (T52). */
+    /* Nove destinos na navegação (D29); «Definições» vive no rodapé do utilizador (T52). */
     const destinos = lateral.filter((href) => href !== '/definicoes');
 
-    expect(destinos, 'a barra lateral (D7) continua com 8').toHaveLength(8);
+    expect(destinos, 'a barra lateral (D7 + D29) continua com 9').toHaveLength(9);
     expect(destinos, '/revisao não entra na barra').not.toContain('/revisao');
     expect(lateral, 'Definições continua no rodapé').toContain('/definicoes');
 

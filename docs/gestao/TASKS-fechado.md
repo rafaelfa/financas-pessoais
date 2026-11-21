@@ -614,3 +614,74 @@ Consequências que tratei:
    `@Dev`/`@QA`/`@Revisor de Código` num posto de canal.
 
 
+
+---
+
+### T87 — «Calendário» entra no menu «Dia a dia» (Dev) — **fechada a 2026-11-21 (D29)**
+
+**Decisão:** D29, tomada por delegação do utilizador. **Porque:** a T84 deu escrita ao Calendário e o
+ecrã só era alcançável pelo `Ctrl+K`, por um «Ver o calendário» dentro do cartão «Por arrumar» do
+Painel — cartão que **não existe numa conta vazia** (medido por mim em produção) — ou escrevendo o
+endereço.
+
+**Âmbito — uma linha de dados, o teste que a guarda, e a prova:**
+
+1. `apps/web/src/lib/nav.ts`: `NAV.calendario` entra em `NAV_SECTIONS`, no grupo «Dia a dia»,
+   **imediatamente a seguir a `NAV.transacoes`**. Nove destinos no total. `MOBILE_NAV` fica com os
+   mesmos cinco, `ALL_NAV_ITEMS` continua com 17.
+2. `e2e/39-calendario.spec.ts:254-270`: o teste passa a exigir o contrário — `/calendario` **na**
+   barra lateral, com o estado ativo na rota, e a paleta ainda com 17 opções. **Renomear o teste**: o
+   nome atual («não está na barra lateral») passa a afirmar o que já não é verdade.
+3. `e2e/33-navegacao-15.spec.ts`: **não tem asserção de contagem na barra** (verifica 5 alvos
+   inferiores, 17 na paleta e zero órfãos) — portanto não ganha nem perde testes. Só o **comentário**
+   das linhas 55-58 («a barra lateral fica com oito, por decisão da T54») passa a estar errado e deve
+   ser corrigido para nove.
+
+**Não fazer:** tirar o botão «Ver o calendário» do Painel (é contexto); mexer em `MOBILE_NAV`;
+reordenar os outros sete destinos; trocar ícones; tocar em `globals.css` ou `components/ui/` (T78).
+
+**Prova pedida:** screenshot da barra a **390 e a 1440** com «Calendário» entre Transações e Contas e
+com o estado ativo em `/calendario`; `Ctrl+K` continua com 17 opções; gate 5/5; `pnpm test:e2e`
+completo — a baseline passa a valer o que a corrida disser (145 hoje, mais ou menos o que o spec 39
+mudar). Relatório em `relatorios/T87.md` com as medições.
+
+**Volta 1 — 2026-11-21.** Dev entregou (9 destinos em `nav.ts`, 4 specs corrigidos; suite **145
+passed** de frio, exit 0). O QA assinou **PASS** nas alíneas (a)–(d) e não mediu (e); duas corridas de
+frio **145 passed** (8.6m cada), builds diferentes, `0 restante(s)`, sem flake — `relatorios/T87-qa.md`.
+O Revisor deu **0 BLOQUEIA, 1 DEVE, 1 OPCIONAL** e «o diff cumpre o critério no conjunto: sim».
+
+**Volta 2 — em curso (Dev).** O DEVE: `e2e/38-revisao.spec.ts:18` ainda diz «a paleta tem 16 … a
+barra lateral continua com 8» (o ficheiro contradiz o próprio corpo, que já afirma 9 e 17); e o nome
+do teste `:136` diz «paleta 16». O OPCIONAL: `e2e/33-navegacao-15.spec.ts:10` diz «8 destinos e os
+outros 7» enquanto o comentário `:55-57` já diz nove. Confirmei as três linhas na árvore com `grep`.
+É correção de comentários e de um nome de teste: **não muda comportamento**, por isso a suite não é
+repetida (as duas corridas do QA valem) e o gate a repetir é só o `format:check`, que uma linha longa
+pode quebrar. Fechado o DEVE, a volta ao Revisor é de leitura do diff, sem nova medição.
+
+**Medido por mim (Lead), 2026-11-21 15:50** — as três linhas estão na árvore: `e2e/38:18` «a paleta
+tem **17** … a barra lateral continua com **9**», `e2e/38:136` «paleta **17** … barra lateral 9»,
+`e2e/33:10` «**9** destinos e os outros **8**». `grep -rn "com 8\|8 destinos\|tem 16\|paleta 16"
+e2e/*.ts` → **vazio** (exit 1). `pnpm format:check` → `All matched files use Prettier code style!`,
+exit 0. O diff desta volta são 4 linhas de comentário e 1 nome de teste; nenhuma linha de `expect`,
+seletor ou `skip`/`only` foi tocada.
+
+**Fecho — 2026-11-21.** Cadeia pausada completa: Dev (voltas 1 e 2) → QA **PASS** → Revisor **0
+BLOQUEIA, 1 DEVE, 1 OPCIONAL** e «o diff cumpre o critério no conjunto: sim», DEVE e OPCIONAL
+fechados na volta 3 com «**pode commitar? sim**».
+
+- **Fechado:** T87 — «Calendário» é o 3.º destino de «Dia a dia», a seguir a Transações; **9** destinos
+  contra os 8 do D7, que a D29 corrige.
+- **Prova:** QA, duas corridas de frio com `.next` apagado — `145 passed (8.6m)` **e** `145 passed
+  (8.6m)`, builds diferentes, `0 restante(s)` nas duas, exit 0, `relatorios/T87-qa.md`. DOM medido
+  nos 4 casos (1440/390 × claro/escuro): 10 `href` (9 destinos + Definições), `/calendario` com
+  `aria-current="page"` e único, paleta **17**, nav inferior **5**. `format:check` 0 depois da última
+  edição. Relatórios: `relatorios/T87.md` (§1–§7), `relatorios/T87-qa.md`.
+- **O que isto não resolve:** (1) a alínea (e) do critério — apagar o `nav.ts` e ver o 15 e o 38
+  ficarem vermelhos — **não foi medida** por ninguém, porque é `apps/`; fica como raciocínio, não
+  como prova. (2) A barra passa a ter 9 itens contra os 8 do D7: em ecrãs baixos é mais uma linha de
+  menu, não medido. (3) O botão «Ver o calendário» do Painel continua lá, de propósito.
+- **Aberto:** nada desta tarefa. A T78 (lote do tema) e as T85/T86 continuam **por autorizar**.
+- **Repositório:** commit local na branch `fix/t73-parcelamentos-cartoes`; `AGENTS.md` e
+  `apps/web/next-env.d.ts` ficaram **fora** (já vinham sujos, não são de nenhum de nós). Push e merge
+  só com autorização do utilizador.
+- **Decisão:** nenhuma desta tarefa.

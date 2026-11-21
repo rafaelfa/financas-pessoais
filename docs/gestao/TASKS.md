@@ -4,10 +4,11 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T87.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T88.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
-T84 — ambas à espera de autorização; as
+T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
+(o Calendário entra no menu, por delegação do utilizador); as
 tarefas fechadas das vagas 1–6 estão em `TASKS-fechado.md`.
 
 | ID  | Tarefa                                                                                                                          | Dono | Estado                                                          | Prova              |
@@ -4112,6 +4113,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T77 | **F9 — rótulos a 11 px:** o rodapé móvel é o único texto abaixo de 12 px na navegação | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 0 voltas) | `relatorios/T77.md`, `relatorios/T77-qa.md` |
 | T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **não abrir sem o «vai» do utilizador** | Dev | **aberta** (por autorizar) | Revisor T77, `relatorios/T77-qa.md` |
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **não abrir sem o «vai»** | Dev | **aberta** (por autorizar) | `relatorios/T84.md` §12 |
+| T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
 

@@ -175,16 +175,21 @@ const NAV = {
 } as const;
 
 /**
- * Barra lateral: **oito** destinos em três grupos (decisão D7).
+ * Barra lateral: **nove** destinos em três grupos (D7, corrigida pela D29).
  *
- * Os sete que saíram continuam a existir como ecrãs, com outra porta — ver
+ * A D29 acrescentou «Calendário» ao «Dia a dia», a seguir a Transações: depois
+ * da T84 o ecrã tem o painel do dia a lançar, e sem isto só se chegava lá pelo
+ * `Ctrl+K` ou pelo bloco «Por arrumar» do Painel — que não existe numa conta
+ * vazia.
+ *
+ * Os restantes que saíram continuam a existir como ecrãs, com outra porta — ver
  * `ACCOUNT_SECTION_ITEMS`, `TRANSACTION_MENU_ITEMS` e `PROFILE_MENU_ITEMS`.
  * As rotas não mudaram: um favorito antigo abre o mesmo sítio.
  */
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     title: 'Dia a dia',
-    items: [NAV.painel, NAV.transacoes, NAV.contas, NAV.contasAPagarReceber],
+    items: [NAV.painel, NAV.transacoes, NAV.calendario, NAV.contas, NAV.contasAPagarReceber],
   },
   { title: 'Planeamento', items: [NAV.orcamento, NAV.objetivos, NAV.patrimonio] },
   { title: 'Análise', items: [NAV.relatorios] },
