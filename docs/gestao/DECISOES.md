@@ -692,3 +692,28 @@ pública, e (2) o ramo de teste deixar de ter a conta real do utilizador lá den
 hoje: `neondb` de `ep-spring-mud-*` tem `rafaelfa.aguiar@gmail.com` com **60 lançamentos**
 entre 2026-08-03 e 2027-04-20). Enquanto isso não estiver pronto, preview a buildar é uma
 superfície nova com os dados dentro, exactamente o que a D26 tratou de fechar.
+
+### D28 — O N5 do calendário vira construção nova (T84), não correção do T77 — **decisão do utilizador (2026-11-21)**
+
+**A decisão.** O N5 pedia que o painel de dia do calendário deixasse de abrir um `DialogContent`
+sem limite de altura. Medido a 2026-11-21: **esse painel não existe**. `app/(app)/calendario/page.tsx`
+tem um só commit (`0c46250`, T55), é servidor-rendered, e a célula do dia mostra os itens numa lista
+com `max-h-28 overflow-y-auto`; `grep` no ficheiro dá **0** `DialogContent` e **0** referências ao
+`transaction-quick-add`. Não havia correção a fazer. O N5 foi reescrito como tarefa nova, **T84**:
+abrir o dia num diálogo com os itens e lançar a partir dali, reutilizando o `TransactionQuickAdd`.
+
+**A alternativa rejeitada e porquê.** Havia duas: (a) fechar o N5 como «premissa morta» e não
+construir nada; (b) fundir o F9 no lote do tema (T78). A (a) deixava o plano a prometer um painel que
+ninguém pediu depois de ver que não existe — mas o utilizador quer o painel: lançar do dia é o que a
+T55 deixou por fazer, e o critério antigo pressupunha-o. A (b) poupava uma cadeia e perdia a prova
+isolada dos 11→12 px. O F9 fica sozinho no T77, com `text-xs` enquanto o T78 não corre, e a passagem
+ao token fica como dívida do T78.
+
+**O que a torna irreversível.** A T84 acrescenta **uma** prop opcional (`initialDate`) ao
+`transaction-quick-add.tsx` e faz a página passar a carregar as leituras de `/transacoes` (contas,
+cartões, categorias, descrições): a partir daí o calendário é um ecrã que lê dados e **suspende** — e
+um `loading.tsx` próprio passa a fazer o que hoje não faz (o `/definicoes` não suspende, e é por isso
+que o esqueleto dele é artefacto de `dev`). Também é a primeira vez que o calendário escreve: até
+aqui era só leitura. Reverter a T84 não é apagar um ficheiro, é desfazer um caminho de escrita numa
+página que hoje não tem nenhum. Ordem fixa: **T77 → T84 → T78** (o T84 antes do T78, que mexe na
+tipografia desta mesma página).

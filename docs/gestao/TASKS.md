@@ -4,7 +4,9 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T84.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; as
+**Próximo ID livre: T86.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
+registada no mesmo dia como achado fora do critério da T77, à espera de autorização; as
 tarefas fechadas das vagas 1–6 estão em `TASKS-fechado.md`.
 
 | ID  | Tarefa                                                                                                                          | Dono | Estado                                                          | Prova              |
@@ -3916,7 +3918,8 @@ têm número e critério, mas **só abrem mão com o «vai» do Dr. Eggbot no po
 que muda neles vê-se em todo o lado ao mesmo tempo. Nada nesta vaga reabre a **T23** nem a **T25**:
 uma string pt-BR encontrada a meio do caminho é tarefa nova, não correcção de âmbito.
 
-**Fila (os (a), por ordem):** **T73 → T74 → T76 → T77**. Interdição de sobreposição que vem do
+**Fila (os (a), por ordem):** **T73 → T74 → T76 → T77 → T84** (a T84 é a próxima). A T85 fica na fila
+só depois de autorizada. Interdição de sobreposição que vem do
 plano: o **T76 corre antes do T78**, senão o lote de tipografia do T78 reescreve as linhas que o
 T76 acabou de tocar. A partir daí entram os (b), na ordem do plano: **T72 → T78 → T75 → T79 → T80 →
 T81 → T82 → T83** (T78 antes de T82/T83 porque ambos escrevem `ui/card.tsx`; T82 antes de T83 pela
@@ -3930,8 +3933,8 @@ mesma razão).
 | `components/ui/dialog.tsx` | T72 (N1), T78 (V4, V1) | **T72 primeiro**; o T78 não volta à linha do `DialogContent` |
 | `components/ui/card.tsx` | T78 (V2, V3), T82 (V5, V6), T83 (C3) | T78 → T82 → T83 |
 | `components/ui/button.tsx`, `ui/input.tsx` | T75 (F2) | depois do T72, para a altura não anular a do diálogo |
-| `components/transaction-quick-add.tsx` | T74 (N2, N3), T77 (N5) | T74 fecha antes de abrir o T77 |
-| `app/(app)/calendario/page.tsx` | T77 (N5), T79 (F7), T81 (N6) | três mãos na mesma linha de tempo, **sem sobreposição** |
+| `components/transaction-quick-add.tsx` | T74 (N2, N3), T84 (N5) | T74 fechou; a T84 só acrescenta a data inicial |
+| `app/(app)/calendario/page.tsx` | T84 (N5), T79 (F7), T81 (N6) | três mãos na mesma linha de tempo, **sem sobreposição**; T84 antes do T78, que mexe na tipografia desta página |
 | `components/mobile-nav.tsx` | T77 (F9), T78 (V3) | T77 escreve os rótulos, T78 só as classes |
 | `components/dashboard-forecast-chart.tsx` | T79 (F5, F6) | uma tarefa, dois itens |
 | `server/reports-export.ts` | T79 (N4, F7) | idem |
@@ -4090,7 +4093,9 @@ padrão correcto `max-h-[85vh] overflow-y-auto`). Uma linha na base cobre os 35.
 | ID  | Tarefa | Dono | Estado |
 | --- | --- | --- | --- |
 | T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **fechada** (Dev + QA `PASS` + Revisor, 1 volta) | `relatorios/T76.md`, `relatorios/T76-qa.md` |
-| T77 | **N5 + F9:** o calendário que não responde à mesma altura que o resto, e o rótulo a 11 px | Dev | **Pendente** |
+| T77 | **F9 — rótulos a 11 px:** o rodapé móvel é o único texto abaixo de 12 px na navegação | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 0 voltas) | `relatorios/T77.md`, `relatorios/T77-qa.md` |
+| T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **não abrir sem o «vai» do utilizador** | Dev | **aberta** (por autorizar) | Revisor T77, `relatorios/T77-qa.md` |
+| T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **Pendente** (aberta a 2026-11-21, âmbito novo autorizado) |
 | T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4150,27 +4155,57 @@ O que fechou, medido por mim: **16 `loading.tsx`** (as 16 `page.tsx` de `(app)` 
 
 **Dívida que o Revisor assinalou e que fica para quem mexer nas próximas vagas:** as alturas dos 16 esqueletos são números medidos contra a conta `demo` (2 por ficheiro) e **nenhum teste as guarda** — a T75 (44 px em `Button`/`Input`) e a T78 (tipografia e tokens) vão mexer exactamente nestas alturas sem ficar vermelho. Também: só 390 e 1440 foram medidos (a 640 o `sm:` troca, portanto 768/1024 usam o número de 1440 sem prova), e numa conta vazia o esqueleto sobre-reserva (`/cartoes` 1764 px para 302 de conteúdo), com `cls` 0 porque a diferença é abaixo da dobra.
 
-### T77 — N5 + F9 (Dev) — **Pendente**
+### T84 — N5 (reescrito): painel de dia do calendário (Dev) — **Pendente**
 
-**(a) N5 — o calendário.** Vive em `apps/web/src/app/(app)/calendario/page.tsx` e partilha o
-`transaction-quick-add.tsx` com a T74, por isso **abre depois de a T74 fechar**. A definição do que
-está mal está no plano; a âncora verificável é esta: o painel de dia do calendário abre um
-`<DialogContent>` sem limite de altura (é o único dos 35 que não o usa de todo) e a interacção de
-lançar um movimento a partir do dia tem de ficar igual à do formulário rápido depois do T72 e do
-T74. Critério de aceitação: (1) a 390×844, abrir um dia com movimentos e lançar um — o botão de
-submeter fica visível e a validação é anunciada por leitor de ecrã; (2) o calendário não ganha um
-segundo caminho de dados nem um segundo `quick-add`.
+**Âmbito novo, autorizado pelo utilizador a 2026-11-21.** Não é correção de nada: é construir o dia
+que se abre. O plano pedia um painel de dia com lançamento; o que existe na T55 é uma grelha em que a
+célula lista os itens e um `Link` por item, sem vista do dia e sem forma de lançar a partir dali.
 
-**(b) F9 — rótulos a 11 px.** `components/mobile-nav.tsx:37` usa `text-[11px]`, o único texto do
-`src` abaixo de 12 px que está no caminho principal de navegação (a varredura de hoje encontra
-também `text-[0.7rem]`/`text-[0.65rem]` num `page.tsx` e `text-[0.8rem]` em `button.tsx:26`,
-`calendar.tsx:78,84` — esses pertencem ao lote de tipografia do **T78**, não a esta tarefa).
-Critério: o rodapé móvel sobe para o token de tamanho legível que o tema tiver depois do T78 — **se
-o T78 ainda não correu**, usa-se `text-xs` (12 px) e a passagem para o token fica escrita no fecho
-da tarefa como dívida do T78, não como trabalho extra escondido. Prova: medir a altura do texto com
-`getBoundingClientRect()` a 390 px, antes e depois, e dizer o número.
+**A decidir antes de escrever** (na T84, não no impulso): o painel abre num `DialogContent` (que já
+traz o limite de altura da T72 — não se lhe põe um número novo por cima) e reutiliza o
+`TransactionQuickAdd` existente. Custo mínimo conhecido: o `TransactionQuickAdd` recebe `today` como
+prop e não tem data inicial; a T84 acrescenta **uma** prop opcional (`initialDate`) e mais nada no
+componente. A página passa a carregar as mesmas leituras que `/transacoes` já faz (contas, cartões,
+categorias, descrições) — **nenhuma action nova em `server/`**.
+
+Critério de aceitação:
+
+1. A 390×844, tocar (ou `Enter`/`Espaço`) num dia com movimentos abre o painel com os itens do dia
+   que a página já calculou; o diálogo não excede a altura do ecrã e o botão de submeter está
+   visível sem rolar o diálogo. Medir `getBoundingClientRect()` do `DialogContent` e do botão.
+2. Lançar um movimento a partir do dia **X** grava com a data **X** (não `today`) e o dia passa a
+   mostrá-lo depois do `router.refresh()` — prova por captura antes/depois e pelo registo na base.
+3. Um só caminho de dados: o painel recebe os itens de `getMonthCalendar` e o formulário é o
+   `TransactionQuickAdd`; diferenças no `git diff` de `server/` → zero.
+4. Erro de validação anunciado: o controlo com `aria-invalid` e `aria-describedby` a apontar para o
+   `FieldError` (`role="alert"`), o padrão que a T74 e a T76 deixaram — não um `toast`.
+5. A célula do dia deixa de ser um `div role="group" tabIndex=0`: passa a controlo com
+   `aria-haspopup="dialog"`, e um dia vazio continua fora da ordem de `Tab`.
+
+**Não fazer:** segundo `quick-add`, action nova, número de altura novo no diálogo, refactor da
+`grelha`, mexer em `globals.css` ou em `components/ui/` (T78), mudar a tipografia da página (T78).
+Prova: `relatorios/T84.md` com as medições, os quatro estados (dia com itens, dia vazio, a lançar,
+erro) e screenshots a 1440 e 390 nos dois temas; `pnpm test:e2e` verde com o spec novo do dia.
+
+### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **aberta, por autorizar**
+
+**Achado do Revisor na T77 (`df1318f9`), fora do critério dessa tarefa — não a reabre.** A 12 px o
+rótulo mais largo mede **66,75 px** e a célula do rodapé tem 78 px com `px-1`, ou seja **56 px úteis**;
+o `<span>` não tem `truncate` nem `break-words`. Já transbordava antes da T77 (61,19 px a 11 px), mas a
+T77 subiu a fasquia em 5,5 px nesse rótulo. Não medido a 320 px pelo QA nem por mim — o número dos
+66,75 é medido, o transbordo a 320 é aritmética. Correção proposta, uma linha: `truncate` no `<span>`
+(ou rótulo curto), com a prova a 320 px a 12 px.
+
+**Não abrir sem o «vai» do utilizador** (§4.1 do procedimento: achado fora do critério vira linha nova
+e só se abre com autorização).
 
 ### T78 — A4 + V2 + V1 + V4 + V3 + V7: o lote do tema (Dev) — **Pendente (mão)**
+
+**Achado do Revisor na T77 (2026-11-21), a herdar aqui:** a dívida «passar os 12 px de
+`mobile-nav.tsx:37` a um token» **não tinha dono** — os itens escritos deste lote (A4/V2/V1/V4/V3/V7)
+não criam escala tipográfica e o `@theme inline` (`globals.css:7-60`) não tem `--text-*`. Sem isto, o
+`text-xs` fica cru depois de o T78 fechar. O T78 passa a incluir: **criar o token de texto pequeno
+(12 px) e a linha 37 a usá-lo.**
 
 Um só passo em `apps/web/src/app/globals.css` (e o que os tokens dele puxam em `components/ui/`),
 porque cinco mudanças no mesmo ficheiro em tarefas separadas são cinco mãos na mesma linha — e o

@@ -9,6 +9,58 @@ Ordem: mais recente primeiro.
 
 ---
 
+## Bloco de fecho — T77 (fechada 2026-11-21)
+
+- **Fechado:** T77 — *F9: o rodapé móvel é o único texto abaixo de 12 px da navegação*:
+  `mobile-nav.tsx:37` passa de `text-[11px]` a `text-xs` (12 px), uma linha trocada, mais nada no
+  ficheiro. A outra metade da tarefa (N5) saiu daqui: virou a **T84**, porque o painel de dia do
+  calendário não existe no código.
+- **Prova:** cadeia Dev → QA `PASS` → Revisor «o diff cumpre o critério no conjunto: **sim**»
+  (0 bloqueia, 0 deve, 3 notas), um handoff de cada vez.
+  Dev (`relatorios/T77.md`): antes, `BUILD_ID OODFOdrzWqbiUek4Kykg4` — `fontSize 11px`,
+  `rect w 31,89 · h 16,5`, cinco `<a>` a 56,5 px; depois, `BUILD_ID 9-iLLCgPZtEi0WL1Bx_Sv` —
+  `fontSize 12px`, `w 34,78 · h 16`, cinco `<a>` a 56 px, `scrollWidth 390 = innerWidth 390`;
+  `grep -rn 'text-\[11px\]' apps/web/src` → 0 (exit 1); gate 5/5 exit 0.
+  QA (`relatorios/T77-qa.md`): **PASS em a–h**, medido por ele na porta 3000 com o mesmo `BUILD_ID` e
+  sessão própria — 12 px, `lineHeight 16`, alvos 78×56, `nav.scrollWidth 390`, «Transações» 66,75 px
+  em célula de 78 sem `truncate`; o «antes» reproduzido **no DOM** (`span.style.fontSize='11px'`, sem
+  tocar na árvore) deu as larguras 31,89 · 61,19 · 58,31 · 49,67 · 37,30 — iguais ao centésimo às do
+  Dev; `pnpm test:e2e` **138 passed (7,9m), exit 0**, limpeza 0 restantes; gate 5/5, `test --force`
+  598/598 sem cache.
+  Revisor (`df1318f9`): `text-xs` = `var(--text-xs)` = 0,75 rem com raiz de 16 px → 12 px; confirma
+  que `globals.css` não tem escala `--text-*` nem mexe no `font-size` do `html`.
+- **O que isto não resolve:** (1) 12 px é valor da escala Tailwind, não token do tema, e a passagem a
+  token **não tinha dono** — os itens escritos do T78 não criam escala tipográfica; passou a ser item
+  escrito do T78. (2) A 320 px «Transações» (66,75 px) não cabe em 56 px úteis: transborda, e já
+  transbordava antes (61,19 px); fora do critério (390) e não medido a 320 — vira a **T85**, por
+  autorizar. (3) A altura do «antes» no QA é 14,66 e não 16,5, porque a sonda dele não repõe o
+  `line-height` do utilitário; a largura, que decide o encaixe, coincide ao centésimo.
+- **Aberto:** nada desta tarefa. O **T78** continua pendente do «vai» do utilizador; a **T84** é a
+  seguinte autorizada; a **T85** espera autorização para abrir.
+- **Repositório:** commit local (sem push — o push exige autorização do utilizador nesta conversa).
+- **Decisão:** nenhuma para fechar a T77. Ficam pedidos: o «vai» do T78 e a autorização da T85.
+
+### T77 — F9: o rodapé móvel é o único texto abaixo de 12 px da navegação (Dev) — **fechada**
+
+**O N5 saiu desta tarefa a 2026-11-21 e foi reescrito como T84** (âmbito novo, autorizado pelo
+utilizador). A premissa do N5 não existia no código: o calendário **não tem painel de dia** —
+`app/(app)/calendario/page.tsx` é servidor-rendered, a célula do dia mostra os itens numa lista com
+`max-h-28 overflow-y-auto`, e o ficheiro tem um único commit (`0c46250`, T55). Medido no dia do
+fecho: `grep -c DialogContent` → 0 e nenhuma referência a `transaction-quick-add` na página. Corrigir
+«um `DialogContent` que abre sem limite de altura» era corrigir um ecrã que não existe; o N5 ficou
+como construção nova na T84, não como correção.
+
+**(b) F9 — rótulos a 11 px.** `components/mobile-nav.tsx:37` usava `text-[11px]`, a única ocorrência
+do valor no `src` (a varredura vê também `text-[0.7rem]`/`text-[0.65rem]` em `calendario/page.tsx` e
+`text-[0.8rem]` em `button.tsx:26`, `calendar.tsx:78,84` — esses pertencem ao lote de tipografia do
+**T78**). O T78 ainda não correu, portanto usou-se `text-xs` (12 px) e a passagem ao token ficou
+escrita no fecho, como dívida do T78. Prova: `getBoundingClientRect()` e `fontSize` a 390 px antes e
+depois, e `grep -rn 'text-\[11px\]' apps/web/src` → 0.
+
+**Gera:** a **T84** (o N5 reescrito), a **T85** (o achado a 320 px) e um item novo no critério do
+**T78** (o token de texto pequeno).
+
+
 ## Bloco de fecho — T71 (fechada 19/11, 16:46)
 
 - **Fechado:** T71 — *`logicalCount` escrito duas vezes*: a regra passa a viver num sítio só,
