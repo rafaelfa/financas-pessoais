@@ -6,9 +6,9 @@ import { abrirRota } from './support/ui';
  * Percurso 92 — a frase de `/definicoes` diz a verdade (T92).
  *
  * A página dizia «Guardar preferências fica disponível quando a aplicação
- * estiver ligada à conta» — e não há botão de guardar, nem `action`, nem tabela
- * de preferências (25 modelos, nenhum deles de definições). A frase passou a
- * dizer o estado real; este teste impede que a promessa volte.
+ * estiver ligada à conta» — sem botão de guardar, sem `action`. Desde a T97 as
+ * duas preferências (dia de início do mês e regime) são graváveis de verdade
+ * (`server/preferences-actions.ts`), e a frase antiga não pode voltar.
  */
 
 test.describe('T92 — a frase de Definições', () => {
@@ -19,6 +19,7 @@ test.describe('T92 — a frase de Definições', () => {
     await expect(
       page.getByText(/fica disponível quando a aplicação estiver ligada à conta/i),
     ).toHaveCount(0);
-    await expect(page.getByText(/Estes valores são fixos nesta versão/i)).toBeVisible();
+    await expect(page.getByText(/Estes valores são fixos nesta versão/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Guardar preferências' })).toBeVisible();
   });
 });

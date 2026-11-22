@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T98.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T99.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4124,7 +4124,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
-| T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, logo depois da T92) | `relatorios/T92.md` §7 |
+| T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
+| T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, a seguir à T96) | `relatorios/T97-qa.md` §«Volta 3» (c) |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4437,6 +4438,26 @@ ao lado das de 3,38:1.
   `border-right` da container (`ui/sidebar.tsx:231`), que estava sem cor e caía no `--border` (3,38:1);
   prova no browser que dá `rgb(177,185,188)`.
 
+### T98 — a falha de rede no formulário de preferências fica muda (Dev) — **aberta a 2026-11-22**
+
+**Achado do QA na verificação final da T97, e não entrou nessa tarefa porque ela já tinha gasto as
+três voltas.** O `role="alert"` só aparece quando a acção devolve `fail()`; se o **POST abortar** (rede,
+servidor em baixo), o `startTransition` **não tem `catch`** — o ecrã não mostra nada, o botão volta ao
+normal e a única marca é `TypeError: Failed to fetch` na consola. Medido pelo QA abortando o pedido.
+
+**Critério:**
+
+- (a) Abortar o POST (o QA usou o bloqueio do pedido; serve `page.route` com `abort`) tem de produzir
+  **mensagem visível** — a mesma via dos outros erros (`toast.error` ou o parágrafo `role="alert"`), com
+  texto que diga que não gravou e que se pode tentar outra vez.
+- (b) O botão tem de voltar a `enabled` **em todos** os caminhos: sucesso, `fail()` e excepção.
+- (c) **Nada regride:** as sete validações de tipo (`true`, `["21"]`, `[21,22]`, `""`, `null`, `{}`,
+  `"21abc"`), o isolamento `where: { id: user.id }`, `currency` intocada, o toast de sucesso, as setas do
+  radiogroup, e o `afterAll` do spec a repor 1/CASH.
+- (d) Spec: um teste que aborta o pedido e assere a mensagem — e prova de que morde (sem o `catch`, fica
+  vermelho). Contagem **150** (149 + 1) ou a que resultar.
+- (e) Gate 5/5 e suite de frio, `0 restante(s)`.
+
 ### T96 — a regra base dá peso de controlo a todas as bordas decorativas (Dev) — **aberta a 2026-11-22**
 
 **Achado do Revisor na T91, alargado por mim com uma contagem.** O `border-b` do cabeçalho não tem
@@ -4531,7 +4552,7 @@ polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso muda
 - (d) Dois temas, sem regressão de contraste.
 - (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
-### T97 — os controlos mortos de `/definicoes` (Dev) — **em Dev a 2026-11-22**
+### T97 — os controlos mortos de `/definicoes` (Dev) — **fechada 2026-11-22**
 
 **Achado do Dev na T92, e o achado é maior que a frase que a T92 corrigiu.** A página não guarda nada:
 o `Select` «O mês começa no dia» (`definicoes/page.tsx:37`) tem `defaultValue="1"` e **nenhum
