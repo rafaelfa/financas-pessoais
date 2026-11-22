@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T99.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T100.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4126,6 +4126,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **fechada** 2026-11-22 (`31118ee`; Dev 3 voltas — o Revisor apanhou o «Mais» a 1,94 — + QA `PASS` + Revisor «pode commitar: sim»; 149) | `relatorios/T91-revisao.md`, `relatorios/T96.md`, `relatorios/T96-qa.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
+| T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada) | `relatorios/T98.md` §«o que isto não resolve» |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4388,6 +4389,32 @@ Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o ca
 
 **Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
 mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
+
+### T99 — o `redirect` da sessão expirada numa Server Action (Dev) — **em Dev a 2026-11-22**
+
+**Achado do Revisor na revisão da T98, e é um vazio de conhecimento, não um defeito provado.** O
+`requireUser()` faz `redirect('/entrar')` num caminho que **lança** (`NEXT_REDIRECT`), e está **fora** do
+`try` da acção (`preferences-actions.ts:34`) precisamente para não ser engolido. Mas numa **Server Action
+chamada do cliente** o Next não "navega" como numa renderização: o `throw` atravessa a fronteira. Ninguém
+mediu **o que o utilizador vê** quando a sessão expira a meio de um Guardar. Se chegar como rejeição, o
+`catch` da T98 mostra «Não consegui ligar ao servidor — as preferências não foram guardadas» a quem só
+precisava de entrar outra vez.
+
+**Critério — isto é uma medição, não uma correção:**
+
+- (a) **Provocar o caso:** sessão válida em `/definicoes`, apagar/expirar o cookie e carregar em Guardar.
+  Diz **o que acontece**: redirecciona para `/entrar`, mostra a mensagem de rede, não mostra nada, ou outra
+  coisa. Com a prova de cada um (URL final, `h1`, `[role="alert"]`, consola).
+- (b) **Dizer onde o `throw` morre:** é entregue como redireccionamento ao cliente, ou como rejeição
+  apanhada pelo nosso `catch`? Cita o que vês — o texto da mensagem é o indicador mais direto.
+- (c) **O mesmo teste com a T98 removida em memória** (sem `catch`): para saber se o `catch` está a
+  **esconder** um redireccionamento que funcionava. Isto decide se a T98 introduziu uma regressão em vez de
+  a corrigir.
+- (d) **Não mudes código nesta tarefa.** O resultado é um relatório com a medição e **uma recomendação**
+  (deixar como está / distinguir o erro de sessão / tratar o redirect antes do `catch`), com o custo de cada
+  uma. A decisão é minha e só a tomo com o número.
+- (e) Se precisares de um spec para a medição, escreve-o **descartável** (diz onde e apaga-o); não
+  acrescentes testes à suite nesta tarefa.
 
 ### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **fechada 2026-11-22**
 
