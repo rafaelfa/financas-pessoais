@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T100.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T101.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4126,8 +4126,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **fechada** 2026-11-22 (`31118ee`; Dev 3 voltas — o Revisor apanhou o «Mais» a 1,94 — + QA `PASS` + Revisor «pode commitar: sim»; 149) | `relatorios/T91-revisao.md`, `relatorios/T96.md`, `relatorios/T96-qa.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
-| T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada) | `relatorios/T98.md` §«o que isto não resolve» |
-| ~~T100~~ | **PROPOSTA, NÃO ABERTA — precisa de autorização:** o `Select` «O mês começa no dia» fica **vazio** depois de gravar, até se recarregar a página. Medido por mim em produção a 2026-11-22 (`financas-pessoais-psi-lac.vercel.app`): com dia 1 gravado, carregamento **frio** mostra «Dia 1»; **depois** de Guardar (com o toast «Preferências guardadas.») o campo mostra `""`, e um reload volta a «Dia 1» — o valor está na base, o ecrã é que o perde. Causa provável: `SelectBubbleInput` do Radix a disparar `change` com `""` no mount e a passar por `onValueChange={setDia}` (`preferences-form.tsx:138`) num Select controlado; a correção mínima está na skill `correc-a-o-de-select-controlado` (derivar o valor e filtrar o `""` na entrada). O utilizador pede ao sistema «Preferências guardadas» e o campo fica em branco — é a mesma família da T97. **Não abrir sem o utilizador autorizar.** | Dev | **proposta** | esta linha |
+| T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 2, 2026-11-22; Revisor aceita a conclusão e pede o valor de `resultado` + `pageerror`) | `relatorios/T99.md` |
+| T100 | **O `Select` «O mês começa no dia» fica vazio depois de gravar:** medido por mim em produção (2026-11-22, `financas-pessoais-psi-lac.vercel.app`): com dia 1 gravado, o carregamento **frio** mostra «Dia 1»; **depois** de Guardar (com o toast «Preferências guardadas.») o campo mostra `""`, e um reload volta a «Dia 1» — o valor está na base, o ecrã é que o perde. Causa provável: `SelectBubbleInput` do Radix a disparar `change` com `""` no mount, a passar por `onValueChange={setDia}` (`preferences-form.tsx:138`). **Achado meu na verificação pós-deploy; autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (a seguir à T99; fila autorizada) | esta linha, `relatorios/T97-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4391,7 +4391,44 @@ Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o ca
 **Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
 mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
 
-### T99 — o `redirect` da sessão expirada numa Server Action (Dev) — **em Dev a 2026-11-22**
+### T100 — o `Select` fica vazio depois de gravar (Dev) — **aberta a 2026-11-22**
+
+**Achado meu na verificação pós-deploy do push de 2026-11-22, em produção.** Em `/definições`, com o dia
+de início **1** gravado: um carregamento **frio** mostra «Dia 1»; depois de carregar em **Guardar** (com o
+toast «Preferências guardadas.») o campo passa a mostrar **`""`** e um reload volta a «Dia 1». O valor está
+na base — o ecrã é que o perde. É a mesma família da T97, ao contrário: grava e parece que não.
+
+**Causa provável, a confirmar na alínea (b):** o `SelectBubbleInput` do Radix escreve no `<select>` nativo
+escondido e dispara `change`; como o conteúdo só monta ao abrir, a escrita fica em `""` e chega ao
+`onValueChange={setDia}` (`preferences-form.tsx:138`), num Select **controlado**. A receita está na skill
+`correc-a-o-de-select-controlado`: **derivar** o valor em vez de o guardar e **filtrar o `""` à entrada**.
+
+**Critério:**
+
+- (a) **Reproduzir primeiro:** registro frio de `/definições` → o campo mostra o dia da base; Guardar →
+  o campo **continua** a mostrar o dia da base (é isto que hoje falha); reload → igual. Nas duas direcções
+  (dia 1 → dia 21 → volta a 1), com o valor da base confirmado em cada passo.
+- (b) **Medir a origem do `""` antes de corrigir:** instrumenta o `onValueChange` para registar **cada**
+  valor recebido (e o instante: mount vs interacção). Se o `""` vier do Radix no mount, diz em que chamada;
+  se vier de outra coisa (inicialização, re-render, `key` que muda), di-lo — **não apliques a receita da
+  skill sem a confirmar no log**, porque um `useState` com valor inicial volta a ser apagado a cada mount e
+  a correção certa é derivar.
+- (c) **A escolha manual continua a funcionar:** escolher outro dia pela interface tem de mudar o campo, e
+  Guardar tem de gravar **esse** dia (não o derivado).
+- (d) **Nada regride:** as sete validações de tipo da T97 (`true`, `["21"]`, `[21,22]`, `""`, `null`, `{}`,
+  `"21abc"`) a rejeitar sem escrever; `where: { id: user.id }`; `currency`; o toast de sucesso; as setas do
+  radiogroup; a mensagem de rede da T98; e o `afterAll` a repor 1/CASH.
+- (e) **Spec que morde:** uma asserção em `e2e/97` que, **depois de gravar**, verifica que o trigger mostra
+  o dia guardado (hoje falharia). Prova de que fica vermelha sem a correção. Contagem **150 → 151**, ou diz
+  se a asserção entra no teste que já existe.
+- (f) Gate 5/5; a suite completa é do QA.
+- (g) **Sem componente nem dependência novos**, sem refactor não pedido; diff mínimo e justificado linha a
+  linha. Capturas do campo preenchido antes/depois, nos dois temas.
+
+**O que não fazer:** não inventes um dia quando não há valor válido (a skill é explícita: um valor inventado
+grava o dia errado em silêncio); não toques na server action nem no schema; não mudes o texto da página.
+
+### T99 — o `redirect` da sessão expirada numa Server Action (Dev) — **em Dev, volta 2 a 2026-11-22**
 
 **Achado do Revisor na revisão da T98, e é um vazio de conhecimento, não um defeito provado.** O
 `requireUser()` faz `redirect('/entrar')` num caminho que **lança** (`NEXT_REDIRECT`), e está **fora** do
@@ -4416,6 +4453,31 @@ precisava de entrar outra vez.
   uma. A decisão é minha e só a tomo com o número.
 - (e) Se precisares de um spec para a medição, escreve-o **descartável** (diz onde e apaga-o); não
   acrescentes testes à suite nesta tarefa.
+
+**Volta 1 — medição do Dev (`relatorios/T99.md`), nenhum código mudado:**
+
+| caso | URL final | `h1` | `[role="alert"]` | consola |
+| --- | --- | --- | --- | --- |
+| sessão válida | `/definicoes` | Definições | — | vazia |
+| sessão apagada **com** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+| sessão apagada **sem** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+
+**A prova:** resposta do POST `status 200 · content-type text/x-component · **x-action-redirect:
+/entrar;push**`. O Next serializa o `redirect()` como cabeçalho da acção, a promessa **resolve**, o `await`
+não lança, o `catch` da T98 **nunca corre** e o router navega. Conclusões: (b) o `throw` morre no protocolo,
+não no nosso `catch`; (c) a T98 **não** escondeu um redirect — com e sem `catch` o resultado é idêntico.
+**Recomendação: deixar como está.** **Sem QA por decisão minha:** nenhuma linha de produto mudou e a prova é
+um cabeçalho capturado, não um comportamento que outra mão meça de forma diferente; repetir a suite seriam
+9 min por zero. Gate (restaurado) 5/5, `BUILD_ID zM51FOqtmlMVb1NnSgG-W`.
+
+**Volta 1 — Revisor: «a medição sustenta a conclusão: sim», com um furo na prova.** O cabeçalho
+`x-action-redirect` prova que o `throw` não morre no nosso `catch`; **não** prova que o código depois do
+`try` está seguro — `preferences-form.tsx:88` faz `if (!resultado.ok)` e, se a promessa resolver com
+`undefined`, é `TypeError`. E «consola vazia» não cobre isso: um erro não apanhado numa transição sai como
+**`pageerror`**, não como mensagem de consola. Faltam também duas coisas: o `push` do redirect **não foi
+medido** (o «voltar» depois de reentrar) e a consequência **não está escrita** no relatório (aterrar em
+`/entrar` perde o que estava por gravar). **Volta 2 pedida ao Dev:** `pageerror` +
+`unhandledrejection` ligados, o **valor literal** de `resultado`, os passos do «voltar» e a consequência.
 
 ### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **fechada 2026-11-22**
 
