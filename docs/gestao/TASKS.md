@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T95.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T96.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4117,11 +4117,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
 | T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (`88e6e3f`; Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 da acessibilidade) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
 | T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas — o QA apanhou uma asserção vacuamente verdadeira — + Revisor «pode commitar: sim»; 146→147 testes) | `relatorios/T89.md`, `relatorios/T89-qa.md` |
-| T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T89) | `relatorios/T78-revisao.md`, `docs/gestao/TASKS.md` §T78 dívida 1 |
+| T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 do comentário) | `relatorios/T90.md`, `relatorios/T90-qa.md` |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
 | T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T92) | `relatorios/T88-qa.md` |
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
+| T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4385,7 +4386,7 @@ Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o ca
 **Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
 mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
 
-### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **aberta a 2026-11-22**
+### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **fechada 2026-11-22**
 
 **Achado do Revisor na T78.** `lib/utils.ts` passou a `createCn` com a escala de texto registada, mas
 **39 ficheiros de `components/ui/` importam `cn` de `'cn'`** e não a herdam: lá
@@ -4425,6 +4426,32 @@ ao lado das de 3,38:1.
 - (d) Capturas a 1440/390 × dois temas de um menu aberto, do cabeçalho e de uma tabela; razões de
   contraste antes/depois por par.
 - (e) Gate 5/5 e suite de frio com a baseline da altura, `0 restante(s)`.
+
+### T95 — uma só fonte de `cn` (Dev) — **aberta a 2026-11-22**
+
+**Dois achados do Revisor na T90, com a mesma consequência: o `cn` sem a escala pode voltar sem
+ninguém dar por isso.**
+
+1. **Nada impede um `from 'cn'` novo.** A T90 apontou os 39 `components/ui/*` a `@/lib/utils`, mas a
+   regra vive no comentário. Um `no-restricted-imports` no `apps/web/eslint.config.mjs` (o de
+   `apps/web`, não o da raiz — o próprio ficheiro diz que cada um traz o seu) com
+   `paths: [{ name: 'cn', message: 'usa `cn` de `@/lib/utils` (escala de texto, T78)' }]` torna a regra
+   uma coisa que o `lint` cobra. **`cn/config` é outro especificador e fica permitido** — é isso que
+   deixa `lib/utils.ts` construir o `createCn`.
+2. **`packages/shared/src/utils/cn.ts:11`** reexporta `cn` do pacote **nu** e o docblock afirma «so the
+   entire workspace has exactly one Tailwind class-conflict engine». Era verdade antes da T90; agora há
+   dois motores e o daqui **não tem a escala**. É público (`packages/shared/package.json` → `./utils`) e
+   hoje **ninguém** o importa (`grep @repo/shared/utils` → só um comentário em
+   `packages/shared/src/index.ts:8`). O risco é o primeiro import: 16 px em silêncio, com um comentário a
+   jurar o contrário.
+
+**Critério:** (a) a regra de lint em vigor e **provada a morder** — um ficheiro de teste com
+`from 'cn'` tem de falhar o `lint` (usa um ficheiro temporário e apaga-o, ou o próprio teste do ESLint
+se houver); (b) o shim do `shared` **apagado** (com o export removido de `packages/shared/src/utils/index.ts`
+e do `package.json` se ficar a apontar para nada) **ou** reduzido a uma nota que diga que o `cn` da app
+é outro — escolhe uma e justifica; (c) `lint` e `typecheck` a 0 em **todo** o workspace, porque se mexe
+fora de `apps/web`; (d) suite de frio com a baseline **147**, `0 restante(s)`; (e) as capturas de
+`/transacoes` nos dois temas continuam a bater `sha256` com as da T90 (nada disto muda pintura).
 
 ### T94 — endurecer a guarda dos 320 px (Dev) — **aberta a 2026-11-22**
 
