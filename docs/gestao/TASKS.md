@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T101.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T103.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -1124,7 +1124,7 @@ objetivo com Y acumulado faz subir Y — medido nos dois ecrãs.
 | T39 | **A condição `cardId` das regras era ignorada pelo motor** (e a regra aparecia como inválida) | Dev | Dev done (teste vermelho → 20/20; 548 testes); em prova QA | `relatorios/T39.md` |
 | T40 | **`GoalMovementType.yield` era código morto** com uma migração associada | Dev | Dev done (enum com 2 valores, 3 movimentos intactos, 90 000 antes e depois); em prova QA | `relatorios/T40.md` |
 
-| T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **reprovada na autorização:** a confirmação aceita um `cardId` de outro utilizador | `relatorios/T45.md` |
+| T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **em verificação (T101)** — a posse do cartão já é verificada em `import-actions.ts:228-235`; falta o QA repetir o pedido forjado e assinar | `relatorios/T45.md`, `relatorios/T101.md` |
 
 ## T41 — a minha lista de seis termos estava errada, e o Dev provou-o
 
@@ -1277,6 +1277,55 @@ serve de cronómetro da vaga (nenhum schema, nenhuma dependência).
 **O que NÃO fazer:** não tocar no servidor, na base de dados, no schema nem nas
 exportações; não mascarar inputs; não mudar o atalho `Ctrl+K`; não acrescentar
 dependências; não escrever em `e2e/` (é do QA); não fazer commit nem push.
+
+### T101 — provar que a falha de autorização da T45 está fechada (QA) — **em QA a 2026-11-22**
+
+**É a única coisa no backlog que é segurança, e a linha da T45 ainda diz «reprovada na autorização».** O
+código mudou desde 2026-11-03: `confirmImport` passou a verificar a posse do cartão
+(`import-actions.ts:228-235`, `where: { id: cardId, userId: user.id }`, com `fail('Cartão não encontrado.')`).
+**Ninguém repetiu o ataque.** Um IDOR que se acredita corrigido sem prova é pior do que um aberto, porque
+ninguém volta a olhar.
+
+**Critério — repetir o ataque do QA de 2026-11-03, à letra:**
+
+- (a) Duas contas (a do QA e outra com um cartão). Na **confirmação** da importação, enviar o `cardId` do
+  cartão da **outra** conta com uma conta e uma categoria **próprias**. Medido: resposta `fail`, **zero**
+  transações criadas, e o `cardId` da vítima sem nenhuma transação nova.
+- (b) O mesmo na **pré-visualização** (já recusava) — a diferença antes/depois tem de estar na confirmação.
+- (c) O caminho legítimo continua a funcionar: cartão **próprio** → importa, com `cardId` e `paymentMethod`
+  certos.
+- (d) Nada regride na importação: OFX com cartão, sem cartão (`null`/`DEBIT`), aplicar regras ao já
+  importado, desfazer a importação.
+- (e) **Limpeza:** apagar as contas e os movimentos que criaste; dizer quantos ficaram.
+- **Sem suite completa** (esta tarefa não muda código).
+
+**Reporta em `relatorios/T101.md`** com o pedido forjado colado (corpo e resposta) e o `count` de transações
+antes/depois. Se a confirmação **aceitar** o `cardId` de outra conta, é **FAIL** e é grave — nesse caso páras
+e dizes-me, não tentas corrigir.
+
+### T102 — os diálogos sem limite de altura (Dev) — **em Dev a 2026-11-22**
+
+**Último defeito funcional visível da lista.** `ui/dialog.tsx` tem **0** ocorrências de
+`max-h`/`overflow-y-auto`: um `DialogContent` de 1761 px num ecrã de 844 px fica com o botão de fechar fora do
+ecrã, e no telemóvel não há como chegar ao fundo. A decisão D24/C2 manda pôr a regra **na classe base** e só
+depois rever os 28 sítios.
+
+**Critério:**
+
+- (a) A regra na **classe base** do `DialogContent` (`max-height` relativa ao viewport + `overflow-y-auto` no
+  corpo), num sítio só — sem `className` novo em cada diálogo.
+- (b) **Medir num diálogo real e alto:** antes, a altura do `DialogContent` e se o botão de fechar está dentro
+  do ecrã; depois, o mesmo. A 844 de altura e a 390×667 (telemóvel). Diz qual caminho mediste — no telemóvel
+  o diálogo usa o `Drawer` — e o que acontece ao outro.
+- (c) **Rever os 28 sítios**: a lista de quem usa `DialogContent`, e para cada um uma linha do que acontece
+  (cabe, passa a ter scroll, ou não é afetado). Os que passarem a ter scroll **têm** de manter o foco e o
+  botão de fechar alcançáveis por teclado.
+- (d) Nada regride: `Esc` fecha, o foco fica preso no diálogo, o `aria` do Radix intacto, e os diálogos
+  pequenos não ganham barra de scroll.
+- (e) Gate 5/5; suite é do QA. Capturas antes/depois do diálogo mais alto, a 1440 e a 390.
+
+**O que não fazer:** não redesenhes diálogos, não mudes larguras, não toques nos formulários que vivem lá
+dentro; sem dependência nova.
 
 ### T46 — correção pedida pelo Lead (2026-11-17), depois da entrega do Dev
 
@@ -3953,7 +4002,7 @@ mesma razão).
 | T73 | **F1 — parcelamentos:** o plano de um cartão existe e não aparece em `/cartoes` | Dev | **fechada e publicada** (Dev `c52a0e2` + QA `PASS` nas 4 alíneas + Revisor `OK`; arquivo em `TASKS-fechado.md`. Branch `fix/t73-parcelamentos-cartoes` empurrada às 18:22Z em `330432a` (reflog
 `refs/remotes/origin/…@{2026-11-20 18:22:33 +0000}`), **0 PNG** no conteúdo remoto; `21dae72` reescrito fora da história local, backup em `backup/t73-historia-com-capturas`. `merge` em `main` **não**: é por bloco, D25 b. Emenda do QA à linha 28 de `T73-QA.md` em `7d6df4e`; política das capturas em **D26**) |
 | T74 | **N2 + N3 — `transaction-quick-add`:** submit desactivado a mais e `aria-invalid` que não chega ao controlo | Dev | **fechada** (Dev + QA `PASS` + Revisor `OK`, 2 voltas de correção) | `relatorios/T74.md`, `relatorios/T74-qa.md` |
-| T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px quando a régua é 44 px | Dev | **Pendente (mão)** |
+| T75 | **F2 — alvos de toque:** `Button`/`Input` base a 32 px (`h-8`) quando a régua é 44 px | Dev | **não autorizada** — só faz sentido com o travão da T93 (abaixo de `sm`, ícone sem crescer), senão troca um problema de toque por 30 tabelas desalinhadas. Decisão minha a 2026-11-22 | auditoria 2026-11-20 |
 | T72 | **N1 — diálogos sem limite de altura:** um `DialogContent` de 1761 px num ecrã de 844 | Dev | **Pendente (mão)** |
 
 ### T73 — F1: os planos de parcelas não aparecem em `/cartoes` (Dev) — **fechada e publicada**
@@ -4128,6 +4177,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
 | T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (medição em 2 voltas, **sem código mudado**; Revisor «fecha assim: sim») | `relatorios/T99.md` |
 | ~~T100~~ | **O `Select` «O mês começa no dia» fica vazio depois de gravar** — **retirada por mim a 2026-11-22, não reproduzida.** Vi-o uma vez em produção (captura + duas leituras de `""`) na sequência: escolha por teclado → Guardar → mudança de viewport para 320, com um clique de opção que não registou pelo meio. **Não tenho gatilho:** o Dev não o reproduziu localmente (o `onValueChange` nunca recebeu `""`, com log no mount, na gravação e numa navegação que remonta) e eu não o reproduzi de novo em produção (frio/Guardar/reload, clique imediato, 305↔1440↔305, `Escape` a meio). Um achado sem gatilho não é achado — a medição vence a hipótese, incluindo a minha. | Dev | **retirada** 2026-11-22 | `relatorios/T100.md` |
+| T101 | **Provar que a falha de autorização da T45 está fechada:** o QA forjou o pedido em 2026-11-03 (confirmação aceitava o `cardId` de outra utilizadora). O código passou a verificar a posse (`import-actions.ts:228-235`, `where: { id: cardId, userId: user.id }`); falta o mesmo ataque repetido e assinado. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | QA | **em QA** (volta 1, 2026-11-22) | `relatorios/T45.md` |
+| T102 | **Os diálogos sem limite de altura:** `ui/dialog.tsx` tem **0** ocorrências de `max-h`/`overflow-y-auto`; um `DialogContent` de 1761 px num ecrã de 844 não fecha. 28 sítios a rever depois da regra na base. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T45.md`, auditoria de design 2026-11-20 |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4612,11 +4663,11 @@ código**, e o Lead confirma antes da primeira linha mudar.
 
 | ID  | Tarefa | Dono | Estado |
 | --- | --- | --- | --- |
-| T79 | **F5 + F6 + F7 + N4 (B6):** painel de previsões e exportação | Dev | **Pendente (mão) — critério por escrever** |
-| T80 | **F10 + R1 (B7):** os dois itens que sobraram do 2.º e 3.º passes | Dev | **Pendente (mão) — critério por escrever** |
-| T81 | **F8 + N6 (B8):** calendário (segunda passagem) | Dev | **Pendente (mão) — critério por escrever** |
-| T82 | **V5 + V6 (B9):** densidade do `Card` e `CardFooter` — ⚠️ `ui/card.tsx` importa `cn` de `'cn'` e **não** herda a escala de texto da T78: não usar `text-caption` lá até haver vaga para os 39 imports | Dev | **Pendente (mão) — critério por escrever** |
-| T83 | **C3 (B9):** o `Card size="sm"` — decidir depois do T82 | Lead | **Pendente — à espera do T82** |
+| T79 | **F5 + F6 + F7 + N4 (B6):** painel de previsões e exportação | Dev | **fechada como não perseguida** (D32, 2026-11-22 — é funcionalidade, não defeito) |
+| T80 | **F10 + R1 (B7):** os dois itens que sobraram do 2.º e 3.º passes | Dev | **fechada como não perseguida** (D32, 2026-11-22 — é funcionalidade, não defeito) |
+| T81 | **F8 + N6 (B8):** calendário (segunda passagem) | Dev | **fechada como não perseguida** (D32, 2026-11-22 — é funcionalidade, não defeito) |
+| T82 | **V5 + V6 (B9):** densidade do `Card` e `CardFooter` — ⚠️ `ui/card.tsx` importa `cn` de `'cn'` e **não** herda a escala de texto da T78: não usar `text-caption` lá até haver vaga para os 39 imports | Dev | **fechada como não perseguida** (D32, 2026-11-22 — é funcionalidade, não defeito) |
+| T83 | **C3 (B9):** o `Card size="sm"` — decidir depois do T82 | Lead | **fechada com a T82** (D32 — o `size="sm"` é código morto: 0 de 36 chamadas) |
 
 Ficheiros por tarefa, para o mapa de colisões continuar a valer:
 

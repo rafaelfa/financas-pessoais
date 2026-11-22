@@ -782,3 +782,30 @@ necessária para identificar o componente» (WCAG 1.4.11) e tem de ficar a 3:1.
 
 **O que a torna irreversível:** nada — é uma classe por célula. Fica escrita para o próximo que medir
 1,94 e achar que encontrou um defeito novo.
+
+### D32 — O resto da auditoria de design fecha aqui (T79–T83) — **decisão do Lead, aprovada pelo utilizador (2026-11-22)**
+
+O utilizador perguntou o que falta para terminar. Ao reler a fila com o código à frente, o que sobra de
+2026-11-20 **não são defeitos**:
+
+- **T79, T80, T81** pedem **funcionalidade** nova (painel de previsões e exportação, calendário segunda
+  passagem, os dois itens do 2.º e 3.º passes) — não são correções, e um critério escrito agora seria
+  inventar âmbito para justificar a fila.
+- **T82** é densidade do `Card` e **T83** decide o `size="sm"`, que hoje é código morto (**0 de 36** chamadas
+  o usam). Sem a T82, apaga-se numa linha quando alguém tocar no `ui/card.tsx`.
+
+**Decisão:** T79–T82 ficam **fechadas como não perseguidas** — se alguma dessas funcionalidades fizer falta,
+abre-se como tarefa de produto, com o critério escrito a partir do pedido e não da auditoria. **T83 morre com
+elas.**
+
+**O que fica em pé, e porquê:** **T101** (provar que o IDOR da T45 está fechado) e **T102** (os diálogos sem
+limite de altura) são os dois defeitos reais que restam. **T75** (alvos de toque do `Button`/`Input`) fica
+**não autorizada**: a 44 px em todas as linhas de tabela troca um problema de toque por trinta tabelas
+desalinhadas; só se fizer com o travão da T93 (abaixo de `sm`, ícone sem crescer).
+
+**Alternativa rejeitada:** transcrever o plano de 24 itens para ficheiro e escrever critério às quatro
+restantes. Custava uma vaga a documentar trabalho que ninguém pediu, e o valor que a auditoria tinha — os
+tokens, as bordas, os raios, a tipografia — já foi fechado na T78, T91 e T96.
+
+**O que a torna irreversível:** nada. As secções ficam em `TASKS.md` com o estado escrito; reabrir é mudar
+uma palavra, desde que haja um pedido de produto por trás.
