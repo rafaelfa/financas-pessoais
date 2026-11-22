@@ -3938,7 +3938,7 @@ mesma razão).
 | `components/ui/button.tsx`, `ui/input.tsx` | T75 (F2) | depois do T72, para a altura não anular a do diálogo |
 | `components/transaction-quick-add.tsx` | T74 (N2, N3), T84 (N5) | T74 fechou; a T84 só acrescenta a data inicial |
 | `app/(app)/calendario/page.tsx` | T84 (N5), T79 (F7), T81 (N6) | três mãos na mesma linha de tempo, **sem sobreposição**; T84 antes do T78, que mexe na tipografia desta página |
-| `components/mobile-nav.tsx` | T77 (F9), T78 (V3) | T77 escreve os rótulos, T78 só as classes |
+| `components/mobile-nav.tsx` | T77 (F9), **T85** (o `<span>` do rótulo), T78 (V3) | T77 escreve os rótulos, T85 põe `max-w-full truncate` no `<span>` (`:47`), T78 só as classes e **não apaga o `truncate`** |
 | `components/dashboard-forecast-chart.tsx` | T79 (F5, F6) | uma tarefa, dois itens |
 | `server/reports-export.ts` | T79 (N4, F7) | idem |
 | `components/installment-list.tsx`, `app/(app)/cartoes/page.tsx` | T73 (F1), T76 (R2) | T73 primeiro; o T76 apanha o título já corrigido |
@@ -4111,7 +4111,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | --- | --- | --- | --- |
 | T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **fechada** (Dev + QA `PASS` + Revisor, 1 volta) | `relatorios/T76.md`, `relatorios/T76-qa.md` |
 | T77 | **F9 — rótulos a 11 px:** o rodapé móvel é o único texto abaixo de 12 px na navegação | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 0 voltas) | `relatorios/T77.md`, `relatorios/T77-qa.md` |
-| T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **autorizada pelo utilizador a 2026-11-21**, 2.ª da fila | Dev | **aberta** (autorizada, na fila) | Revisor T77, `relatorios/T77-qa.md` |
+| T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **autorizada pelo utilizador a 2026-11-21**, 2.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim», 1 volta de código + 1 do comentário) | Revisor T77, `relatorios/T77-qa.md`, `relatorios/T85-qa.md` |
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
@@ -4265,7 +4265,7 @@ erro) e screenshots a 1440 e 390 nos dois temas; `pnpm test:e2e` verde com o spe
 compras no cartão anuncia «0 itens» e abre com «1 no cartão», e um `INVOICE_PAYMENT` com `settled:
 false` seria rotulado «liquidado» (nenhum escritor o produz hoje).
 
-### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **em Dev a 2026-11-22**
+### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **fechada 2026-11-22**
 
 **Achado do Revisor na T77 (`df1318f9`), fora do critério dessa tarefa — não a reabre.** A 12 px o
 rótulo mais largo mede **66,75 px** e a célula do rodapé tem 78 px com `px-1`, ou seja **56 px úteis**;
@@ -4275,6 +4275,24 @@ T77 subiu a fasquia em 5,5 px nesse rótulo. Não medido a 320 px pelo QA nem po
 (ou rótulo curto), com a prova a 320 px a 12 px.
 
 **Autorizada pelo utilizador a 2026-11-21** («faça o que for melhor»); 2.ª da fila, depois da T86.
+
+**Entrega do Dev (2026-11-22):** uma classe em `mobile-nav.tsx:47` — `<span className="max-w-full
+  truncate">` (mais um comentário). Antes, medido a 320×640: célula 64,0 · útil 56,0 · span 66,8 (
+  «Transações»); «Orçamento» 63,6; link `scrollWidth 65 / clientWidth 64`. Depois: span 56,0 com 11 px
+ocultos («Transa…»), link 64/64, `nav.scrollWidth` 320, sem sobreposição; a 390 igual a antes
+(66,8 / 78); a 1440 a nav não existe. Gate 5/5; specs `15`+`33` **12 passed (26.6s)**.
+
+**Achado fora do âmbito, do mesmo Dev e confirmado pelo QA — candidato a T88, não aberto:** a 320 o
+`document.scrollWidth` é **341**, antes e depois desta correção (tirar a classe não o muda). O que
+transborda não é a nav (`nav.scrollWidth` 320), é o menu «Mais» do cabeçalho: `div.ml-auto` com
+x 133,3 · w 208 · right **341,3**, e o último botão right 341,3 — **21,3 px fora do ecrã**. Precisas do
+«vai» do utilizador para virar linha de tabela; entra na fila depois da T78.
+
+**Dívida registada pelo Revisor (opcional 3, nada corrigido aqui):** a linha do `truncate` fica **sem
+guarda automática**. Não há projeto Playwright a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`)
+e o `e2e/15` não mede larguras, portanto o lote de classes da T78 pode reescrever `mobile-nav.tsx:47` e
+o transbordo volta em silêncio. Saída, quando houver vaga: um projeto `320` no `playwright.config.ts` com
+uma asserção de `scrollWidth`/sobreposição na nav.
 
 ### T86 — transferência: o modo abre com a conta de destino vazia (Dev) — **fechada 2026-11-22**
 

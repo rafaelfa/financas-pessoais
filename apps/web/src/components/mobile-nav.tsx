@@ -39,7 +39,12 @@ export function MobileNav() {
                 )}
               >
                 <item.icon className="size-5" />
-                <span>{item.label}</span>
+                {/*
+                  A 320 px o rótulo não cabe na célula: sem limite, saía dela e
+                  tocava a vizinha. `truncate` corta com reticências e o nome
+                  acessível do link continua inteiro.
+                */}
+                <span className="max-w-full truncate">{item.label}</span>
               </Link>
             </li>
           );
