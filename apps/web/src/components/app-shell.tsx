@@ -55,7 +55,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur md:px-6">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-1 !h-5" />
-          <span className="text-sm font-medium md:hidden">Finanças Pessoais</span>
+          {/*
+            A 320 px o cabeçalho não cabe: com o bloco da direita (menu «Mais»,
+            busca, tema e saída) o último botão chegava a 341,3 e a página
+            ganhava scroll horizontal. Abaixo de 360 o nome da aplicação sai do
+            cabeçalho — a marca continua na barra lateral e o título da página
+            diz onde se está — e volta a aparecer antes de `md`, onde sempre
+            esteve.
+          */}
+          <span className="sr-only text-sm font-medium min-[360px]:not-sr-only md:hidden">
+            Finanças Pessoais
+          </span>
           <div className="ml-auto flex items-center gap-2">
             {/*
               Recorrências, Regras, Categorias e Importar saíram da barra
@@ -75,9 +85,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground sm:min-h-9 [&::-webkit-details-marker]:hidden">
                   <Ellipsis className="size-4" aria-hidden />
                   {/*
-                    A 360 px o grupo do cabeçalho não cabe com o rótulo. Fica o
-                    ícone, com o texto em `sr-only` — o nome acessível não se
-                    perde — e o rótulo volta a aparecer a partir de `sm`.
+                    Abaixo de `sm` (640 px) o grupo do cabeçalho não cabe com o
+                    rótulo. Fica o ícone, com o texto em `sr-only` — o nome
+                    acessível não se perde — e o rótulo volta a partir de `sm`.
                   */}
                   <span className="sr-only sm:not-sr-only">Mais</span>
                 </summary>

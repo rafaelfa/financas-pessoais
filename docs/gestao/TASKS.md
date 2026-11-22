@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T93.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T94.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4115,11 +4115,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
-| T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
+| T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em revisão** (QA `PASS` a 2026-11-22: 8 larguras medidas de 320 a 1440, suite 146/146 de frio) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
 | T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, depois da T88) | `relatorios/T85-revisao.md` (opcional 3) |
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T89) | `relatorios/T78-revisao.md`, `docs/gestao/TASKS.md` §T78 dívida 1 |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
+| T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T92) | `relatorios/T88-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4352,7 +4353,13 @@ Nenhuma destas três reabre a T86; ficam à espera de vaga autorizada pelo utili
 4. **Um token com um consumidor.** `--text-caption` só é usado na `mobile-nav`. Fica, porque o critério
    pedia o token; mas fica dito que ainda não provou ser uma escala.
 
-### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **em Dev a 2026-11-22**
+### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **em revisão a 2026-11-22**
+
+**Entrega do Dev:** o nome «Finanças Pessoais» do cabeçalho passa a `hidden … min-[360px]:inline
+md:hidden` — **abaixo de 360 px o nome sai** e volta aos 360. Medido: `/transacoes` de **341** para
+**320** e o maior `right` do cabeçalho para **304**; a 390 e a 1440 inalterado. A alínea (c) dos
+**44 px de alvo** não foi cumprida por decisão minha: os 28–36 px são anteriores e ficam na **T93**,
+para não misturar um transbordo com uma revisão de alvos de toque.
 
 **Achado do Dev na T85, confirmado pelo QA.** A 320 px o `document.scrollWidth` é **341** e o que
 transborda é o bloco da direita do cabeçalho: `div.ml-auto` com x **133,3**, largura **208**, `right`
@@ -4417,6 +4424,25 @@ ao lado das de 3,38:1.
 - (d) Capturas a 1440/390 × dois temas de um menu aberto, do cabeçalho e de uma tabela; razões de
   contraste antes/depois por par.
 - (e) Gate 5/5 e suite de frio com a baseline da altura, `0 restante(s)`.
+
+### T93 — alvos de toque do cabeçalho a 320 px (Dev) — **aberta a 2026-11-22**
+
+**Achado do Dev na T88, medido por ele.** A 320 px, dos cinco controlos do cabeçalho só o menu
+«Mais» chega a **44 px**; a barra lateral, a busca, o tema e o sair medem **28–36 px**. A skill
+`design-do-projeto` pede **alvo de toque ≥44×44 em telemóvel** e esta é a barra que se usa com o
+polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso mudaria o cabeçalho a 390 e a
+1440, e o critério da T88 era «nada muda».
+
+**Critério:**
+
+- (a) Os cinco controlos do cabeçalho com **≥44 px de altura** (e largura ≥44 nos que são só ícone) a
+  320, medidos um a um, com o número antes/depois.
+- (b) Se 44 não couber a 320 sem voltar a transbordar (`document.scrollWidth` = 320), diz **por
+  extenso** qual é o controlo que não cabe e qual a saída que propões — não basta aumentar o padding.
+- (c) A 390 e a 1440 o cabeçalho pode mudar **de tamanho**, não de ordem: os cinco controlos na mesma
+  sequência, o nome da app onde está (`min-[360px]`), nada a desaparecer.
+- (d) Dois temas, sem regressão de contraste.
+- (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
 ### T92 — a frase morta de `/definicoes` (Dev) — **aberta a 2026-11-22**
 
