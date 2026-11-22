@@ -290,11 +290,18 @@ test.describe('painel de dia do calendário (T84)', () => {
     await d.getByRole('radio', { name: 'Transferência', exact: true }).click();
     const valor = d.getByLabel('Valor', { exact: true });
     await valor.fill('25,00');
-    await valor.press('Enter');
     await d.getByLabel('Descrição', { exact: true }).fill(`${PREFIXO} transferência`);
-    /* A conta de destino começa vazia (achado fora do âmbito); escolhe-se à mão. */
+    /*
+     * O destino já vem preenchido (T86); escolhe-se a conta do spec à mão na
+     * mesma, para o dia ficar com a transferência entre as duas contas do T84.
+     */
     await escolherNoSelect(d.getByLabel('Para a conta', { exact: true }), `${PREFIXO} poupança`);
-    await d.getByRole('button', { name: 'Transferir', exact: true }).click();
+    /*
+     * `Enter` em qualquer campo submete (regra do quick-add). Até à T86 ficava
+     * bloqueado pelo destino vazio; agora, com o destino derivado, submete — e é
+     * assim que este teste lança, já com todos os campos preenchidos.
+     */
+    await valor.press('Enter');
 
     await esperarAviso(page, 'Transferência registada nas duas contas.');
 

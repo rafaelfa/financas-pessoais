@@ -4111,11 +4111,11 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | --- | --- | --- | --- |
 | T76 | **F3 + F4 + R2:** rotas sem `loading.tsx`, 13 erros de validação órfãos, e o que se viu em `/cartoes` | Dev | **fechada** (Dev + QA `PASS` + Revisor, 1 volta) | `relatorios/T76.md`, `relatorios/T76-qa.md` |
 | T77 | **F9 — rótulos a 11 px:** o rodapé móvel é o único texto abaixo de 12 px na navegação | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 0 voltas) | `relatorios/T77.md`, `relatorios/T77-qa.md` |
-| T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **não abrir sem o «vai» do utilizador** | Dev | **aberta** (por autorizar) | Revisor T77, `relatorios/T77-qa.md` |
-| T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **não abrir sem o «vai»** | Dev | **aberta** (por autorizar) | `relatorios/T84.md` §12 |
+| T85 | **320 px — «Transações» transborda o rodapé:** 66,75 px a 12 px numa célula de 56 px úteis. Achado do Revisor fora do critério da T77; **autorizada pelo utilizador a 2026-11-21**, 2.ª da fila | Dev | **aberta** (autorizada, na fila) | Revisor T77, `relatorios/T77-qa.md` |
+| T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
-| T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **Pendente (mão)** |
+| T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **aberta** («vai» do utilizador a 2026-11-21, 3.ª da fila) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
 
@@ -4265,7 +4265,7 @@ erro) e screenshots a 1440 e 390 nos dois temas; `pnpm test:e2e` verde com o spe
 compras no cartão anuncia «0 itens» e abre com «1 no cartão», e um `INVOICE_PAYMENT` com `settled:
 false` seria rotulado «liquidado» (nenhum escritor o produz hoje).
 
-### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **aberta, por autorizar**
+### T85 — 320 px: «Transações» transborda a célula do rodapé móvel (Dev) — **em Dev a 2026-11-22**
 
 **Achado do Revisor na T77 (`df1318f9`), fora do critério dessa tarefa — não a reabre.** A 12 px o
 rótulo mais largo mede **66,75 px** e a célula do rodapé tem 78 px com `px-1`, ou seja **56 px úteis**;
@@ -4274,10 +4274,9 @@ T77 subiu a fasquia em 5,5 px nesse rótulo. Não medido a 320 px pelo QA nem po
 66,75 é medido, o transbordo a 320 é aritmética. Correção proposta, uma linha: `truncate` no `<span>`
 (ou rótulo curto), com a prova a 320 px a 12 px.
 
-**Não abrir sem o «vai» do utilizador** (§4.1 do procedimento: achado fora do critério vira linha nova
-e só se abre com autorização).
+**Autorizada pelo utilizador a 2026-11-21** («faça o que for melhor»); 2.ª da fila, depois da T86.
 
-### T86 — transferência: o modo abre com a conta de destino vazia (Dev) — **aberta, por autorizar**
+### T86 — transferência: o modo abre com a conta de destino vazia (Dev) — **fechada 2026-11-22**
 
 **Achado do Dev na T84 (`604b60fc`), fora do âmbito dessa tarefa — não a reabre.** Sintoma medido
 por ele: no modo Transferência do `transaction-quick-add` o `Select` «Para a conta» não mostra valor
@@ -4292,7 +4291,25 @@ dá `''` quando existe **uma** conta. Portanto a explicação do ecrã vazio é 
 calendário), e quem pegar nisto mede antes de corrigir. Prova pedida: lançar uma transferência sem
 tocar no select, a 390 e a 1440, e o valor que o `Select` mostra na abertura.
 
-**Não abrir sem o «vai» do utilizador** (§4.1 do procedimento).
+**Correção fechada (`3297aca`+1):** destino derivado em vez de estado inicial fixo — escolha explícita
+ou a 1.ª conta **ativa** ≠ origem (`transaction-quick-add.tsx:115-118`, a mesma variável que se envia,
+`:190`). Causa real: o `SelectBubbleInput` do Radix escreve `""` no `<select>` nativo ao montar sem
+`<option>` e o `onValueChange` aceitava-o. Diff: `transaction-quick-add.tsx` +15/−4; specs `84` (ordem
+do `Enter`) e `86` (novo) escritos pelo QA para a suite ficar verde — os dois lidos pelo Revisor.
+
+**Dívida registada pelo Revisor (3 opcionais, nada corrigido nesta tarefa):**
+
+1. `transaction-quick-add.tsx:270` — o guarda do `Enter` não consulta `needsTwoAccounts`: com **uma**
+   conta ativa, `requestSubmit()` ignora o botão `disabled` e acrescenta «Falta o identificador.» sob
+   o destino (pré-existente, 0 POSTs). Correção: `|| needsTwoAccounts` no guarda.
+2. `e2e/84:298` — o `escolherNoSelect` do destino ficou decorativo: as asserções só olham valores e
+   grupo, portanto o teste passa mesmo que a escolha seja ignorada e se use a conta derivada. O
+   comentário promete «entre as duas contas do T84» e nada o verifica.
+3. `e2e/86:41,61,77-78` — `criarContaDoSpec` insere conta com nome repetido por corrida e `idDaConta`
+   resolve por nome com `LIMIT 1`: uma corrida abortada depois do `beforeAll` deixa duplicados e pode
+   dar vermelho falso.
+
+Nenhuma destas três reabre a T86; ficam à espera de vaga autorizada pelo utilizador.
 
 ### T78 — A4 + V2 + V1 + V4 + V3 + V7: o lote do tema (Dev) — **Pendente (mão)**
 

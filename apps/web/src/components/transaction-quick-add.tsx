@@ -94,9 +94,7 @@ export function TransactionQuickAdd({
   const [amountInCents, setAmountInCents] = useState<number | null>(null);
   const [amountResetKey, setAmountResetKey] = useState(0);
   const [accountId, setAccountId] = useState(() => defaultAccountId(accounts));
-  const [toAccountId, setToAccountId] = useState(
-    () => accounts.find((account) => account.id !== defaultAccountId(accounts))?.id ?? '',
-  );
+  const [chosenToAccountId, setChosenToAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState(initialDate ?? today);
   const [description, setDescription] = useState('');
@@ -105,6 +103,19 @@ export function TransactionQuickAdd({
   const [submitRequested, setSubmitRequested] = useState(0);
 
   const activeAccounts = accounts.filter((account) => !account.archived);
+  /**
+   * Destino: o que o utilizador escolheu ou, até escolher, a primeira conta
+   * **ativa** que não é a de origem.
+   *
+   * Não é `useState` de propósito. O `Select` avisa com `""` quando monta sem os
+   * itens no DOM (o `SelectContent` só os monta ao abrir), e um estado inicial
+   * fixo era apagado por esse aviso — o formulário ficava sem destino e a action
+   * respondia «Falta o identificador.». Assim o vazio cai sempre no valor certo.
+   */
+  const toAccountId =
+    chosenToAccountId === ''
+      ? (activeAccounts.find((account) => account.id !== accountId)?.id ?? '')
+      : chosenToAccountId;
   const needsTwoAccounts = mode === 'transfer' && activeAccounts.length < 2;
 
   const selectedCard = activeCards.find((card) => card.id === cardId) ?? null;
@@ -517,7 +528,7 @@ export function TransactionQuickAdd({
             {mode === 'transfer' ? (
               <div className="space-y-1">
                 <FieldLabel htmlFor="lancamento-destino">Para a conta</FieldLabel>
-                <Select value={toAccountId} onValueChange={setToAccountId}>
+                <Select value={toAccountId} onValueChange={setChosenToAccountId}>
                   <SelectTrigger
                     id="lancamento-destino"
                     aria-required
