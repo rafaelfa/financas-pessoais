@@ -221,3 +221,117 @@ zero escrita em `apps/`/`e2e/`, zero git.
 
 `relatorios/.qa-t93b/` (`medir.cjs`, `medicoes.json`, `medir.log`, `guarda-limpo.log`,
 `guarda-toque.log`, `gate.log`, `suite.log`, `cabecalho-{320,360,390}.png`).
+
+---
+
+# Volta 3 — com barra de scroll (headed)
+
+Data: 2026-11-22 · Árvore `cb60f92` + `app-shell.tsx` (px-1/gap-1) e o `e2e/89` da T94. Build das
+medições: `0F5O5rRqraipnQLo9zBmF`; suite de frio: `Rl7I5TP7awnNhriLjNGwv`.
+
+**Veredicto da volta 3: PASS.** Com a barra de scroll visível (Chromium **headed**), a 320 o layout
+cabe em **305 px** e `scrollWidth` = `clientWidth`, sem sobra.
+
+## (a) As cinco larguras, headed — PASS
+
+`chromium.launch({headless:false})`, `/transacoes`, barra de scroll de **15 px**:
+
+| janela | `innerWidth` | `clientWidth` | `scrollWidth` | diferença | filhos do cabeçalho fora |
+| --- | --- | --- | --- | --- | --- |
+| **320** | 320 | **305** | **305** | **0** | **0** |
+| 359 | 359 | 344 | 344 | 0 | 0 |
+| 360 | 360 | 345 | 345 | 0 | 0 |
+| 390 | 390 | 375 | 375 | 0 | 0 |
+| 1440 | 1440 | 1425 | 1425 | 0 | 0 |
+
+Confirma os 305/305, 344/344, 345/345, 375/375 e 1425/1425 do Dev. A promessa da alínea (b) passou a
+ser verdadeira **também** com a barra: o `px-2 → px-1` e o `gap-2 → gap-1` (8 + 8 px abaixo de `sm`)
+devolveram os 4 px que faltavam.
+
+## (b) Os seis alvos a 320, headed — PASS (encostados, não sobrepostos)
+
+| controlo | caixa | x | right |
+| --- | --- | --- | --- |
+| gaveta | **44 × 44** | 4 | 48 |
+| «Mais» | **44 × 44** | 65 | 109 |
+| busca | **44 × 44** | 113 | 157 |
+| ocultar montantes | **44 × 44** | 161 | 205 |
+| tema | **44 × 44** | 209 | 253 |
+| sair | **44 × 44** | 257 | 301 |
+
+Vãos medidos: gaveta→«Mais» **17 px** (o separador vertical está no meio) e **4,0 px** entre cada par
+do grupo da direita («Mais»→busca→montantes→tema→sair). Positivos, portanto **encostados**; sobrepor
+seria um vão negativo, e não há nenhum.
+
+**Os 54 pontos** (centro, 4 meios de aresta a ±2 px, 4 cantos a ±4 px, × 6 controlos): **zero
+falhas**, cada ponto cai no controlo certo. Os 4 px não chegaram a nenhum dos pontos testados — o
+teste fica como está, não foi apagado nem alargado.
+
+## (c) Nenhum controlo saiu — PASS
+
+A ordem é a mesma nas cinco larguras: **gaveta · «Mais» · busca · ocultar montantes · tema · sair** (a
+1440 o «sair» continua na barra lateral, como antes).
+
+## (d) O que a volta 2 fechou não regrediu — PASS
+
+| | 360 | 390 |
+| --- | --- | --- |
+| caixa da marca | **40 px** | **70 px** |
+| glifos (bordo direito, onde corta) | **101** | **131** |
+| `left` do «Mais» | **105** | **135** |
+| folga | **4 px** | **4 px** |
+| linhas (`getClientRects`) | **1** | **1** |
+| `text-overflow` / `scrollWidth` | `ellipsis` / 124 | `ellipsis` / 124 |
+
+A 320: `sr-only` **1 × 1** e o `ariaSnapshot` devolve `- text: Finanças Pessoais`. A 1440 a marca tem
+`display: none`. Bate com os 40/61→101/105 e 70/61→131/135 do Dev (o x de início é 61).
+
+## (e) As quatro mutações, headless **e** headed — PASS
+
+| mutação | headless | headed |
+| --- | --- | --- |
+| *(limpo)* | **1 passed (4.1s)** | **1 passed (5.4s)** |
+| `nav` | «Transações» `Expected <= 128.5 / Received 129.4` | `Expected <= 122.5 / Received 124.9` |
+| `toque` | `Expected >= 44 / Received 28` | `Expected >= 44 / Received 28` |
+| `cabecalho` | «nenhum filho do cabeçalho passa da janela» | idem |
+| `limiar` | `Expected > 10 / Received 1` | idem |
+
+Na barra de scroll os números do `nav` descem (a célula é mais estreita), mas a mutação continua
+vermelha. Uma nota de processo: a primeira ronda de runs headed bateu no **limite de entrada do
+better-auth** (`/sign-in/email` 10 por 60 s) e o `global.setup` devolveu **429**; repeti a ronda depois
+da janela e correu como acima — não é produto, é o *rate limit* do login de teste.
+
+## (f) Gate e suite — PASS
+
+```
+$ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+All matched files use Prettier code style!
+@repo/shared:test:  Tests 598 passed (598)
+GATE_EXIT=0
+
+$ rm -rf apps/web/.next && env -u E2E_REUSE_SERVER pnpm test:e2e
+[e2e] limpeza: 4 utilizador(es) de teste apagado(s); 0 restante(s).
+  149 passed (9.3m)
+SUITE_EXIT=0     BUILD_ID Rl7I5TP7awnNhriLjNGwv
+```
+
+## (g) Contraste no cabeçalho — PASS
+
+Só mudaram `px` e `gap`; as cores não. Medido a 320, headed: ícones entre **5,84 e 16,88:1** no
+claro e **6,95 e 16,94:1** no escuro — os mesmos valores da volta 2. As bordas no escuro continuam na
+dívida conhecida (1,47/1,58:1), sem alteração.
+
+## Capturas (headed)
+
+`relatorios/T93/headed-320-light.png` (página) e `headed-cabecalho-{320,320-dark,360,390}.png`.
+
+## Ambiente
+
+Demo só a ler; 0 utilizadores `e2e-%` no fim; zero escrita em `apps/`/`e2e/`, zero git; porta 3000
+**fechada**. O 404 que apareceu na consola do primeiro run headed não se repetiu numa segunda passagem
+(era o pedido do favicon); nenhum recurso da app falhou.
+
+## Ficheiros desta volta
+
+`relatorios/.qa-t93c/` (`medir.cjs`, `extra.cjs`, `medicoes.json`, `headless-*.log`,
+`headed-*.log`, `gate.log`, `suite.log`, capturas).
