@@ -37,13 +37,93 @@ interface Rotulo {
 }
 
 interface Medido {
+  /** `window.innerWidth`: a janela É mesmo 320/360 (não serve para transbordo). */
   readonly viewport: number;
+  /**
+   * `documentElement.clientWidth`: a largura em que o layout cabe. Em headless o
+   * Chromium esconde a barra de scroll e os dois números coincidem; em `--headed`
+   * o `innerWidth` inclui a barra e comparar o `scrollWidth` com ele dava um
+   * vermelho falso (T94).
+   */
+  readonly clientWidth: number;
   readonly navScrollWidth: number;
   readonly docScrollWidth: number;
   readonly rotulos: readonly Rotulo[];
   readonly headerFilhosFora: readonly number[];
   readonly marcaLargura: number;
   readonly alvosToque: readonly { readonly nome: string; readonly w: number; readonly h: number }[];
+}
+
+type Mutacao = 'nav' | 'toque' | 'cabecalho' | 'limiar' | 'parede';
+
+/**
+ * Tira as classes que a guarda protege e devolve **quantos elementos mudou**.
+ *
+ * A contagem é o que impede a prova de mentir: uma mutação que não encontra a
+ * classe (porque o produto mudou) deixa de provar o que dizia provar.
+ */
+async function mutar(page: Page, qual: Mutacao): Promise<number> {
+  return page.evaluate((nome) => {
+    let alterados = 0;
+
+    const tirar = (elemento: Element | null, classes: readonly string[]) => {
+      if (elemento === null) {
+        return;
+      }
+
+      const presentes = classes.filter((classe) => elemento.classList.contains(classe));
+
+      if (presentes.length === 0) {
+        return;
+      }
+
+      elemento.classList.remove(...presentes);
+      alterados += 1;
+    };
+
+    if (nome === 'nav') {
+      for (const span of document.querySelectorAll('nav[aria-label="Navegação principal"] span')) {
+        tirar(span, ['max-w-full', 'truncate']);
+      }
+    }
+
+    if (nome === 'toque') {
+      for (const elemento of document.querySelectorAll('header button, header summary')) {
+        tirar(elemento, ['max-sm:min-h-11', 'max-sm:min-w-11']);
+      }
+    }
+
+    if (nome === 'cabecalho') {
+      /*
+       * A T93 deu à marca `min-w-0` para ceder largura a 360. Tirá-lo é o que
+       * volta a empurrar o grupo da direita para fora: a mutação antiga (tirar
+       * `sr-only`) deixou de transbordar quando a marca passou a poder encolher.
+       */
+      tirar(document.querySelector('header > span'), ['min-w-0']);
+    }
+
+    if (nome === 'limiar') {
+      tirar(document.querySelector('header > span'), ['min-[360px]:not-sr-only']);
+    }
+
+    if (nome === 'parede') {
+      /*
+       * T94(g): padding a mais no cabeçalho. Medido: 12 px de padding ainda cabe
+       * nos 305 úteis; 14 px já transborda (doc 307). Com 16 fica inequívoco.
+       * Sem a barra forçada (clientWidth 320) **nenhum** destes valores transborda
+       * o documento — é essa a parede que o projeto `estreito` passou a medir.
+       */
+      const header = document.querySelector('header');
+
+      if (header instanceof HTMLElement) {
+        header.style.paddingLeft = '16px';
+        header.style.paddingRight = '16px';
+        alterados += 1;
+      }
+    }
+
+    return alterados;
+  }, qual);
 }
 
 /** Mede a nav inferior, o cabeçalho e a marca na largura atual. */
@@ -76,12 +156,13 @@ async function medir(page: Page): Promise<Medido> {
 
     return {
       viewport: window.innerWidth,
+      clientWidth: document.documentElement.clientWidth,
       navScrollWidth: nav.scrollWidth,
       docScrollWidth: document.documentElement.scrollWidth,
       rotulos,
       headerFilhosFora: [...header.children]
         .map((filho) => Math.round(filho.getBoundingClientRect().right * 10) / 10)
-        .filter((right) => right > window.innerWidth + 0.5),
+        .filter((right) => right > document.documentElement.clientWidth + 0.5),
       marcaLargura: Math.round(marca.getBoundingClientRect().width * 10) / 10,
       alvosToque: [...header.querySelectorAll('button, summary')]
         .filter((el) => el.getBoundingClientRect().width > 0)
@@ -143,39 +224,38 @@ function verificar(medido: Medido, largura: number): void {
       expect(alvo.h, `«${alvo.nome}» com 44 px de altura`).toBeGreaterThanOrEqual(44);
     }
   }
-  expect(medido.navScrollWidth, 'a nav não transborda').toBe(largura);
-  expect(medido.docScrollWidth, 'a página não transborda (T88)').toBe(largura);
+  /*
+   * T94: comparar com a largura útil (`clientWidth`), não com `innerWidth`. Em
+   * `--headed` o Chromium mostra a barra de scroll e o `innerWidth` é 17 px
+   * maior do que a área onde o layout cabe — a asserção antiga ficava vermelha
+   * sem o produto ter mudado.
+   */
+  expect(medido.navScrollWidth, 'a nav não transborda').toBe(medido.clientWidth);
+  expect(medido.docScrollWidth, 'a página não transborda (T88)').toBe(medido.clientWidth);
 }
 
 test.describe('T89 — a 320 px nada transborda', () => {
   test('a 320 cabe tudo, e a 360 a marca volta sem transbordar', async ({ page }) => {
     await abrirRota(page, '/transacoes');
 
-    if (MUTAR === 'nav') {
-      /* Prova da guarda: sem `truncate`, o mesmo teste tem de ficar vermelho. */
-      await page.evaluate(() => {
-        for (const span of document.querySelectorAll(
-          'nav[aria-label="Navegação principal"] span',
-        )) {
-          span.classList.remove('max-w-full', 'truncate');
-        }
-      });
+    if (MUTAR === 'parede') {
+      const alterados = await mutar(page, 'parede');
+
+      expect(alterados, 'a mutação «parede» não encontrou o cabeçalho').toBeGreaterThan(0);
     }
 
-    if (MUTAR === 'toque') {
-      /* Prova: sem as classes de toque, os alvos voltam a 28–36 px. */
-      await page.evaluate(() => {
-        for (const el of document.querySelectorAll('header button, header summary')) {
-          el.classList.remove('max-sm:min-h-11', 'max-sm:min-w-11');
-        }
-      });
-    }
+    if (MUTAR === 'nav' || MUTAR === 'toque' || MUTAR === 'cabecalho') {
+      const alterados = await mutar(page, MUTAR);
 
-    if (MUTAR === 'cabecalho') {
-      /* O mesmo para o nome da app: sem `sr-only` a 320, o cabeçalho transborda. */
-      await page.evaluate(() => {
-        document.querySelector('header > span')?.classList.remove('sr-only');
-      });
+      /*
+       * T94: a mutação tem de **encontrar** as classes. Se a T85/T88/T93 mudar
+       * de classe, tirar uma que já não existe não muda nada, o teste fica verde
+       * e a «prova de que a guarda morde» passa a ser falsa.
+       */
+      expect(
+        alterados,
+        `a mutação «${MUTAR}» não encontrou as classes a remover — o produto mudou e esta prova deixou de provar`,
+      ).toBeGreaterThan(0);
     }
 
     const a320 = await medir(page);
@@ -195,10 +275,12 @@ test.describe('T89 — a 320 px nada transborda', () => {
     await page.waitForTimeout(150);
 
     if (MUTAR === 'limiar') {
-      /* Prova: com o limiar mudado, a marca fica em `sr-only` (1 px) e a 360 tem de falhar. */
-      await page.evaluate(() => {
-        document.querySelector('header > span')?.classList.remove('min-[360px]:not-sr-only');
-      });
+      const alterados = await mutar(page, 'limiar');
+
+      expect(
+        alterados,
+        'a mutação «limiar» não encontrou `min-[360px]:not-sr-only` — a marca mudou de classe e esta prova deixou de provar',
+      ).toBeGreaterThan(0);
       await page.waitForTimeout(150);
     }
 

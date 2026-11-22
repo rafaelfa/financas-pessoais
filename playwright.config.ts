@@ -112,7 +112,19 @@ export default defineConfig({
      */
     {
       name: 'estreito',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 320, height: 640 }, ...comCanal },
+      /*
+       * T94: o Chromium headless esconde a barra de scroll por omissão
+       * (`--hide-scrollbars`), e nesse modo o `clientWidth` é 320 — não a parede
+       * real de 305. Uma etiqueta mais longa ou 10 px de padding passavam o gate
+       * sem nada ficar vermelho. Aqui a barra clássica é forçada para o teste
+       * medir a mesma parede que o browser do QA mede.
+       */
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 320, height: 640 },
+        launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] },
+        ...comCanal,
+      },
       testMatch: /89-guarda-320\.spec\.ts/,
     },
   ],
