@@ -16,8 +16,11 @@ import { abrirRota } from './support/ui';
  * marca escondida sem necessidade entre 360 e 379, e era invisível para um teste
  * só a 320.
  *
- * `T89_MUTAR=nav|cabecalho` só existe para a prova de que a guarda morde — tira
- * as classes em memória e o teste tem de falhar. Sem a variável, não faz nada.
+ * Desde a T93 também mede a **área de toque** dos seis controlos do cabeçalho
+ * (≥44×44 em telemóvel), que é a barra que se usa com o polegar.
+ *
+ * `T89_MUTAR=nav|cabecalho|toque` só existe para a prova de que a guarda morde —
+ * tira as classes em memória e o teste tem de falhar. Sem a variável, não faz nada.
  */
 
 const MUTAR = process.env.T89_MUTAR ?? '';
@@ -40,6 +43,7 @@ interface Medido {
   readonly rotulos: readonly Rotulo[];
   readonly headerFilhosFora: readonly number[];
   readonly marcaLargura: number;
+  readonly alvosToque: readonly { readonly nome: string; readonly w: number; readonly h: number }[];
 }
 
 /** Mede a nav inferior, o cabeçalho e a marca na largura atual. */
@@ -79,6 +83,16 @@ async function medir(page: Page): Promise<Medido> {
         .map((filho) => Math.round(filho.getBoundingClientRect().right * 10) / 10)
         .filter((right) => right > window.innerWidth + 0.5),
       marcaLargura: Math.round(marca.getBoundingClientRect().width * 10) / 10,
+      alvosToque: [...header.querySelectorAll('button, summary')]
+        .filter((el) => el.getBoundingClientRect().width > 0)
+        .map((el) => {
+          const caixa = el.getBoundingClientRect();
+          return {
+            nome: (el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 20),
+            w: Math.round(caixa.width * 10) / 10,
+            h: Math.round(caixa.height * 10) / 10,
+          };
+        }),
     };
   });
 }
@@ -117,6 +131,18 @@ function verificar(medido: Medido, largura: number): void {
   }
 
   expect(medido.headerFilhosFora, 'nenhum filho do cabeçalho passa da janela').toEqual([]);
+  /*
+   * T93: em telemóvel os seis controlos do cabeçalho têm de ter 44×44 de área
+   * clicável. A 1440 não se aplica — lá usa-se rato e o alvo é menor de propósito.
+   */
+  if (largura < 640) {
+    expect(medido.alvosToque, 'os seis controlos do cabeçalho em telemóvel').toHaveLength(6);
+
+    for (const alvo of medido.alvosToque) {
+      expect(alvo.w, `«${alvo.nome}» com 44 px de largura`).toBeGreaterThanOrEqual(44);
+      expect(alvo.h, `«${alvo.nome}» com 44 px de altura`).toBeGreaterThanOrEqual(44);
+    }
+  }
   expect(medido.navScrollWidth, 'a nav não transborda').toBe(largura);
   expect(medido.docScrollWidth, 'a página não transborda (T88)').toBe(largura);
 }
@@ -132,6 +158,15 @@ test.describe('T89 — a 320 px nada transborda', () => {
           'nav[aria-label="Navegação principal"] span',
         )) {
           span.classList.remove('max-w-full', 'truncate');
+        }
+      });
+    }
+
+    if (MUTAR === 'toque') {
+      /* Prova: sem as classes de toque, os alvos voltam a 28–36 px. */
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll('header button, header summary')) {
+          el.classList.remove('max-sm:min-h-11', 'max-sm:min-w-11');
         }
       });
     }
