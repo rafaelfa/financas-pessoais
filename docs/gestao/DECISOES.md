@@ -740,3 +740,23 @@ dentro de Contas, Recorrências/Regras/Categorias/Importar no menu de Transaçõ
 **Porque não a alternativa barata** (um botão no cabeçalho do Painel): mantinha os oito destinos e o
 teste intacto, mas dava ao ecrã mais pesado um segundo esconderijo e deixava o Calendário invisível em
 todos os ecrãs que não o Painel. A barra lateral é o único sítio que está em todos.
+
+### D30 — O piso de toque de 44 px vale abaixo de `sm` (640), não em toda a largura — **decisão do Lead (2026-11-22)**
+
+O Revisor levantou-o na T93: `max-sm:min-h-11 max-sm:min-w-11` faz os alvos voltarem a 28–36 px entre
+**640 e 767**, que é telemóvel ao alto (landscape) e tablet em retrato — ecrãs de toque. A skill
+`design-do-projeto` diz «alvo ≥44×44 em telemóvel» e não fixa o breakpoint, portanto a escolha é minha.
+
+**Decisão:** fica `sm` (640), como está. **Não** se muda para `md`, e não se usa `pointer: coarse`.
+
+- **Porque não `md`:** um iPhone em landscape mede **844×390** — acima de `md`, portanto continuaria
+  fora do piso; o corte por largura não resolve telemóvel, só o disfarça até 767.
+- **Porque não `pointer: coarse`:** seria o critério certo (dedo, não largura) e é uma linha de media
+  query, mas muda a altura do cabeçalho em portáteis com ecrã táctil, o que ninguém pediu e ninguém
+  mediu — não entra por arrasto numa tarefa de alvos de toque.
+- **Limite assumido e escrito:** entre 640 e 767 os seis controlos medem 28–36 px. Quem quiser o piso
+  em ecrã táctil largo abre tarefa própria com medição de `pointer: coarse`, e essa tarefa é que muda a
+  altura do cabeçalho nesses equipamentos.
+
+**O que a torna irreversível:** não é irreversível — é uma classe por controlo. Fica escrita para não
+se redescobrir como achado novo a cada tarefa que mexa no cabeçalho.

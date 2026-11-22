@@ -685,3 +685,104 @@ fechados na volta 3 com «**pode commitar? sim**».
   `apps/web/next-env.d.ts` ficaram **fora** (já vinham sujos, não são de nenhum de nós). Push e merge
   só com autorização do utilizador.
 - **Decisão:** nenhuma desta tarefa.
+
+## Bloco de fecho — T93 (fechada 2026-11-22)
+
+- **Fechado:** T93 — *alvos de toque do cabeçalho a 320 px*: os seis controlos do cabeçalho passam de
+  **28–36 px** para **44×44** abaixo de `sm` (`max-sm:min-h-11 max-sm:min-w-11`), com o cabeçalho a
+  apertar decoração (`px-2`, `gap-1`, «Mais» `justify-center`) e a marca com `min-w-0` + corte num
+  `<span class="block truncate">` interior.
+- **Prova:** cadeia pausada em **2 voltas**: Dev (volta 1 com 6 controlos medidos e `T89_MUTAR`
+  vermelho; volta 2 com a correção do `truncate`) → QA `PASS` nas duas (a volta 1 mediu os glifos a
+  133 com o «Mais» a 116 e classificou-o «sem nada coberto»; a volta 2 mediu o corte em 108 com o
+  «Mais» a 116, **8,0 px** de folga) → Revisor «pode commitar: **não**» na volta 1 (DEVE: o
+  `truncate` anulado pelo `not-sr-only`, com offset no CSS construído) e «**sim**» na volta 2 (0
+  bloqueia, 0 deve, 0 opcionais).
+  Medições: 360 → caixa 35,0, interior `scrollWidth/clientWidth` **124/35**, 1 rect, glifos em
+  **108,0**, «Mais» a **116,0**; 390 → 65,0, `124/65`, glifos em **138,0**, «Mais» a **146,0**;
+  `document.scrollWidth` = janela e **0** filhos fora em **320/359/360/390/1440**; a 320 `sr-only` 1×1
+  com `- text: Finanças Pessoais` no `ariaSnapshot`; **54 pontos** (centro, arestas a ±2, cantos a ±4,
+  × 6) todos no controlo certo; guarda morde (`T89_MUTAR=toque` → `Expected >= 44 / Received: 28`,
+  EXIT=1; limpo 1 passed 4,5 s). Gate 5/5 e suite de frio **149 passed (8.7m)**, `0 restante(s)`,
+  EXIT=0, build `nTI6yvbZxQQA6iIq5cnn4P`. Relatórios: `relatorios/T93.md`, `relatorios/T93-qa.md`,
+  `relatorios/T93/` (capturas).
+- **O que isto não resolve:** (1) entre **640 e 767** os alvos voltam a 28–36 px — assumido e escrito
+  na **D30**: o corte por largura não apanha telemóvel em landscape (844×390) e `pointer: coarse` muda
+  a altura do cabeçalho em portáteis tácteis, o que ninguém mediu. (2) A conta a 320 fecha em **317 px**
+  com **3 px** de folga no bordo direito: a 319 rebenta — não há margem para mais nada no cabeçalho a
+  320. (3) A 360 o nome da app fica em 35 px de caixa: cortado com reticências, legível só por
+  `ariaSnapshot`/tooltip nenhum — é o preço de seis alvos a 44 na mesma barra.
+- **Aberto:** nada desta tarefa. **T94** (endurecer a guarda dos 320), **T95** (uma só fonte de `cn`),
+  **T96** (as ~139 bordas com peso de controlo) e **T98** (falha de rede muda no formulário de
+  preferências) seguem na fila autorizada.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commits locais `86d306e` (fix) e `7117b69` (spec),
+  **por enviar**; produção continua em `4334d4b`. Push e merge só com autorização do utilizador.
+- **Decisão:** nenhuma desta tarefa. A D30 (piso de 44 px até `sm`) fica registada como decisão minha.
+
+### T93 — alvos de toque do cabeçalho a 320 px (Dev) — **fechada 2026-11-22**
+
+**Volta 1 — entrega do Dev (`relatorios/T93.md`, `relatorios/T93/` com 6 recortes):** os seis
+controlos passam a **44×44** abaixo de `sm` com `max-sm:min-h-11 max-sm:min-w-11` (ícone e aspeto
+iguais); para caberem, `px-2`/`gap-1` abaixo de `sm` e a marca com `min-w-0 truncate`. Sem transbordo
+em 320/359/360/390/1440 (`scrollWidth` = janela, 0 filhos fora). A asserção entrou no `e2e/89`
+(320 **e** 360) e o modo `T89_MUTAR=toque` falha com `Received: 28`. Gate 5/5, suite de frio
+**149 passed (8.3m)**, `0 restante(s)`. Zero git.
+
+**Volta 1 — QA `PASS` (`relatorios/T93-qa.md`):** os seis medidos por ele a 320 (`28×28`, `38×44`,
+`38×28`, `32×32`, `32×32`, `36×36` → todos **44×44**); `scrollWidth` = janela e **0** filhos fora a
+320/359/360/390/1440; ordem igual; **54 pontos** (centro, arestas a 2 px, cantos a 4 px × 6) caem no
+controlo certo, nenhum no vizinho; guarda morde (`T89_MUTAR=toque` → `Received: 28`, EXIT=1; limpo
+1 passed); gate 5/5; suite **149 passed (8.7m)**, `0 restante(s)`. **Ressalva do QA:** a marca a 360
+tem caixa de 35 px com o nome natural a 123,8 e glifos até ~133 (vizinho a 116) — o `truncate` não
+trunca porque o `not-sr-only` repõe `white-space: normal`/`overflow: visible`; o que segurou os 377 px
+foi o `min-w-0`. A (c) passa na mesma (o nome está lá a 360 e 390). Pergunta em revisão: a classe é
+morta ou a frase do relatório é que mente.
+
+**Volta 1 — Revisor: 1 DEVE, 2 OPCIONAIS, «pode commitar: não».** DEVE em `app-shell.tsx:77`: no CSS
+construído o `.truncate` está no offset 24514 e o `@media (min-width:360px){.min-[360px]:not-sr-only
+{white-space:normal;overflow:visible}}` em ~103454 — mesma especificidade, ganha o último, portanto o
+`truncate` **não trunca** e o que segura os 377 px é o `min-w-0`. Efeito real: o nome passa por baixo
+do ícone do «Mais» a 360–767. Conta a 320: `8+44+8+5+8+236+8 = 317`, **3 px** livres. Opcionais:
+(a) entre 640 e 767 os alvos voltam a 28–36 px — **decidido por mim em `DECISOES.md` D30** (fica `sm`,
+porque o iPhone em landscape mede 844 e nem `md` o apanha); (b) a frase do relatório e o comentário
+`app-shell.tsx:73-75` a corrigir. **Volta 2 aberta com o Dev**, critério (i)–(v): reticências medidas
+a 360 e 390, `scrollWidth` = janela nas cinco larguras, `sr-only` da T88 vivo a 320, nada muda a 640+.
+
+**Volta 2 — entrega do Dev (`relatorios/T93.md` §8):** o `sr-only…not-sr-only` fica na caixa de fora e
+o corte passa a um `<span class="block truncate">` **interior** (recusou `min-[360px]:truncate` por
+depender da ordem de emissão do compilador). Medido: 360 → caixa **35 px**, `scrollWidth/clientWidth`
+**124/35**, **1** linha, «Mais» a **116**; 390 → **65 px**, `124/65`, 1 linha, «Mais» a **146**;
+0 filhos fora em 320/359/360/390/1440; a 320 o `sr-only` mantém o nome na árvore; `e2e/89`+`e2e/92`
+2 passed; gate 5/5, `BUILD_ID -cNz1v7OgaIEAcz7wlYoO`. Suite não repetida — é o QA que a corre agora.
+
+**Volta 2 — QA `PASS` (`relatorios/T93-qa.md` §«Volta 2»):** 360 → caixa 35,0, `124/35`, 1 rect,
+glifos cortados em **108,0** com «Mais» a **116,0** (8,0 px de folga); 390 → 65,0, `124/65`, glifos em
+**138,0** com «Mais» a **146,0**; 0 filhos fora nas cinco larguras; a 320 `sr-only` 1×1 e
+`- text: Finanças Pessoais`; a 1440 marca `display:none`. Volta 1 intacta (seis a 44×44, 54 pontos,
+`T89_MUTAR=toque` → `Received: 28`). Suite **149 passed (8.7m)**, `0 restante(s)`, EXIT=0, build
+`nTI6yvbZxQQA6iIq5cnn4P`.
+
+**Volta 2 — Revisor: 0 BLOQUEIA, 0 DEVE, 0 OPCIONAIS, «pode commitar: sim».** O `sr-only` exterior
+sobrevive e o interior está fora do seu alcance (`clip-path`, `overflow`, `white-space` e
+`text-overflow` não são herdados; o span interior redeclara os três que precisa, `app-shell.tsx:80`);
+nesta volta só mudaram a marca e o comentário (`19/6` no `git diff`), nada da volta 1 regrediu; as
+frases do relatório e do comentário dizem o mecanismo real; não há `truncate`/`not-sr-only` em
+duplicado que possam pisar-se (`grep -rn "truncate|not-sr-only" apps/web/src`).
+
+**Achado do Dev na T88, medido por ele.** A 320 px, dos cinco controlos do cabeçalho só o menu
+«Mais» chega a **44 px**; a barra lateral, a busca, o tema e o sair medem **28–36 px**. A skill
+`design-do-projeto` pede **alvo de toque ≥44×44 em telemóvel** e esta é a barra que se usa com o
+polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso mudaria o cabeçalho a 390 e a
+1440, e o critério da T88 era «nada muda».
+
+**Critério:**
+
+- (a) Os cinco controlos do cabeçalho com **≥44 px de altura** (e largura ≥44 nos que são só ícone) a
+  320, medidos um a um, com o número antes/depois.
+- (b) Se 44 não couber a 320 sem voltar a transbordar (`document.scrollWidth` = 320), diz **por
+  extenso** qual é o controlo que não cabe e qual a saída que propões — não basta aumentar o padding.
+- (c) A 390 e a 1440 o cabeçalho pode mudar **de tamanho**, não de ordem: os cinco controlos na mesma
+  sequência, o nome da app onde está (`min-[360px]`), nada a desaparecer.
+- (d) Dois temas, sem regressão de contraste.
+- (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
+

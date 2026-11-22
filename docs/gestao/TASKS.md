@@ -4120,7 +4120,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 do comentário) | `relatorios/T90.md`, `relatorios/T90-qa.md` |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` na volta 2 — a 1 deu FAIL: a barra lateral não usava o token — + Revisor «pode commitar: sim» na volta 3) | `relatorios/T91.md`, `relatorios/T91-qa.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim»; baseline 148) | `relatorios/T92.md`, `relatorios/T92-qa.md` |
-| T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada pelo utilizador) | `relatorios/T88-qa.md` |
+| T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`86d306e` + `7117b69`; Dev 2 voltas — o Revisor travou o `truncate` anulado pelo `not-sr-only` — + QA `PASS` nas duas + Revisor «pode commitar: sim»; baseline 149) | `relatorios/T88-qa.md`, `relatorios/T93.md`, `relatorios/T93-qa.md` |
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
@@ -4532,25 +4532,6 @@ teste que pode mentir sem ninguém dar por isso.**
 **Critério:** (a) as duas correções, com as três mutações a continuarem a falhar; (b) o spec conta
 continuar a **147**; (c) um ensaio **`--headed`** a passar (é a prova do item 2, e é a única forma de
 o demonstrar); (d) `format:check`/`lint`/`typecheck` a 0. Não mexer em `apps/`.
-
-### T93 — alvos de toque do cabeçalho a 320 px (Dev) — **em Dev a 2026-11-22**
-
-**Achado do Dev na T88, medido por ele.** A 320 px, dos cinco controlos do cabeçalho só o menu
-«Mais» chega a **44 px**; a barra lateral, a busca, o tema e o sair medem **28–36 px**. A skill
-`design-do-projeto` pede **alvo de toque ≥44×44 em telemóvel** e esta é a barra que se usa com o
-polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso mudaria o cabeçalho a 390 e a
-1440, e o critério da T88 era «nada muda».
-
-**Critério:**
-
-- (a) Os cinco controlos do cabeçalho com **≥44 px de altura** (e largura ≥44 nos que são só ícone) a
-  320, medidos um a um, com o número antes/depois.
-- (b) Se 44 não couber a 320 sem voltar a transbordar (`document.scrollWidth` = 320), diz **por
-  extenso** qual é o controlo que não cabe e qual a saída que propões — não basta aumentar o padding.
-- (c) A 390 e a 1440 o cabeçalho pode mudar **de tamanho**, não de ordem: os cinco controlos na mesma
-  sequência, o nome da app onde está (`min-[360px]`), nada a desaparecer.
-- (d) Dois temas, sem regressão de contraste.
-- (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
 ### T97 — os controlos mortos de `/definicoes` (Dev) — **fechada 2026-11-22**
 
