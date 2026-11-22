@@ -60,7 +60,7 @@ e2e/.tmp/
 # que entra no git é a lista de SHA-256, bytes e dimensões de cada ficheiro — o primeiro
 # exemplar é relatorios/EVIDENCIA-T73.md, e cada tarefa fechada passa a ter o seu. Para
 # publicar uma captura *deliberadamente*: git add -f.
-relatorios/*.png
+relatorios/**/*.png
 
 # Rascunhos de QA (logs, capturas e JSON de trabalho; os relatórios é que são prova)
 relatorios/.qa-*/
