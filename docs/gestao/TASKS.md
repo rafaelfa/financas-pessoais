@@ -4126,7 +4126,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **fechada** 2026-11-22 (`31118ee`; Dev 3 voltas — o Revisor apanhou o «Mais» a 1,94 — + QA `PASS` + Revisor «pode commitar: sim»; 149) | `relatorios/T91-revisao.md`, `relatorios/T96.md`, `relatorios/T96-qa.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
-| T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 2, 2026-11-22; Revisor aceita a conclusão e pede o valor de `resultado` + `pageerror`) | `relatorios/T99.md` |
+| T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (medição em 2 voltas, **sem código mudado**; Revisor «fecha assim: sim») | `relatorios/T99.md` |
 | T100 | **O `Select` «O mês começa no dia» fica vazio depois de gravar:** medido por mim em produção (2026-11-22, `financas-pessoais-psi-lac.vercel.app`): com dia 1 gravado, o carregamento **frio** mostra «Dia 1»; **depois** de Guardar (com o toast «Preferências guardadas.») o campo mostra `""`, e um reload volta a «Dia 1» — o valor está na base, o ecrã é que o perde. Causa provável: `SelectBubbleInput` do Radix a disparar `change` com `""` no mount, a passar por `onValueChange={setDia}` (`preferences-form.tsx:138`). **Achado meu na verificação pós-deploy; autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (a seguir à T99; fila autorizada) | esta linha, `relatorios/T97-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
@@ -4427,57 +4427,6 @@ escondido e dispara `change`; como o conteúdo só monta ao abrir, a escrita fic
 
 **O que não fazer:** não inventes um dia quando não há valor válido (a skill é explícita: um valor inventado
 grava o dia errado em silêncio); não toques na server action nem no schema; não mudes o texto da página.
-
-### T99 — o `redirect` da sessão expirada numa Server Action (Dev) — **em Dev, volta 2 a 2026-11-22**
-
-**Achado do Revisor na revisão da T98, e é um vazio de conhecimento, não um defeito provado.** O
-`requireUser()` faz `redirect('/entrar')` num caminho que **lança** (`NEXT_REDIRECT`), e está **fora** do
-`try` da acção (`preferences-actions.ts:34`) precisamente para não ser engolido. Mas numa **Server Action
-chamada do cliente** o Next não "navega" como numa renderização: o `throw` atravessa a fronteira. Ninguém
-mediu **o que o utilizador vê** quando a sessão expira a meio de um Guardar. Se chegar como rejeição, o
-`catch` da T98 mostra «Não consegui ligar ao servidor — as preferências não foram guardadas» a quem só
-precisava de entrar outra vez.
-
-**Critério — isto é uma medição, não uma correção:**
-
-- (a) **Provocar o caso:** sessão válida em `/definicoes`, apagar/expirar o cookie e carregar em Guardar.
-  Diz **o que acontece**: redirecciona para `/entrar`, mostra a mensagem de rede, não mostra nada, ou outra
-  coisa. Com a prova de cada um (URL final, `h1`, `[role="alert"]`, consola).
-- (b) **Dizer onde o `throw` morre:** é entregue como redireccionamento ao cliente, ou como rejeição
-  apanhada pelo nosso `catch`? Cita o que vês — o texto da mensagem é o indicador mais direto.
-- (c) **O mesmo teste com a T98 removida em memória** (sem `catch`): para saber se o `catch` está a
-  **esconder** um redireccionamento que funcionava. Isto decide se a T98 introduziu uma regressão em vez de
-  a corrigir.
-- (d) **Não mudes código nesta tarefa.** O resultado é um relatório com a medição e **uma recomendação**
-  (deixar como está / distinguir o erro de sessão / tratar o redirect antes do `catch`), com o custo de cada
-  uma. A decisão é minha e só a tomo com o número.
-- (e) Se precisares de um spec para a medição, escreve-o **descartável** (diz onde e apaga-o); não
-  acrescentes testes à suite nesta tarefa.
-
-**Volta 1 — medição do Dev (`relatorios/T99.md`), nenhum código mudado:**
-
-| caso | URL final | `h1` | `[role="alert"]` | consola |
-| --- | --- | --- | --- | --- |
-| sessão válida | `/definicoes` | Definições | — | vazia |
-| sessão apagada **com** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
-| sessão apagada **sem** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
-
-**A prova:** resposta do POST `status 200 · content-type text/x-component · **x-action-redirect:
-/entrar;push**`. O Next serializa o `redirect()` como cabeçalho da acção, a promessa **resolve**, o `await`
-não lança, o `catch` da T98 **nunca corre** e o router navega. Conclusões: (b) o `throw` morre no protocolo,
-não no nosso `catch`; (c) a T98 **não** escondeu um redirect — com e sem `catch` o resultado é idêntico.
-**Recomendação: deixar como está.** **Sem QA por decisão minha:** nenhuma linha de produto mudou e a prova é
-um cabeçalho capturado, não um comportamento que outra mão meça de forma diferente; repetir a suite seriam
-9 min por zero. Gate (restaurado) 5/5, `BUILD_ID zM51FOqtmlMVb1NnSgG-W`.
-
-**Volta 1 — Revisor: «a medição sustenta a conclusão: sim», com um furo na prova.** O cabeçalho
-`x-action-redirect` prova que o `throw` não morre no nosso `catch`; **não** prova que o código depois do
-`try` está seguro — `preferences-form.tsx:88` faz `if (!resultado.ok)` e, se a promessa resolver com
-`undefined`, é `TypeError`. E «consola vazia» não cobre isso: um erro não apanhado numa transição sai como
-**`pageerror`**, não como mensagem de consola. Faltam também duas coisas: o `push` do redirect **não foi
-medido** (o «voltar» depois de reentrar) e a consequência **não está escrita** no relatório (aterrar em
-`/entrar` perde o que estava por gravar). **Volta 2 pedida ao Dev:** `pageerror` +
-`unhandledrejection` ligados, o **valor literal** de `resultado`, os passos do «voltar» e a consequência.
 
 ### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **fechada 2026-11-22**
 

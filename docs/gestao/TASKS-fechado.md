@@ -1252,3 +1252,129 @@ normal e a única marca é `TypeError: Failed to fetch` na consola. Medido pelo 
 - (d) Spec: um teste que aborta o pedido e assere a mensagem — e prova de que morde (sem o `catch`, fica
   vermelho). Contagem **150** (149 + 1) ou a que resultar.
 - (e) Gate 5/5 e suite de frio, `0 restante(s)`.
+
+## Bloco de fecho — T99 (fechada 2026-11-22)
+
+- **Fechado:** T99 — *o `redirect` da sessão expirada numa Server Action*. **Nada foi mudado no produto.** A
+  dúvida do Revisor na T98 ficou **desmentida por medição**: o `redirect` do `requireUser` viaja no protocolo
+  da acção (`x-action-redirect: /entrar;push`) e o Next navega; a continuação **não produz efeito
+  observável** (sem toast, sem alerta, sem `pageerror`), e a proteção de uma linha não é necessária.
+- **Prova:** Dev em 2 voltas de medição → **sem QA por decisão minha** (nenhuma linha de produto mudou; a
+  prova é um cabeçalho e uma ausência de efeitos) → Revisor «**fecha assim: sim**». «Voltar» medido:
+  `/definicoes` → `/entrar` → `/` → `/entrar` → `/definicoes`, **sem estado morto**. Gate 5/5, `BUILD_ID
+  VpbMpo2_GbqTQEHKJyxzc`; instrumentação temporária restaurada (`grep __valor/__passou` → 0). Relatório:
+  `relatorios/T99.md`.
+- **O que isto não resolve:** (1) a afirmação forte «a continuação **não retoma**» **não está provada** —
+  `window.__passou: false` num contexto que a navegação descarta não a sustenta; prová-la exigiria o marcador
+  em `sessionStorage` lido em `/entrar`, e não foi feito porque a decisão se sustenta na ausência de efeitos.
+  (2) **Aterrar em `/entrar` perde o que estava por gravar** no formulário — o dia e o regime escolhidos mas
+  não submetidos voltam aos da base; aceitável, e é consequência. (3) `/entrar` mostra o formulário mesmo com
+  sessão ativa — comportamento da página de entrada, fora do âmbito.
+- **Aberto:** nada desta tarefa.
+- **Repositório:** sem código; documentos e o relatório.
+- **Decisão:** nenhuma nova — «deixar como está, custo zero».
+
+### T99 — o `redirect` da sessão expirada numa Server Action (Dev) — **fechada 2026-11-22**
+
+**Achado do Revisor na revisão da T98, e é um vazio de conhecimento, não um defeito provado.** O
+`requireUser()` faz `redirect('/entrar')` num caminho que **lança** (`NEXT_REDIRECT`), e está **fora** do
+`try` da acção (`preferences-actions.ts:34`) precisamente para não ser engolido. Mas numa **Server Action
+chamada do cliente** o Next não "navega" como numa renderização: o `throw` atravessa a fronteira. Ninguém
+mediu **o que o utilizador vê** quando a sessão expira a meio de um Guardar. Se chegar como rejeição, o
+`catch` da T98 mostra «Não consegui ligar ao servidor — as preferências não foram guardadas» a quem só
+precisava de entrar outra vez.
+
+**Critério — isto é uma medição, não uma correção:**
+
+- (a) **Provocar o caso:** sessão válida em `/definicoes`, apagar/expirar o cookie e carregar em Guardar.
+  Diz **o que acontece**: redirecciona para `/entrar`, mostra a mensagem de rede, não mostra nada, ou outra
+  coisa. Com a prova de cada um (URL final, `h1`, `[role="alert"]`, consola).
+- (b) **Dizer onde o `throw` morre:** é entregue como redireccionamento ao cliente, ou como rejeição
+  apanhada pelo nosso `catch`? Cita o que vês — o texto da mensagem é o indicador mais direto.
+- (c) **O mesmo teste com a T98 removida em memória** (sem `catch`): para saber se o `catch` está a
+  **esconder** um redireccionamento que funcionava. Isto decide se a T98 introduziu uma regressão em vez de
+  a corrigir.
+- (d) **Não mudes código nesta tarefa.** O resultado é um relatório com a medição e **uma recomendação**
+  (deixar como está / distinguir o erro de sessão / tratar o redirect antes do `catch`), com o custo de cada
+  uma. A decisão é minha e só a tomo com o número.
+- (e) Se precisares de um spec para a medição, escreve-o **descartável** (diz onde e apaga-o); não
+  acrescentes testes à suite nesta tarefa.
+
+**Volta 1 — medição do Dev (`relatorios/T99.md`), nenhum código mudado:**
+
+| caso | URL final | `h1` | `[role="alert"]` | consola |
+| --- | --- | --- | --- | --- |
+| sessão válida | `/definicoes` | Definições | — | vazia |
+| sessão apagada **com** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+| sessão apagada **sem** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+
+**A prova:** resposta do POST `status 200 · content-type text/x-component · **x-action-redirect:
+/entrar;push**`. O Next serializa o `redirect()` como cabeçalho da acção, a promessa **resolve**, o `await`
+não lança, o `catch` da T98 **nunca corre** e o router navega. Conclusões: (b) o `throw` morre no protocolo,
+não no nosso `catch`; (c) a T98 **não** escondeu um redirect — com e sem `catch` o resultado é idêntico.
+**Recomendação: deixar como está.** **Sem QA por decisão minha:** nenhuma linha de produto mudou e a prova é
+um cabeçalho capturado, não um comportamento que outra mão meça de forma diferente; repetir a suite seriam
+9 min por zero. Gate (restaurado) 5/5, `BUILD_ID zM51FOqtmlMVb1NnSgG-W`.
+
+**Volta 1 — Revisor: «a medição sustenta a conclusão: sim», com um furo na prova.** O cabeçalho
+`x-action-redirect` prova que o `throw` não morre no nosso `catch`; **não** prova que o código depois do
+`try` está seguro — `preferences-form.tsx:88` faz `if (!resultado.ok)` e, se a promessa resolver com
+`undefined`, é `TypeError`. E «consola vazia» não cobre isso: um erro não apanhado numa transição sai como
+**`pageerror`**, não como mensagem de consola. Faltam também duas coisas: o `push` do redirect **não foi
+medido** (o «voltar» depois de reentrar) e a consequência **não está escrita** no relatório (aterrar em
+`/entrar` perde o que estava por gravar). **Volta 2 pedida ao Dev:** `pageerror` +
+`unhandledrejection` ligados, o **valor literal** de `resultado`, os passos do «voltar» e a consequência.
+**Volta 1 — medição do Dev (`relatorios/T99.md`), nenhum código mudado:**
+
+| caso | URL final | `h1` | `[role="alert"]` | consola |
+| --- | --- | --- | --- | --- |
+| sessão válida | `/definicoes` | Definições | — | vazia |
+| sessão apagada **com** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+| sessão apagada **sem** `catch` | **`/entrar`** | Entrar | **nenhum** | vazia |
+
+**A prova:** resposta do POST `status 200 · content-type text/x-component · x-action-redirect:
+/entrar;push`. O Next serializa o `redirect()` como cabeçalho da acção, a promessa **resolve**, o `await`
+não lança, o `catch` da T98 **nunca corre** e o router navega. Conclusões: (b) o `throw` morre no protocolo,
+não no nosso `catch`; (c) a T98 **não** escondeu um redirect — com e sem `catch` o resultado é idêntico.
+**Recomendação: deixar como está.** **Sem QA por decisão minha:** nenhuma linha de produto mudou e a prova é
+um cabeçalho capturado, não um comportamento que outra mão meça de forma diferente; repetir a suite seriam
+9 min por zero. Gate (restaurado) 5/5, `BUILD_ID zM51FOqtmlMVb1NnSgG-W`.
+
+**Volta 1 — Revisor: «a medição sustenta a conclusão: sim», com um furo na prova.** O cabeçalho
+`x-action-redirect` prova que o `throw` não morre no nosso `catch`; **não** prova que o código depois do
+`try` está seguro — `preferences-form.tsx:88` faz `if (!resultado.ok)` e, se a promessa resolver com
+`undefined`, é `TypeError`. E «consola vazia» não cobre isso: um erro não apanhado numa transição sai como
+**`pageerror`**, não como mensagem de consola. Faltam também duas coisas: o `push` do redirect **não foi
+medido** (o «voltar» depois de reentrar) e a consequência **não está escrita** no relatório (aterrar em
+`/entrar` perde o que estava por gravar). **Volta 2 pedida ao Dev:** `pageerror` +
+`unhandledrejection` ligados, o **valor literal** de `resultado`, os passos do «voltar» e a consequência.
+
+**Volta 2 — medição (`relatorios/T99.md` §8-§9), nenhum código mudado:**
+
+```
+pageerrors:         []
+unhandledrejection: null
+window.__passou:    false
+window.__valor:     não define (o código depois do try não correu)
+url final: /entrar · h1: Entrar
+```
+
+**A explicação corrige a volta 1:** não aparece `TypeError` — mas **não porque a promessa resolva bem**. O Next
+trata o `x-action-redirect` e navega; **a continuação da acção não é retomada**, logo o `if (!resultado.ok)`
+(`:88`) nunca é avaliado. A proteção de uma linha **não é necessária** porque a linha não é atingida.
+**«Voltar» medido:** `/definicoes` → (Guardar sem sessão) `/entrar` → (entrar) `/` → Voltar #1 `/entrar` →
+Voltar #2 `/definicoes`, **sem estado morto**; `/entrar` mostra o formulário mesmo com sessão ativa
+(comportamento da página de entrada). **Consequência escrita (§8.4):** aterrar em `/entrar` **perde o que
+estava por gravar** — o dia e o regime escolhidos mas não submetidos voltam aos da base. Gate 5/5,
+`BUILD_ID VpbMpo2_GbqTQEHKJyxzc`, sem `pageerror` nem `unhandledrejection`.
+
+**Volta 2 — Revisor: «fecha assim: sim», com a frase do fecho ajustada, e o argumento é melhor que o meu.**
+`window.__passou: false` **não prova** que a continuação não retoma — o `window` de um contexto descartado
+pela navegação não regista nada, e é indistinguível do caso contrário. A prova que não depende disso é a
+**ausência de efeitos**: se tivesse corrido até ao fim com sucesso, haveria `toast.success`; se tivesse
+corrido com `resultado` indefinido, haveria `pageerror` em `:88`. Não há nem um nem outro. A frase que fica:
+«o `redirect` é tratado pelo Next (`x-action-redirect: /entrar;push`); a continuação da acção **não produz
+efeito observável** — nenhum toast, nenhum alerta, nenhum `pageerror` — e a proteção de uma linha não é
+necessária porque o caminho não é atingível de forma observável». A afirmação forte exigiria o marcador em
+`sessionStorage` lido em `/entrar` (~30 s): **não foi feito, e fica escrito como não provado.**
+
