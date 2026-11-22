@@ -948,3 +948,116 @@ teste que pode mentir sem ninguém dar por isso.**
 **Critério:** (a) as duas correções, com as três mutações a continuarem a falhar; (b) o spec conta
 continuar a **147**; (c) um ensaio **`--headed`** a passar (é a prova do item 2, e é a única forma de
 o demonstrar); (d) `format:check`/`lint`/`typecheck` a 0. Não mexer em `apps/`.
+
+## Bloco de fecho — T95 (fechada 2026-11-22)
+
+- **Fechado:** T95 — *uma só fonte de `cn`*: `no-restricted-imports` com `paths: [{ name: 'cn' }]` nos
+  **dois** configs (`apps/web` e raiz), o shim `packages/shared/src/utils/cn.ts` **apagado** e o
+  `export * from './cn'` fora do `utils/index.ts`. `cn/config` continua permitido — é o match exacto que
+  deixa `lib/utils.ts` construir o `createCn`.
+- **Prova:** cadeia Dev (3 voltas) → QA `PASS` → Revisor «pode commitar: **sim**» (0 bloqueia, 0 deve,
+  0 opcionais) nos dois passos finais. A regra morde nas mãos do QA nos **dois** sítios
+  (`packages/shared/src/utils/__qa-t95-cn.ts` → `Failed: @repo/shared#lint`, EXIT=1; `apps/web/src` →
+  EXIT=1), e depois de apagar `4 successful`, **`Cached: 0`**, EXIT=0. `pnpm lint --force` → 0 com
+  `Cached: 0`; `typecheck` 0 (4 tasks); `format:check` 0; **598/598** unitários; suite de frio **149
+  passed (9.3m)**, `0 restante(s)`, EXIT=0; `pnpm build --force` → **`BUILD_ID KzqzgAu4qWMSToaA9A_EW`**.
+  `grep "from 'cn'"` no `src` → **0**; `grep -rn ClassValue` no repositório → **0** (a remoção era
+  segura, não só silenciosa). Relatórios: `relatorios/T95.md`, `relatorios/T95-qa.md`.
+- **O que isto não resolve:** (1) **a dependência `cn: ^0.4.0` continua declarada em
+  `packages/shared/package.json:22`** sem um único import no pacote — fica fora por decisão minha,
+  porque removê-la exige `pnpm install` e mexer no `pnpm-lock.yaml`, e não entra por arrasto numa volta
+  de lint; **é a linha a apagar na próxima vaga que mexa no lock**. (2) A regra é duplicada em seis
+  linhas nos dois configs, com a razão escrita em ambos: dois configs, duas cópias, e é o preço
+  aceitável de o `packages/*` ser lintado pelo da raiz. (3) O `paths` é match exacto por desenho: um
+  import de `'cn/subpath'` novo não é apanhado até alguém o escrever.
+- **Aberto:** nada desta tarefa. O instantâneo `docs/analise/02-estado-atual-do-projeto.md` ganhou uma
+  **nota de estado** (+1/0) em vez de ser reescrito — decisão minha, com o achado do QA reconhecido como
+  certo e o remédio trocado.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `a78cccd` **por enviar**.
+- **Decisão:** nenhuma nova. A D30 continua a valer.
+
+### T95 — uma só fonte de `cn` (Dev) — **fechada 2026-11-22**
+
+**Atualizações minhas para o arranque (2026-11-22):** a baseline do critério (d) é **149**, não 147
+(as specs da T89, T92 e T97 entraram depois); e a (e) pede `sha256` igual, mas a T93 mudou `px`/`gap`
+do cabeçalho — compara só o que esta tarefa não toca e diz o que ficou de fora.
+
+**Dois achados do Revisor na T90, com a mesma consequência: o `cn` sem a escala pode voltar sem
+ninguém dar por isso.**
+
+1. **Nada impede um `from 'cn'` novo.** A T90 apontou os 39 `components/ui/*` a `@/lib/utils`, mas a
+   regra vive no comentário. Um `no-restricted-imports` no `apps/web/eslint.config.mjs` (o de
+   `apps/web`, não o da raiz — o próprio ficheiro diz que cada um traz o seu) com
+   `paths: [{ name: 'cn', message: 'usa `cn` de `@/lib/utils` (escala de texto, T78)' }]` torna a regra
+   uma coisa que o `lint` cobra. **`cn/config` é outro especificador e fica permitido** — é isso que
+   deixa `lib/utils.ts` construir o `createCn`.
+2. **`packages/shared/src/utils/cn.ts:11`** reexporta `cn` do pacote **nu** e o docblock afirma «so the
+   entire workspace has exactly one Tailwind class-conflict engine». Era verdade antes da T90; agora há
+   dois motores e o daqui **não tem a escala**. É público (`packages/shared/package.json` → `./utils`) e
+   hoje **ninguém** o importa (`grep @repo/shared/utils` → só um comentário em
+   `packages/shared/src/index.ts:8`). O risco é o primeiro import: 16 px em silêncio, com um comentário a
+   jurar o contrário.
+
+**Critério:** (a) a regra de lint em vigor e **provada a morder** — um ficheiro de teste com
+`from 'cn'` tem de falhar o `lint` (usa um ficheiro temporário e apaga-o, ou o próprio teste do ESLint
+se houver); (b) o shim do `shared` **apagado** (com o export removido de `packages/shared/src/utils/index.ts`
+e do `package.json` se ficar a apontar para nada) **ou** reduzido a uma nota que diga que o `cn` da app
+é outro — escolhe uma e justifica; (c) `lint` e `typecheck` a 0 em **todo** o workspace, porque se mexe
+fora de `apps/web`; (d) suite de frio com a baseline **149**, `0 restante(s)`; (e) as capturas de
+`/transacoes` nos dois temas continuam a bater `sha256` com as da T90 (nada disto muda pintura).
+
+**Volta 1 — entrega do Dev (`relatorios/T95.md`):** regra `no-restricted-imports` com
+`paths: [{ name: 'cn', … }]` no `apps/web/eslint.config.mjs` (+24, zero exceções); prova com um
+`src/t95-temp-cn.ts` → `exit 1` com a mensagem da regra, apagado → `exit 0`; **`'cn/config'` continua
+permitido** (`lib/utils.ts` sem `eslint-disable`). O shim `packages/shared/src/utils/cn.ts` foi
+**apagado** (−12) com o `export * from './cn'` fora de `utils/index.ts`, porque deixá-lo como nota
+mantinha um ficheiro exportado que o próximo leitor lê como API; ninguém o importava. `lint` e
+`typecheck` da **raiz** a 0 (4 tasks, `Cached: 0`), 0 imports de `'cn'` no `src`, `format:check` 0,
+598/598 unitários, `BUILD_ID J7DO2zSb5t56e1uC4fII0`. A alínea (e) do `sha256` **não foi usada** (anulada
+por mim: a T93 já mudou o cabeçalho).
+
+**Volta 1 — QA `FAIL` (`relatorios/T95-qa.md`), tudo o resto passa:** a regra morde nas mãos dele
+(`EXIT=1` com ficheiro dele, `EXIT=0` depois, árvore igual), `cn/config` permitido sem `eslint-disable`,
+shim sem referências no código, `grep "from 'cn'"` → **0**, raiz 0/0/0, **598/598**, suite **149 passed
+(9.3m)**, `0 restante(s)`, `BUILD_ID EqGf_lA5Al38AOHqf_rQI`, `/transacoes` igual a 1440 e 390. O **único**
+achado: três referências ao shim em `docs/analise/02-estado-atual-do-projeto.md` (`:267`, `:331`, R13 em
+`:458`).
+
+**Decisão minha (volta 2):** esse ficheiro é um **retrato datado de 2026-10-10** e o corpo **não se
+reescreve** — as três passagens estavam certas quando foram escritas, e reescrever um instantâneo é
+falsificá-lo. Acrescenta-se uma **nota de estado** no topo (T95 fechou a R13) e o corpo fica intacto.
+
+**Volta 2 — entrega do Dev (`relatorios/T95.md` §8):** **uma linha adicionada** no topo do documento
+(bloco de citação datado, a dizer 2026-10-10, «não é atualizado», R13 resolvida na T95, e apontar para
+`docs/gestao/`). `git diff | grep -c "^-"` → **0**. **QA `PASS`:** diff de **+1/0**, as três passagens
+intactas em `:268`, `:332`, `:459`, e o resto da árvore igual à volta 1. O QA escreveu «FAIL retirado por
+decisão de âmbito do Lead, 2026-11-22 — nota de estado em vez de reescrita» e registou que **o achado
+estava certo**; o que mudou foi o remédio. Sem suite repetida (nada de código mudou).
+
+**Volta 2 — Revisor: 1 DEVE, 1 OPCIONAL, «pode commitar: não».** DEVE: o bloco novo vive em
+`apps/web/eslint.config.mjs:37-58`, mas o `packages/*` é lintado pelo config da **raiz**
+(`eslint.config.mjs:27` `files`, `:32` `rules`), que não tem a regra — alguém volta a escrever
+`export { cn } from 'cn'` em `packages/shared/src/utils/` (onde estava o shim) e o lint passa verde.
+OPCIONAL (`packages/shared/package.json:22`): `"cn": "^0.4.0"` sem um único import no pacote — fica
+para o fecho, porque exige `pnpm install` e mexer no lock. Confirmado: `paths: [{ name: 'cn' }]` é match
+exacto (`cn/config` e `@repo/shared/utils` foram do filtro); diff **puramente aditivo** (24/0); o
+comentário de `src/index.ts:8` continua verdadeiro (`@repo/shared/utils` existe, só deixou de trazer o
+`cn`); `grep -rn ClassValue` → **0**, logo a remoção era segura e não apenas silenciosa.
+
+**Volta 3 aberta com o Dev:** a mesma regra no config da raiz, com a prova a ser feita **dentro de
+`packages/shared/src/utils/`** e não em `apps/web`.
+
+**Volta 3 — entrega do Dev (`relatorios/T95.md` §9):** o mesmo `no-restricted-imports` no
+`eslint.config.mjs` da raiz, num objecto com `files` próprio e **antes** do `prettier` (que fica em
+último), portanto não inerte por ordem. Vermelho em `packages/shared/src/utils/__t95-cn.ts`
+(`@repo/shared:lint` → `exit 1`) e em `apps/web/src` (`exit 1`), verde nos dois depois de apagar;
+`pnpm lint` raiz 0 (4 tasks, `Cached: 0`); `typecheck` 0, `format:check` 0, `build` 0. Suite não
+repetida (só config mudou).
+
+**Volta 3 — QA `PASS` (`relatorios/T95-qa.md` §«Volta 3»):** `packages/shared/src/utils/__qa-t95-cn.ts`
+→ `@repo/shared:lint` `1:1 error … no-restricted-imports`, `Failed: @repo/shared#lint`, EXIT=1;
+apagado → `4 successful`, `Cached: 0`, EXIT=0; `apps/web` vermelho e verde na mesma sequência;
+`pnpm lint --force` → **0** com **`Cached: 0`**; `typecheck` 0; `pnpm build --force` → **`BUILD_ID
+KzqzgAu4qWMSToaA9A_EW`**. O `BUILD_ID` antigo (`EqGf_…`) era o da corrida do QA da volta 1,
+restaurado pelo cache do turborepo (hash de inputs igual) — o Next gera o id por build, e com `--force`
+saiu novo. Sem suite repetida.

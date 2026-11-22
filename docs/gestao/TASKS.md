@@ -4122,8 +4122,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim»; baseline 148) | `relatorios/T92.md`, `relatorios/T92-qa.md` |
 | T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`86d306e`, `7117b69`, `8fd7461`; **3 voltas** — a 1 corrigiu o alvo e estragou o nome, a 2 corrigiu o nome, a 3 o transbordo de 4 px que só aparecia com barra de scroll — + QA `PASS` nas três + Revisor «pode commitar: sim» na 2 e na 3; 149) | `relatorios/T88-qa.md`, `relatorios/T93.md`, `relatorios/T93-qa.md` |
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`764bc4e`; Dev 2 voltas — a 2 abriu o `--headed` e revelou o transbordo da T93 — + QA `PASS` + Revisor «pode commitar: sim»; 5 mutações, 149) | `relatorios/T89-qa.md`, `relatorios/T94.md`, `relatorios/T94-qa.md` |
-| T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada pelo utilizador) | `relatorios/T90-revisao.md` |
-| T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
+| T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`a78cccd`; Dev 3 voltas — o Revisor apanhou a regra a cobrir só `apps/web` — + QA `PASS` + Revisor «pode commitar: sim»; shim apagado, 149) | `relatorios/T90-revisao.md`, `relatorios/T95.md`, `relatorios/T95-qa.md` |
+| T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada pelo utilizador) | `relatorios/T91-revisao.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, a seguir à T96) | `relatorios/T97-qa.md` §«Volta 3» (c) |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
@@ -4458,7 +4458,13 @@ normal e a única marca é `TypeError: Failed to fetch` na consola. Medido pelo 
   vermelho). Contagem **150** (149 + 1) ou a que resultar.
 - (e) Gate 5/5 e suite de frio, `0 restante(s)`.
 
-### T96 — a regra base dá peso de controlo a todas as bordas decorativas (Dev) — **aberta a 2026-11-22**
+### T96 — a regra base dá peso de controlo a todas as bordas decorativas (Dev) — **em Dev a 2026-11-22**
+
+**Atualizações minhas para o arranque (2026-11-22):** a baseline da alínea (e) é **149**, não 147 (a T89,
+a T92 e a T97 entraram depois); o cabeçalho mudou de `px`/`gap` na T93 (o `border-b` dele é um dos 139,
+confirma-o a 320 com barra de scroll); e o `axe` (`e2e/80`) também olha para `/definicoes` — se a regra
+base baixar o contraste de uma borda de **controlo**, o axe apanha e é bom que apanhe, mas não o
+silencies.
 
 **Achado do Revisor na T91, alargado por mim com uma contagem.** O `border-b` do cabeçalho não tem
 cor e cai na regra base `* { border-color: var(--border) }` (`globals.css:210-211`). Depois da T78 o
@@ -4486,36 +4492,6 @@ campos, e o cabeçalho a 3,38 a encontrar o bordo da barra lateral a 1,94 (T91).
 - (e) Gate 5/5 e suite de frio com a baseline **147**, `0 restante(s)`.
 - (f) Se a mudança alterar alguma altura ou largura (borda fina não muda layout, mas confirma),
   di-lo com o número.
-
-### T95 — uma só fonte de `cn` (Dev) — **em Dev a 2026-11-22**
-
-**Atualizações minhas para o arranque (2026-11-22):** a baseline do critério (d) é **149**, não 147
-(as specs da T89, T92 e T97 entraram depois); e a (e) pede `sha256` igual, mas a T93 mudou `px`/`gap`
-do cabeçalho — compara só o que esta tarefa não toca e diz o que ficou de fora.
-
-**Dois achados do Revisor na T90, com a mesma consequência: o `cn` sem a escala pode voltar sem
-ninguém dar por isso.**
-
-1. **Nada impede um `from 'cn'` novo.** A T90 apontou os 39 `components/ui/*` a `@/lib/utils`, mas a
-   regra vive no comentário. Um `no-restricted-imports` no `apps/web/eslint.config.mjs` (o de
-   `apps/web`, não o da raiz — o próprio ficheiro diz que cada um traz o seu) com
-   `paths: [{ name: 'cn', message: 'usa `cn` de `@/lib/utils` (escala de texto, T78)' }]` torna a regra
-   uma coisa que o `lint` cobra. **`cn/config` é outro especificador e fica permitido** — é isso que
-   deixa `lib/utils.ts` construir o `createCn`.
-2. **`packages/shared/src/utils/cn.ts:11`** reexporta `cn` do pacote **nu** e o docblock afirma «so the
-   entire workspace has exactly one Tailwind class-conflict engine». Era verdade antes da T90; agora há
-   dois motores e o daqui **não tem a escala**. É público (`packages/shared/package.json` → `./utils`) e
-   hoje **ninguém** o importa (`grep @repo/shared/utils` → só um comentário em
-   `packages/shared/src/index.ts:8`). O risco é o primeiro import: 16 px em silêncio, com um comentário a
-   jurar o contrário.
-
-**Critério:** (a) a regra de lint em vigor e **provada a morder** — um ficheiro de teste com
-`from 'cn'` tem de falhar o `lint` (usa um ficheiro temporário e apaga-o, ou o próprio teste do ESLint
-se houver); (b) o shim do `shared` **apagado** (com o export removido de `packages/shared/src/utils/index.ts`
-e do `package.json` se ficar a apontar para nada) **ou** reduzido a uma nota que diga que o `cn` da app
-é outro — escolhe uma e justifica; (c) `lint` e `typecheck` a 0 em **todo** o workspace, porque se mexe
-fora de `apps/web`; (d) suite de frio com a baseline **149**, `0 restante(s)`; (e) as capturas de
-`/transacoes` nos dois temas continuam a bater `sha256` com as da T90 (nada disto muda pintura).
 
 ### T97 — os controlos mortos de `/definicoes` (Dev) — **fechada 2026-11-22**
 
