@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border-subtle bg-background/80 px-4 backdrop-blur md:px-6">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-1 !h-5" />
           {/*

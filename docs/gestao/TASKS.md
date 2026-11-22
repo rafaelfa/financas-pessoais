@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T96.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T97.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4118,11 +4118,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (`88e6e3f`; Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 da acessibilidade) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
 | T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas — o QA apanhou uma asserção vacuamente verdadeira — + Revisor «pode commitar: sim»; 146→147 testes) | `relatorios/T89.md`, `relatorios/T89-qa.md` |
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 do comentário) | `relatorios/T90.md`, `relatorios/T90-qa.md` |
-| T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
-| T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
+| T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` na volta 2 — a 1 deu FAIL: a barra lateral não usava o token — + Revisor «pode commitar: sim» na volta 3) | `relatorios/T91.md`, `relatorios/T91-qa.md` |
+| T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
 | T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T92) | `relatorios/T88-qa.md` |
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
+| T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4406,7 +4407,7 @@ runtime). Hoje nenhum `ui/*` usa o token; o risco é quem lá escrever (a **T82/
 - (d) Se em algum ficheiro o import não puder mudar (ciclo, `'use client'`), dizes qual e porquê, em
   vez de o deixar em silêncio.
 
-### T91 — `--border-subtle` para separadores, `--sidebar-border` coerente (Dev) — **aberta a 2026-11-22**
+### T91 — `--border-subtle` para separadores, `--sidebar-border` coerente (Dev) — **fechada 2026-11-22**
 
 **Achado do Revisor na T78.** A A4 pôs `--border` a 3,38:1 porque a WCAG 1.4.11 exige 3:1 a limites
 de **controlo**. Mas `--border` também é cor de preenchimento: `bg-border` em `app-shell.tsx:57`
@@ -4424,8 +4425,45 @@ ao lado das de 3,38:1.
 - (c) Escuro: toma uma decisão explícita — ou fica como está (e escreves «por resolver» outra vez),
   ou resolves a borda lá com números. Não se aceita «não mexi» sem frase.
 - (d) Capturas a 1440/390 × dois temas de um menu aberto, do cabeçalho e de uma tabela; razões de
-  contraste antes/depois por par.
+  contraste antes/depois por par. **Corrigido depois do FAIL da volta 1:** o menu «Mais» **não tem
+  divisores** e a paleta `Ctrl+K` também não — os divisores a sério estão nos menus
+  `DropdownMenuSeparator` (`account-card.tsx:138`, `card-summary.tsx:139`, `category-tree.tsx:224`,
+  `goal-card.tsx:149`). E o `sha256` de `/transacoes` **não** pode ser igual: o separador do cabeçalho é
+  um dos divisores, e a coluna dele muda (**20 px**, `[316,0,316,19]` a 1440 e `[52,0,52,19]` a 390,
+  zero no resto) — esse era um erro de critério meu, não do Dev.
 - (e) Gate 5/5 e suite de frio com a baseline da altura, `0 restante(s)`.
+- (f) **A barra lateral tem de usar mesmo o token:** a variável certa não chegava — a linha desenhada é o
+  `border-right` da container (`ui/sidebar.tsx:231`), que estava sem cor e caía no `--border` (3,38:1);
+  prova no browser que dá `rgb(177,185,188)`.
+
+### T96 — a regra base dá peso de controlo a todas as bordas decorativas (Dev) — **aberta a 2026-11-22**
+
+**Achado do Revisor na T91, alargado por mim com uma contagem.** O `border-b` do cabeçalho não tem
+cor e cai na regra base `* { border-color: var(--border) }` (`globals.css:210-211`). Depois da T78 o
+`--border` está a **3,38:1** — o mínimo da WCAG para **limites de controlo** — e essa regra pinta
+**toda** borda sem cor explícita: contei **139 linhas** no `src` (`rounded-xl border bg-card`,
+`border border-dashed` dos estados vazios, separadores de secção, o `border-b` do cabeçalho). A WCAG
+não exige 3:1 a nada disso. Efeito visível: cartões e caixas com um contorno que compete com o dos
+campos, e o cabeçalho a 3,38 a encontrar o bordo da barra lateral a 1,94 (T91).
+
+**Critério:**
+
+- (a) Medir primeiro: quantas bordas sem cor explícita existem, onde, e a que peso ficam hoje. A
+  contagem é a base do resto — sem ela a mudança é um chute.
+- (b) Decidir **uma** das saídas e justificar com números: (1) a regra base passa a
+  `--border-subtle` e quem precisa de 3:1 diz `border-input`/`border-border` de propósito; ou (2) a
+  regra base fica e cada família de sítio declara o seu token. A (1) é uma linha e é a que eu espero
+  que ganhe, mas a decisão é medida, não escolhida por gosto.
+- (c) **Prova de que os controlos continuam a 3:1:** `Input`, `Textarea`, `Select` e `Button` com
+  variante de contorno medidos no browser — se algum perder o limite de controlo, é FAIL, e o
+  conserto é uma classe nele, não o token.
+- (d) Capturas a 1440 e 390 nos dois temas de **cinco** ecrãs representativos: um com cartões
+  (`/contas`), um com tabela (`/transacoes`), um com estados vazios (`/cartoes` ou `/consolidacao-contas`),
+  um com formulário (`/transacoes`, o quick-add) e o calendário. Mais o canto superior esquerdo, onde o
+  cabeçalho encontra a barra lateral.
+- (e) Gate 5/5 e suite de frio com a baseline **147**, `0 restante(s)`.
+- (f) Se a mudança alterar alguma altura ou largura (borda fina não muda layout, mas confirma),
+  di-lo com o número.
 
 ### T95 — uma só fonte de `cn` (Dev) — **aberta a 2026-11-22**
 
@@ -4492,7 +4530,7 @@ polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso muda
 - (d) Dois temas, sem regressão de contraste.
 - (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
-### T92 — a frase morta de `/definicoes` (Dev) — **aberta a 2026-11-22**
+### T92 — a frase morta de `/definicoes` (Dev) — **em Dev a 2026-11-22**
 
 **Achado meu na verificação pós-deploy de 2026-11-22.** Em `/definicoes` o cartão «Regime de
 contabilização» termina com «Guardar preferências fica disponível quando a aplicação estiver ligada à
