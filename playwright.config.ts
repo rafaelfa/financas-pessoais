@@ -84,6 +84,8 @@ export default defineConfig({
     {
       name: canal === undefined ? 'chromium' : `chromium-${canal}`,
       use: { ...devices['Desktop Chrome'], ...comCanal },
+      /* O spec dos 320 px tem o seu próprio projeto (ver `estreito`). */
+      testIgnore: /89-guarda-320\.spec\.ts/,
     },
     /*
      * Dois projetos a mais, de propósito estreitos: só os ecrãs novos e um
@@ -100,6 +102,18 @@ export default defineConfig({
       name: 'escuro',
       use: { ...devices['Desktop Chrome'], colorScheme: 'dark', ...comCanal },
       testMatch: /15-navegacao\.spec\.ts/,
+    },
+    /*
+     * 320 px é a largura mais estreita que o produto promete (T85/T88/T89): a
+     * nav inferior tem de cortar os rótulos e o cabeçalho de esconder o nome da
+     * app. Um projeto próprio, com `testMatch` restrito a um spec — custa **1
+     * teste** e ~2 s na corrida; multiplicar a suite por um viewport não provava
+     * mais nada.
+     */
+    {
+      name: 'estreito',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 320, height: 640 }, ...comCanal },
+      testMatch: /89-guarda-320\.spec\.ts/,
     },
   ],
   webServer: {

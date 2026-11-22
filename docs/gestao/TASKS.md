@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T94.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T95.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4116,11 +4116,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
 | T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (`88e6e3f`; Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 da acessibilidade) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
-| T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T85-revisao.md` (opcional 3) |
+| T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas — o QA apanhou uma asserção vacuamente verdadeira — + Revisor «pode commitar: sim»; 146→147 testes) | `relatorios/T89.md`, `relatorios/T89-qa.md` |
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T89) | `relatorios/T78-revisao.md`, `docs/gestao/TASKS.md` §T78 dívida 1 |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
 | T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T92) | `relatorios/T88-qa.md` |
+| T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4425,6 +4426,26 @@ ao lado das de 3,38:1.
   contraste antes/depois por par.
 - (e) Gate 5/5 e suite de frio com a baseline da altura, `0 restante(s)`.
 
+### T94 — endurecer a guarda dos 320 px (Dev) — **aberta a 2026-11-22**
+
+**Dois achados do Revisor na revisão da T89, ambos de uma a duas linhas, e ambos do mesmo tipo: um
+teste que pode mentir sem ninguém dar por isso.**
+
+1. **A mutação não verifica que a classe existia.** `T89_MUTAR=nav|cabecalho|limiar` remove classes
+   **por nome** (`e2e/89-guarda-320.spec.ts:128-144`) e não confirma que elas estavam lá. Se a T85 ou a
+   T88 mudarem de classe — o próprio QA escreveu esse cenário —, a mutação não remove nada, o spec
+   corre **verde** e a «prova de que a guarda morde» passa a ser falsa. Correção: antes de remover,
+   afirmar que a classe existe (ou contar os nodos alterados e exigir `> 0`).
+2. **`window.innerWidth` conta a barra de scroll, `scrollWidth` não.** Em headless o Chromium recebe
+   `--hide-scrollbars` e o número é exato; com `--headed` o `docScrollWidth` passa a 320−17 e a linha
+   do «a página não transborda» fica **vermelha sem o produto ter mudado** (`:74-80,120-121`).
+   Correção: comparar com `document.documentElement.clientWidth`, guardando o `innerWidth` só para o
+   «a janela é mesmo 320».
+
+**Critério:** (a) as duas correções, com as três mutações a continuarem a falhar; (b) o spec conta
+continuar a **147**; (c) um ensaio **`--headed`** a passar (é a prova do item 2, e é a única forma de
+o demonstrar); (d) `format:check`/`lint`/`typecheck` a 0. Não mexer em `apps/`.
+
 ### T93 — alvos de toque do cabeçalho a 320 px (Dev) — **aberta a 2026-11-22**
 
 **Achado do Dev na T88, medido por ele.** A 320 px, dos cinco controlos do cabeçalho só o menu
@@ -4462,7 +4483,7 @@ do que está guardado.
 - (d) Gate 5/5 e as specs que toquem `definicoes` (se nenhuma tocar, di-lo — e considera um spec de
   uma linha que assere que a frase antiga não voltou).
 
-### T89 — guarda automática a 320 px no Playwright (Dev) — **em Dev a 2026-11-22**
+### T89 — guarda automática a 320 px no Playwright (Dev) — **fechada 2026-11-22**
 
 **Achado do Revisor na T85 (opcional 3).** O `truncate` que segura o rótulo a 320 não tem teste:
 não há projeto Playwright a 320 (`chromium` 1280, `telemovel` = Pixel 5 a 393, `escuro`), e o
