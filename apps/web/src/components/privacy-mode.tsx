@@ -172,6 +172,7 @@ export function PrivacyToggle() {
     <Button
       variant="outline"
       size="icon"
+      className="max-sm:min-h-11 max-sm:min-w-11"
       onClick={toggle}
       aria-pressed={hidden}
       aria-label={label}

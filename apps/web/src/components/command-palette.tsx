@@ -45,7 +45,7 @@ export function CommandPalette() {
       <Button
         variant="outline"
         size="sm"
-        className="gap-2 text-muted-foreground"
+        className="gap-2 text-muted-foreground max-sm:min-h-11 max-sm:min-w-11"
         onClick={() => setOpen(true)}
       >
         <Search className="size-4" aria-hidden />

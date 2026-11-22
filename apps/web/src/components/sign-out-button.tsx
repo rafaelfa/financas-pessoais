@@ -57,7 +57,7 @@ export function SignOutButton({ variant = 'sidebar' }: { variant?: 'sidebar' | '
         onClick={terminarSessao}
         disabled={aTerminar}
         aria-label="Terminar sessão"
-        className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50 md:hidden"
+        className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50 max-sm:min-h-11 max-sm:min-w-11 md:hidden"
       >
         <LogOut aria-hidden className="size-4" />
       </button>

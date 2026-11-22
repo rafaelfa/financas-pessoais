@@ -52,8 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border-subtle bg-background/80 px-4 backdrop-blur md:px-6">
-          <SidebarTrigger />
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border-subtle bg-background/80 px-2 backdrop-blur sm:px-4 md:px-6">
+          {/*
+            Piso de toque a 44×44 (T93): em telemóvel os seis controlos do
+            cabeçalho crescem com `min-w-11`/`min-h-11` — e para caberem a 320 o
+            cabeçalho reduz o `px` e o grupo da direita o `gap`. O ícone em si
+            não muda de tamanho.
+          */}
+          <SidebarTrigger className="max-sm:min-h-11 max-sm:min-w-11" />
           <Separator orientation="vertical" className="mr-1 !h-5" />
           {/*
             A 320 px o cabeçalho não cabe: com o bloco da direita (menu «Mais»,
@@ -63,10 +69,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             diz onde se está — e volta a aparecer antes de `md`, onde sempre
             esteve.
           */}
-          <span className="sr-only text-sm font-medium min-[360px]:not-sr-only md:hidden">
-            Finanças Pessoais
+          {/*
+            T93: com os seis controlos a 44 px o nome não cabe inteiro a 360.
+            O `min-w-0` deixa a caixa ceder; o corte vive num `<span>` **interior**
+            porque `min-[360px]:not-sr-only` (T88) repõe `white-space: normal` e
+            `overflow: visible` na caixa de fora — um `truncate` ali seria anulado
+            e o nome pintava-se em duas linhas por baixo do «Mais».
+          */}
+          <span className="sr-only min-w-0 text-sm font-medium min-[360px]:not-sr-only md:hidden">
+            <span className="block truncate">Finanças Pessoais</span>
           </span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {/*
               Recorrências, Regras, Categorias e Importar saíram da barra
               lateral (D7). O menu vive aqui, no cabeçalho, e aparece também nas
@@ -82,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 cima da página nova.
               */
               <details key={pathname} className="relative">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground sm:min-h-9 [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground max-sm:min-w-11 max-sm:justify-center max-sm:px-0 sm:min-h-9 [&::-webkit-details-marker]:hidden">
                   <Ellipsis className="size-4" aria-hidden />
                   {/*
                     Abaixo de `sm` (640 px) o grupo do cabeçalho não cabe com o
