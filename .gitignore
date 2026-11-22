@@ -68,3 +68,4 @@ relatorios/.qa-*/
 relatorios/.falhas/
 
 *.tmp-*
+relatorios/*-qa/
