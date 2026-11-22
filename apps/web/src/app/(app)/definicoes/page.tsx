@@ -75,7 +75,8 @@ export default function DefinicoesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              Guardar preferências fica disponível quando a aplicação estiver ligada à conta.
+              Estes valores são fixos nesta versão: euro e mês a começar no dia 1. Ainda não há
+              preferências guardadas.
             </p>
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T97.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T98.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4119,11 +4119,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas — o QA apanhou uma asserção vacuamente verdadeira — + Revisor «pode commitar: sim»; 146→147 testes) | `relatorios/T89.md`, `relatorios/T89-qa.md` |
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 do comentário) | `relatorios/T90.md`, `relatorios/T90-qa.md` |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` na volta 2 — a 1 deu FAIL: a barra lateral não usava o token — + Revisor «pode commitar: sim» na volta 3) | `relatorios/T91.md`, `relatorios/T91-qa.md` |
-| T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
+| T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim»; baseline 148) | `relatorios/T92.md`, `relatorios/T92-qa.md` |
 | T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T92) | `relatorios/T88-qa.md` |
 | T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T89-revisao.md` |
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
+| T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, logo depois da T92) | `relatorios/T92.md` §7 |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4530,7 +4531,46 @@ polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso muda
 - (d) Dois temas, sem regressão de contraste.
 - (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
-### T92 — a frase morta de `/definicoes` (Dev) — **em Dev a 2026-11-22**
+### T97 — os controlos mortos de `/definicoes` (Dev) — **em Dev a 2026-11-22**
+
+**Achado do Dev na T92, e o achado é maior que a frase que a T92 corrigiu.** A página não guarda nada:
+o `Select` «O mês começa no dia» (`definicoes/page.tsx:37`) tem `defaultValue="1"` e **nenhum
+tratador** — o utilizador escolhe «Dia 15», o ecrã muda e mais nada muda. E o `CardDescription` de cima
+promete «**Todos os totais e orçamentos passam a seguir esse calendário**». A T92 pôs a frase do fundo
+a dizer que os valores são fixos, por isso agora o ecrã **contradiz-se a si mesmo**.
+
+**A saída mudou depois de eu verificar a base (2026-11-22).** As colunas **já existem e estão
+migradas**: `User.currency`, `User.monthStartDay`, `User.accountingBasis`
+(`packages/db/prisma/schema.prisma:93-98`, migration `20261011000000_linha_de_base`), e o motor
+**lê-as** (`server/dashboard.ts:164,239,360`; `server/export-actions.ts:141-142,211-212`). Ninguém as
+**escreve**. Portanto **guardar a sério não precisa de migração nenhuma** — precisa de uma `action` e de
+um formulário. Decisão minha, por delegação do utilizador: **faz-se a sério**, porque uma coluna que
+existe com uma página que finge é pior do que uma funcionalidade ausente. `currency` **não** se torna
+editável: a D1 fixa EUR por decisão do produto, e a página passa a dizer isso.
+
+**Critério — funcionalidade a sério, sem tocar no schema:**
+
+- (a) Uma **server action** (só com a sessão do utilizador, `revalidatePath` no que depende do período)
+  que grave `monthStartDay` (validado **1–28**, inteiro) e `accountingBasis` (`CASH`/`ACCRUAL`) e mais
+  nada — **não** tocar em `currency`, **não** criar modelo, **não** correr migração.
+- (a.1) Um formulário real: o `Select` do dia e o regime, com o botão desativado enquanto a acção corre,
+  erro visível se a validação falhar, e uma confirmação de que ficou guardado.
+- (a.2) **A prova que interessa:** com o dia de início do mês em 1 e um movimento a meio do mês, os
+  totais do painel têm de **mudar** quando se passa o dia para antes desse movimento. Se os números não
+  mudarem, a acção não está ligada ao motor e é FAIL.
+- (b) **A frase da T92 sai** — «Estes valores são fixos nesta versão» deixa de ser verdade no momento em
+  que a página guarda. As descrições dos cartões passam a descrever o que a página faz, e o spec
+  `e2e/92` muda com ela (não se apaga: passa a asserir a frase nova).
+- (c) Os controlos `disabled` leem-se como desativados (contraste e `cursor`) e o leitor de ecrã anuncia
+  o motivo. Sem tokens crus; a T91 acabou de fechar as bordas.
+- (d) Um spec que **guarda de verdade**: muda o dia, submete, recarrega e confirma que ficou; mais a
+  asserção de que outro utilizador não vê a mudança (a acção é por sessão). Baseline **148 + o que
+  acrescentares**, `0 restante(s)`, com limpeza dos dados do spec no fim.
+- (d.1) Enquanto grava, o formulário não deixa submeter dois valores ao mesmo tempo, e o botão volta ao
+  estado normal se a acção falhar.
+- (e) Gate 5/5 e capturas 1440/390 × dois temas.
+
+### T92 — a frase morta de `/definicoes` (Dev) — **fechada 2026-11-22**
 
 **Achado meu na verificação pós-deploy de 2026-11-22.** Em `/definicoes` o cartão «Regime de
 contabilização» termina com «Guardar preferências fica disponível quando a aplicação estiver ligada à
