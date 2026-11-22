@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T90.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T93.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4115,9 +4115,12 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
-| T88 | **Cabeçalho a 320 px:** o menu «Mais» (`ul.absolute w-52`) chega a x=341,3 num ecrã de 320 — **21,3 px fora do ecrã** e `document.scrollWidth` 341. Achado do Dev na T85, confirmado pelo QA; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, na fila depois da T78) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
+| T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
 | T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, depois da T88) | `relatorios/T85-revisao.md` (opcional 3) |
-| T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **em revisão** (QA `PASS` a 2026-11-22: 146/146 de frio, A4 3,38/3,48/3,15/3,09:1, V3 e V7 a 0) |
+| T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T89) | `relatorios/T78-revisao.md`, `docs/gestao/TASKS.md` §T78 dívida 1 |
+| T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
+| T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
+| T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
 
@@ -4349,7 +4352,7 @@ Nenhuma destas três reabre a T86; ficam à espera de vaga autorizada pelo utili
 4. **Um token com um consumidor.** `--text-caption` só é usado na `mobile-nav`. Fica, porque o critério
    pedia o token; mas fica dito que ainda não provou ser uma escala.
 
-### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **aberta, autorizada a 2026-11-22**
+### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **em Dev a 2026-11-22**
 
 **Achado do Dev na T85, confirmado pelo QA.** A 320 px o `document.scrollWidth` é **341** e o que
 transborda é o bloco da direita do cabeçalho: `div.ml-auto` com x **133,3**, largura **208**, `right`
@@ -4374,6 +4377,65 @@ Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o ca
 **Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
 mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
 
+### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **aberta a 2026-11-22**
+
+**Achado do Revisor na T78.** `lib/utils.ts` passou a `createCn` com a escala de texto registada, mas
+**39 ficheiros de `components/ui/` importam `cn` de `'cn'`** e não a herdam: lá
+`cn('text-caption', 'text-muted-foreground')` devolve só a cor e o tamanho desaparece (medido no
+runtime). Hoje nenhum `ui/*` usa o token; o risco é quem lá escrever (a **T82/T83** escrevem
+`ui/card.tsx`).
+
+**Critério:**
+
+- (a) Os 39 passam a importar `cn` de `@/lib/utils` e **0** ficheiros de `apps/web/src` importam `cn`
+  de `'cn'` (o `grep` colado). Prova no runtime de que `cn('text-caption','text-muted-foreground')`
+  agora preserva as duas classes, num ficheiro de `ui/`.
+- (b) **Sem mudança visual em 17 ecrãs:** as classes que estes ficheiros já compunham continuam a
+  compor-se igual (o `createCn` preserva os grupos por omissão — o Revisor mediu com `text-2xl`).
+  Capturas antes/depois de dois ecrãs que usem `Dialog` e `Table`.
+- (c) Gate 5/5, suite de frio com baseline **146** (ou a que a T89 tiver deixado), `0 restante(s)`.
+- (d) Se em algum ficheiro o import não puder mudar (ciclo, `'use client'`), dizes qual e porquê, em
+  vez de o deixar em silêncio.
+
+### T91 — `--border-subtle` para separadores, `--sidebar-border` coerente (Dev) — **aberta a 2026-11-22**
+
+**Achado do Revisor na T78.** A A4 pôs `--border` a 3,38:1 porque a WCAG 1.4.11 exige 3:1 a limites
+de **controlo**. Mas `--border` também é cor de preenchimento: `bg-border` em `app-shell.tsx:57`
+(separador do cabeçalho), `ui/combobox.tsx:193`, `ui/dropdown-menu.tsx:170` e `ui/select.tsx:131`
+(separadores de menu) — passaram de **1,31:1 para 3,38:1**, ou seja hairlines escuros dentro de menus
+que o passe visual não olhou. E `--sidebar-border` ficou em `0,9`: no claro é a única borda a 1,31:1
+ao lado das de 3,38:1.
+
+**Critério:**
+
+- (a) Um token novo para separadores (nome a decidir no post de mão, proposta `--border-subtle`) com
+  valor **medido**, e os quatro `bg-border` acima a usá-lo. `--border`/`--input` continuam a **≥3:1**.
+- (b) O divisor da barra lateral sobe de `0,9` para o mesmo valor do novo token, ou justificas por
+  escrito porque fica diferente.
+- (c) Escuro: toma uma decisão explícita — ou fica como está (e escreves «por resolver» outra vez),
+  ou resolves a borda lá com números. Não se aceita «não mexi» sem frase.
+- (d) Capturas a 1440/390 × dois temas de um menu aberto, do cabeçalho e de uma tabela; razões de
+  contraste antes/depois por par.
+- (e) Gate 5/5 e suite de frio com a baseline da altura, `0 restante(s)`.
+
+### T92 — a frase morta de `/definicoes` (Dev) — **aberta a 2026-11-22**
+
+**Achado meu na verificação pós-deploy de 2026-11-22.** Em `/definicoes` o cartão «Regime de
+contabilização» termina com «Guardar preferências fica disponível quando a aplicação estiver ligada à
+conta» (`apps/web/src/app/(app)/definicoes/page.tsx:78`) — em produção, com a base ligada, e sem
+botão de guardar em lado nenhum da página. É uma promessa que o produto não cumpre e que faz duvidar
+do que está guardado.
+
+**Critério:**
+
+- (a) A frase sai ou passa a ser verdadeira no estado real (se não há persistência, diz-se o que é —
+  não «fica disponível quando»). Nada de prometer um botão que não existe.
+- (b) Nenhum outro ecrã ganha texto novo por tabela: se a decisão for «estas preferências não se
+  guardam», diz isso e não inventes controlos.
+- (c) pt-PT, tokens do tema, e as capturas a 1440 e 390 nos dois temas.
+- (d) Gate 5/5 e as specs que toquem `definicoes` (se nenhuma tocar, di-lo — e considera um spec de
+  uma linha que assere que a frase antiga não voltou).
+
 ### T89 — guarda automática a 320 px no Playwright (Dev) — **aberta, autorizada a 2026-11-22**
 
 **Achado do Revisor na T85 (opcional 3).** O `truncate` que segura o rótulo a 320 não tem teste:
@@ -4396,7 +4458,7 @@ transbordo volta sem nada ficar vermelho. A 320 o rótulo «Transações» mede 
 - (e) Nada em `apps/` nesta tarefa além do que a asserção precise; o spec é do QA/Dev conforme o
   `AGENTS.md`, e não muda asserções existentes.
 
-### T78 — o lote do tema, reduzido a A4 + V3 + V7 + texto pequeno (Dev) — **em revisão a 2026-11-22**
+### T78 — o lote do tema, reduzido a A4 + V3 + V7 + texto pequeno (Dev) — **fechada 2026-11-22**
 
 **Âmbito cortado pelo Lead a 2026-11-22, com o motivo escrito:** o item **V4** saiu para a **T72** (a
 premissa antiga — «o T72 pôs a regra na classe base» — era falsa: `grep -n "max-h\|overflow-y-auto"
@@ -4429,11 +4491,20 @@ porque cinco mudanças no mesmo ficheiro em tarefas separadas são cinco mãos n
    no escuro, que hoje está a **1,32:1** mas onde escurecer a borda custa o contraste do texto que
    lá vive. **O handoff e o fecho têm de dizer por extenso que o tema escuro fica por resolver** —
    escrevê-lo como «resolvido» é mentira de relatório.
-2. **V2 / V1 — tokens de superfície e de raio.** ⚠️ **Bloqueado a 2026-11-22:** o critério nunca saiu
-   do chat para ficheiro — a D24, ponto 5, exige que a definição de cada item vá para `docs/gestao/`
-   antes de o bloco abrir, e isso não foi feito. O Dev entrega o inventário de tokens (`relatorios/T78.md`
-   §1: 59 em `@theme inline`, 58 em `:root`, 53 em `.dark`, com valores) e **não inventa a mudança**.
-   Falta a definição de V1 e V2 na palavra do utilizador; sem ela, o item não entra em commit.
+2. **V2 / V1 — tokens de superfície e de raio: NÃO SÃO NECESSÁRIOS, e ficam fechados por medição
+   (Lead, 2026-11-22, por delegação do utilizador: «veja qual o melhor momento e analise se é
+   necessário»).** O que os dois itens pediam já existe:
+   - **V1 (raios):** a escala é derivada — `--radius` com `--radius-sm` a `-4xl` em `globals.css:50-56`
+     (`0,6` a `2,6` × `--radius`). Provado no browser: com `--radius: 0` o cartão e o botão vão a
+     **0/0**, com `20px` vão a **28/16**; e há **0 raios arbitrários fora de `ui/`**, com os 13 de
+     dentro justificados um a um. Não há nada a criar.
+   - **V2 (superfícies):** as superfícies **já são tokens** (`--background`, `--card`, `--popover`,
+     `--muted`, `--secondary` e os `--color-*` do `@theme inline`: 59 entradas inventariadas em
+     `relatorios/T78.md` §1). Em todo o `src` fora de `ui/` há **7 cores cruas**, e as sete são a
+     paleta de cores de categoria em `category-dialog.tsx:55-64` — **dado** guardado na base, não
+     tema. O que sobra de «superfície» é exactamente a dívida 2 abaixo (`--border-subtle` para
+     separadores e `--sidebar-border`), que já está na fila como **T91**.
+   Conclusão: **não se abre tarefa para V1/V2**; o trabalho real é a T91.
 3. **V4 — os 28 diálogos sem limite de altura: FORA da T78, e a premissa antiga era falsa.** Este
    ponto afirmava que «o T72 pôs a regra na classe base». Não pôs: verificado a 2026-11-22 —
    `grep -n "max-h\|overflow-y-auto" apps/web/src/components/ui/dialog.tsx` → **vazio**, e a T72 está
