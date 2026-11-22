@@ -1124,7 +1124,7 @@ objetivo com Y acumulado faz subir Y — medido nos dois ecrãs.
 | T39 | **A condição `cardId` das regras era ignorada pelo motor** (e a regra aparecia como inválida) | Dev | Dev done (teste vermelho → 20/20; 548 testes); em prova QA | `relatorios/T39.md` |
 | T40 | **`GoalMovementType.yield` era código morto** com uma migração associada | Dev | Dev done (enum com 2 valores, 3 movimentos intactos, 90 000 antes e depois); em prova QA | `relatorios/T40.md` |
 
-| T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **em verificação (T101)** — a posse do cartão já é verificada em `import-actions.ts:228-235`; falta o QA repetir o pedido forjado e assinar | `relatorios/T45.md`, `relatorios/T101.md` |
+| T45 | **A importação passa a perguntar o cartão** (o `cardId` passa a chegar aos importados) | Dev | **fechada** 2026-11-22 — o IDOR foi provado fechado por execução na **T101** (`cardId` de outra conta → `Cartão não encontrado.`, 0 transações criadas) | `relatorios/T45.md`, `relatorios/T101.md` |
 
 ## T41 — a minha lista de seis termos estava errada, e o Dev provou-o
 
@@ -1277,31 +1277,6 @@ serve de cronómetro da vaga (nenhum schema, nenhuma dependência).
 **O que NÃO fazer:** não tocar no servidor, na base de dados, no schema nem nas
 exportações; não mascarar inputs; não mudar o atalho `Ctrl+K`; não acrescentar
 dependências; não escrever em `e2e/` (é do QA); não fazer commit nem push.
-
-### T101 — provar que a falha de autorização da T45 está fechada (QA) — **em QA a 2026-11-22**
-
-**É a única coisa no backlog que é segurança, e a linha da T45 ainda diz «reprovada na autorização».** O
-código mudou desde 2026-11-03: `confirmImport` passou a verificar a posse do cartão
-(`import-actions.ts:228-235`, `where: { id: cardId, userId: user.id }`, com `fail('Cartão não encontrado.')`).
-**Ninguém repetiu o ataque.** Um IDOR que se acredita corrigido sem prova é pior do que um aberto, porque
-ninguém volta a olhar.
-
-**Critério — repetir o ataque do QA de 2026-11-03, à letra:**
-
-- (a) Duas contas (a do QA e outra com um cartão). Na **confirmação** da importação, enviar o `cardId` do
-  cartão da **outra** conta com uma conta e uma categoria **próprias**. Medido: resposta `fail`, **zero**
-  transações criadas, e o `cardId` da vítima sem nenhuma transação nova.
-- (b) O mesmo na **pré-visualização** (já recusava) — a diferença antes/depois tem de estar na confirmação.
-- (c) O caminho legítimo continua a funcionar: cartão **próprio** → importa, com `cardId` e `paymentMethod`
-  certos.
-- (d) Nada regride na importação: OFX com cartão, sem cartão (`null`/`DEBIT`), aplicar regras ao já
-  importado, desfazer a importação.
-- (e) **Limpeza:** apagar as contas e os movimentos que criaste; dizer quantos ficaram.
-- **Sem suite completa** (esta tarefa não muda código).
-
-**Reporta em `relatorios/T101.md`** com o pedido forjado colado (corpo e resposta) e o `count` de transações
-antes/depois. Se a confirmação **aceitar** o `cardId` de outra conta, é **FAIL** e é grave — nesse caso páras
-e dizes-me, não tentas corrigir.
 
 ### T102 — os diálogos sem limite de altura (Dev) — **em Dev a 2026-11-22**
 
@@ -4177,7 +4152,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
 | T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (medição em 2 voltas, **sem código mudado**; Revisor «fecha assim: sim») | `relatorios/T99.md` |
 | ~~T100~~ | **O `Select` «O mês começa no dia» fica vazio depois de gravar** — **retirada por mim a 2026-11-22, não reproduzida.** Vi-o uma vez em produção (captura + duas leituras de `""`) na sequência: escolha por teclado → Guardar → mudança de viewport para 320, com um clique de opção que não registou pelo meio. **Não tenho gatilho:** o Dev não o reproduziu localmente (o `onValueChange` nunca recebeu `""`, com log no mount, na gravação e numa navegação que remonta) e eu não o reproduzi de novo em produção (frio/Guardar/reload, clique imediato, 305↔1440↔305, `Escape` a meio). Um achado sem gatilho não é achado — a medição vence a hipótese, incluindo a minha. | Dev | **retirada** 2026-11-22 | `relatorios/T100.md` |
-| T101 | **Provar que a falha de autorização da T45 está fechada:** o QA forjou o pedido em 2026-11-03 (confirmação aceitava o `cardId` de outra utilizadora). O código passou a verificar a posse (`import-actions.ts:228-235`, `where: { id: cardId, userId: user.id }`); falta o mesmo ataque repetido e assinado. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | QA | **em QA** (volta 1, 2026-11-22) | `relatorios/T45.md` |
+| T101 | **Provar que a falha de autorização da T45 está fechada:** o QA forjou o pedido em 2026-11-03 (confirmação aceitava o `cardId` de outra utilizadora). **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | QA | **fechada** 2026-11-22 (QA `PASS` por execução: `Cartão não encontrado.`, transações 2→2, cartão da vítima 0→0) | `relatorios/T45.md`, `relatorios/T101.md` |
 | T102 | **Os diálogos sem limite de altura:** `ui/dialog.tsx` tem **0** ocorrências de `max-h`/`overflow-y-auto`; um `DialogContent` de 1761 px num ecrã de 844 não fecha. 28 sítios a rever depois da regra na base. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T45.md`, auditoria de design 2026-11-20 |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 

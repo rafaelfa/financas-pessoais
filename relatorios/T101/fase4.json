@@ -1,0 +1,64 @@
+{
+  "cartaoSelecionado": "Nenhum (extrato de conta)",
+  "posts": [
+    {
+      "id": "402f56ff8256befdc77c8542138d09cfc08ce7640a",
+      "body": "[{\"accountId\":\"58067695-df2c-433c-b5bf-84e670e2fbc1\",\"content\":\"Data;Descrição;Valor\\n09/11/2026;Compra QA T101 sem cartão;-11,11\\n10/11/2026;Compra QA T101 regra;-22,22\",\"format\":\"csv\"}]"
+    },
+    {
+      "id": "402600b05a864e9ada2218822f68925f82c97832bb",
+      "body": "[{\"accountId\":\"58067695-df2c-433c-b5bf-84e670e2fbc1\",\"rows\":[{\"date\":\"2026-11-09\",\"description\":\"Compra QA T101 sem cartão\",\"amountInCents\":-1111,\"fitId\":\"imp1|2026-11-09|-1111|compra qa t101 sem cartao\",\"categoryId\":null},{\"date\":\"2026-11-10\",\"description\":\"Compra QA T101 regra\",\"amountInCents\":-2222,\"fitId\":\"imp1|2026-11-10|-2222|compra qa t101 regra\",\"categoryId\":null}]}]"
+    },
+    {
+      "id": "40578077e2de9d9c529f317a5561ac35302c8fdc0e",
+      "body": "[{\"accountId\":\"58067695-df2c-433c-b5bf-84e670e2fbc1\",\"expected\":[{\"transactionId\":\"0a30bd68-bee8-4a53-8f43-1627a7593243\",\"fitId\":\"imp1|2026-11-09|-1111|compra qa t101 sem cartao\",\"date\":\"2026-11-09\",\"amountInCents\":-1111,\"descriptionDigest\":\"484f4171b9ac6f629d602442b4c897d9fab24a7f8794ac1dbb173057a6b1fb3a\",\"categoryId\":null},{\"transactionId\":\"b220c429-f146-423f-b91a-0b5a8a3cf4ff\",\"fitId\":\"imp1|202"
+    }
+  ],
+  "depoisImport": [
+    {
+      "description": "Compra QA T101 alfa",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "categoryId": null
+    },
+    {
+      "description": "Compra QA T101 beta",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "categoryId": null
+    },
+    {
+      "description": "Compra QA T101 regra",
+      "cardId": null,
+      "pm": "DEBIT",
+      "categoryId": null
+    },
+    {
+      "description": "Compra QA T101 sem cartão",
+      "cardId": null,
+      "pm": "DEBIT",
+      "categoryId": null
+    }
+  ],
+  "paginaDepois": "Importar e exportar Traz os extratos que já tens e leva os teus dados quando quiseres. A importação mostra tudo antes de gravar, e nada fica preso aqui. Importação concluída 2 movimentos importados. Nenhuma linha foi deixada de fora. Ver os lançamentos Ver o saldo das contas Importar outro ficheiro Enganaste-te nalguma linha? Podes desfazer esta importação na lista abaixo, enquanto os movimentos n",
+  "temDesfazer": 1,
+  "dialogoTexto": "Desfazer esta importação? Vão ser apagados até 2 movimentos da conta «Carteira principal», entre 09/11/26 e 10/11/26. Os movimentos que já foram alterados — ou que estão ligados a faturas, objetivos, ",
+  "botoesDialogo": [
+    "Cancelar",
+    "Apagar os movimentos importados"
+  ],
+  "depoisDesfazer": [
+    {
+      "description": "Compra QA T101 alfa",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "categoryId": null
+    },
+    {
+      "description": "Compra QA T101 beta",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "categoryId": null
+    }
+  ]
+}

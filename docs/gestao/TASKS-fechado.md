@@ -1433,3 +1433,50 @@ escondido e dispara `change`; como o conteúdo só monta ao abrir, a escrita fic
 
 **O que não fazer:** não inventes um dia quando não há valor válido (a skill é explícita: um valor inventado
 grava o dia errado em silêncio); não toques na server action nem no schema; não mudes o texto da página.
+
+## Bloco de fecho — T101 (fechada 2026-11-22)
+
+- **Fechado:** T101 — *provar que a falha de autorização da T45 está fechada*. **Nenhum código mudado**: a
+  verificação já existia (`import-actions.ts:228-235`) e o que faltava era a prova. **A T45 fica fechada**
+  depois de 19 dias com a linha a dizer «reprovada na autorização».
+- **Prova (por execução, não por leitura):** duas contas do QA, um cartão em cada, POSTs reais das Server
+  Actions capturados e repetidos com o `cardId` da vítima:
+  `1:{"ok":false,"error":"Cartão não encontrado.","fieldErrors":{"cardId":["Escolhe um cartão teu."]}}`.
+  Contagens antes → depois: transações do atacante **2 → 2**, descrições `ATAQUE T101%` **0 → 0**, transações
+  no cartão da vítima **0 → 0**. Com a `accountId` da vítima: «Conta não encontrada.». A pré-visualização
+  também recusa, e a confirmação agora repete a verificação **antes** de qualquer insert.
+- **Nada regride na importação:** caminho legítimo (2 movimentos com `cardId` e `CREDIT`); sem cartão
+  (`null`/`DEBIT`); desfazer (2 → 0); aplicar regras ao já importado (2 categorizados). **Limpeza:** 4
+  utilizadores QA apagados, 0 transações, 0 cartões, 0 contas, 0 categorias, 0 regras, 0 órfãos.
+- **O que isto não resolve:** (1) o ataque foi repetido **com o `cardId` do cartão**, que era o caso da T45;
+  outras combinações de ids no mesmo payload (`accountId`, categorias) foram testadas só de passagem — a
+  `accountId` recusa; as categorias não foram forjadas nesta volta. (2) Sem suite, por decisão minha: a
+  tarefa não mudou código.
+- **Aberto:** nada desta tarefa.
+- **Repositório:** nada — só documentos e o relatório (`relatorios/T101.md`, evidência em `relatorios/T101/`).
+- **Decisão:** nenhuma.
+
+### T101 — provar que a falha de autorização da T45 está fechada (QA) — **fechada 2026-11-22**
+
+**É a única coisa no backlog que é segurança, e a linha da T45 ainda diz «reprovada na autorização».** O
+código mudou desde 2026-11-03: `confirmImport` passou a verificar a posse do cartão
+(`import-actions.ts:228-235`, `where: { id: cardId, userId: user.id }`, com `fail('Cartão não encontrado.')`).
+**Ninguém repetiu o ataque.** Um IDOR que se acredita corrigido sem prova é pior do que um aberto, porque
+ninguém volta a olhar.
+
+**Critério — repetir o ataque do QA de 2026-11-03, à letra:**
+
+- (a) Duas contas (a do QA e outra com um cartão). Na **confirmação** da importação, enviar o `cardId` do
+  cartão da **outra** conta com uma conta e uma categoria **próprias**. Medido: resposta `fail`, **zero**
+  transações criadas, e o `cardId` da vítima sem nenhuma transação nova.
+- (b) O mesmo na **pré-visualização** (já recusava) — a diferença antes/depois tem de estar na confirmação.
+- (c) O caminho legítimo continua a funcionar: cartão **próprio** → importa, com `cardId` e `paymentMethod`
+  certos.
+- (d) Nada regride na importação: OFX com cartão, sem cartão (`null`/`DEBIT`), aplicar regras ao já
+  importado, desfazer a importação.
+- (e) **Limpeza:** apagar as contas e os movimentos que criaste; dizer quantos ficaram.
+- **Sem suite completa** (esta tarefa não muda código).
+
+**Reporta em `relatorios/T101.md`** com o pedido forjado colado (corpo e resposta) e o `count` de transações
+antes/depois. Se a confirmação **aceitar** o `cardId` de outra conta, é **FAIL** e é grave — nesse caso páras
+e dizes-me, não tentas corrigir.

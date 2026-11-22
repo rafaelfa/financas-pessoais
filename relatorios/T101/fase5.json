@@ -1,0 +1,43 @@
+{
+  "antes": [
+    {
+      "description": "Compra QA T101 alfa",
+      "categoryId": null
+    },
+    {
+      "description": "Compra QA T101 beta",
+      "categoryId": null
+    }
+  ],
+  "criouRegra": false,
+  "paginaRegras": "Regras Categoriza automaticamente o que se repete: «sempre que a descrição tiver continente, é Alimentação». As condições de uma regra têm de se verificar todas, e a primeira regra da lista que corresponder ganha. Pré-visualizar e aplicar Nova regra A primeira regra que corresponder ganha. Usa as se",
+  "temAplicar": 1,
+  "nomesBotoes": [
+    "Mostrar ou esconder a navegação",
+    "Ir para…⌘K",
+    "Ocultar montantes",
+    "Alternar tema",
+    "Terminar sessão",
+    "Nova regra",
+    "Desativar a regra Regra QA T101",
+    "Subir a regra Regra QA T101 na prioridade",
+    "Descer a regra Regra QA T101 na prioridade",
+    "Ações da regra Regra QA T101"
+  ],
+  "dialogoAplicar": "Pré-visualização: aplicar regras Nada foi alterado ainda. Isto é o que seria feito se aplicasses agora. 2 lançamentos sem categoria 2 seriam categorizados A pré-visualização analisa os lançamentos sem categoria mais recentes (até 500). Só a primeira regra que corresponder é usada A lista está por or",
+  "botoesAplicar": [
+    "Cancelar",
+    "Aplicar a 2 lançamentos",
+    "Fechar"
+  ],
+  "depois": [
+    {
+      "description": "Compra QA T101 alfa",
+      "categoryId": "eb8c2cfa-add2-4aef-b571-811cccc4eb6f"
+    },
+    {
+      "description": "Compra QA T101 beta",
+      "categoryId": "eb8c2cfa-add2-4aef-b571-811cccc4eb6f"
+    }
+  ]
+}

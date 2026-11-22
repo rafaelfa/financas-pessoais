@@ -1,0 +1,76 @@
+{
+  "A": "qa-t101a-mwscz179@exemplo.pt",
+  "B": "qa-t101b-mwscz179@exemplo.pt",
+  "cartaoA": {
+    "fechou": true,
+    "erros": [],
+    "alertaAntes": 0
+  },
+  "cartaoB": {
+    "fechou": true,
+    "erros": [],
+    "alertaAntes": 0
+  },
+  "contas": [
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "58067695-df2c-433c-b5bf-84e670e2fbc1",
+      "name": "Carteira principal"
+    },
+    {
+      "email": "qa-t101b-mwscz179@exemplo.pt",
+      "id": "27097d6c-c488-4a31-9ffa-21d31839c3d5",
+      "name": "Carteira principal"
+    }
+  ],
+  "cartoes": [
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "name": "Cartão QA T101 A"
+    },
+    {
+      "email": "qa-t101b-mwscz179@exemplo.pt",
+      "id": "b3fa1a6e-73c4-46dd-8a09-48ea752f916e",
+      "name": "Cartão Vítima B"
+    }
+  ],
+  "categorias": [
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "6475e2fa-8eb0-42a7-ad96-222d4fb0ad04",
+      "name": "Ajuste de saldo",
+      "isInternal": true
+    },
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "eb8c2cfa-add2-4aef-b571-811cccc4eb6f",
+      "name": "Alimentação",
+      "isInternal": false
+    },
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "c66d2f17-b3b2-4f40-bbc1-c0cb28fe6e83",
+      "name": "Animais",
+      "isInternal": false
+    },
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "c5dc6f63-4813-4074-94d0-ccce95ef3dfd",
+      "name": "Casa",
+      "isInternal": false
+    },
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "981a39f9-4817-4e54-8bf9-8fe267a2ca2a",
+      "name": "Cashback",
+      "isInternal": false
+    },
+    {
+      "email": "qa-t101a-mwscz179@exemplo.pt",
+      "id": "13cdd333-2366-4ad3-a36d-1178e62730cd",
+      "name": "Combustível",
+      "isInternal": false
+    }
+  ]
+}

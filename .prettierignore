@@ -10,3 +10,4 @@ pnpm-lock.yaml
 apps/web/next-env.d.ts
 relatorios/.qa-*/
 relatorios/*-qa/
+relatorios/T*/

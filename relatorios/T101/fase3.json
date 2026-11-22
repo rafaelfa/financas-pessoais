@@ -1,0 +1,71 @@
+{
+  "contaA": "58067695-df2c-433c-b5bf-84e670e2fbc1",
+  "contaB": "27097d6c-c488-4a31-9ffa-21d31839c3d5",
+  "cartaoA": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+  "cartaoB": "b3fa1a6e-73c4-46dd-8a09-48ea752f916e",
+  "CONFIRM": "402600b05a864e9ada2218822f68925f82c97832bb",
+  "PREVIEW": "402f56ff8256befdc77c8542138d09cfc08ce7640a",
+  "antes": {
+    "A": [
+      {
+        "n": 2
+      }
+    ],
+    "Ataque": [
+      {
+        "n": 0
+      }
+    ],
+    "cartaoB": [
+      {
+        "n": 0
+      }
+    ]
+  },
+  "forjadoConfirm": {
+    "status": 200,
+    "body": "0:{\"a\":\"$@1\",\"q\":\"\",\"i\":false,\"b\":\"wK8pAP-yD8BtGd2kncGyU\"} 1:{\"ok\":false,\"error\":\"Cartão não encontrado.\",\"fieldErrors\":{\"cardId\":[\"Escolhe um cartão teu.\"]}} "
+  },
+  "depoisConfirm": {
+    "A": [
+      {
+        "n": 2
+      }
+    ],
+    "Ataque": [
+      {
+        "n": 0
+      }
+    ],
+    "cartaoB": [
+      {
+        "n": 0
+      }
+    ]
+  },
+  "forjadoConta": {
+    "status": 200,
+    "body": "0:{\"a\":\"$@1\",\"q\":\"\",\"i\":false,\"b\":\"wK8pAP-yD8BtGd2kncGyU\"} 1:{\"ok\":false,\"error\":\"Conta não encontrada.\",\"fieldErrors\":{\"accountId\":[\"Escolhe uma conta tua.\"]}} "
+  },
+  "forjadoPreview": {
+    "status": 200,
+    "body": "0:{\"a\":\"$@1\",\"q\":\"\",\"i\":false,\"b\":\"wK8pAP-yD8BtGd2kncGyU\"} 1:{\"ok\":false,\"error\":\"Cartão não encontrado.\",\"fieldErrors\":{\"cardId\":[\"Escolhe um cartão teu.\"]}} "
+  },
+  "depoisPreview": {
+    "A": [
+      {
+        "n": 2
+      }
+    ],
+    "Ataque": [
+      {
+        "n": 0
+      }
+    ],
+    "cartaoB": [
+      {
+        "n": 0
+      }
+    ]
+  }
+}

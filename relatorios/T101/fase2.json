@@ -1,0 +1,44 @@
+{
+  "opcoesFormato": [
+    "OFX (o mais comum nos bancos)",
+    "CSV (vírgulas ou ponto e vírgula)"
+  ],
+  "contaTexto": "Carteira principal",
+  "opcoesCartao": [
+    "Nenhum (extrato de conta)",
+    "Cartão QA T101 A"
+  ],
+  "previewTexto": "Importar e exportar Traz os extratos que já tens e leva os teus dados quando quiseres. A importação mostra tudo antes de gravar, e nada fica preso aqui. Resumo do ficheiro (CSV) Conta: Carteira principal Novas 2 Duplicadas 0 Suspeitas 0 Total de débitos 69,12 € Total de créditos 0,00 € Saldo final i",
+  "temBotaoImportar": 1,
+  "posts": [
+    {
+      "id": "402f56ff8256befdc77c8542138d09cfc08ce7640a",
+      "body": "[{\"accountId\":\"58067695-df2c-433c-b5bf-84e670e2fbc1\",\"content\":\"Data;Descrição;Valor\\n05/11/2026;Compra QA T101 alfa;-12,34\\n06/11/2026;Compra QA T101 beta;-56,78\",\"format\":\"csv\",\"cardId\":\"8e0b2306-db01-4c2a-9400-76330a8bd261\"}]"
+    },
+    {
+      "id": "402600b05a864e9ada2218822f68925f82c97832bb",
+      "body": "[{\"accountId\":\"58067695-df2c-433c-b5bf-84e670e2fbc1\",\"cardId\":\"8e0b2306-db01-4c2a-9400-76330a8bd261\",\"rows\":[{\"date\":\"2026-11-05\",\"description\":\"Compra QA T101 alfa\",\"amountInCents\":-1234,\"fitId\":\"imp1|2026-11-05|-1234|compra qa t101 alfa\",\"categoryId\":null},{\"date\":\"2026-11-06\",\"description\":\"Compra QA T101 beta\",\"amountInCents\":-5678,\"fitId\":\"imp1|2026-11-06|-5678|compra qa t101 beta\",\"categoryId\":null}]}]"
+    }
+  ],
+  "transacoesA": [
+    {
+      "id": "2728c00f-2629-432f-a5b4-99cd5719de1c",
+      "description": "Compra QA T101 alfa",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "amountInCents": -1234
+    },
+    {
+      "id": "1ebc1a05-e478-40a4-a2d5-24595c17d54a",
+      "description": "Compra QA T101 beta",
+      "cardId": "8e0b2306-db01-4c2a-9400-76330a8bd261",
+      "pm": "CREDIT",
+      "amountInCents": -5678
+    }
+  ],
+  "cartaoBTransacoes": [
+    {
+      "n": 0
+    }
+  ]
+}
