@@ -34,9 +34,11 @@ import { formatCurrency } from '@repo/shared';
  * (o cartão já mostra «Lançamento rápido»), e é por isso que os dois estados
  * existem em vez de uma vista só com scroll.
  *
- * O `max-h-full` é o ecrã, não um valor inventado: quando a T72 puser o limite
- * na classe base do `DialogContent`, esta classe tem de sair para o da base
- * mandar.
+ * O limite de altura vem da classe base do `DialogContent` desde a T102
+ * (`max-h-[calc(100dvh-1rem)]`). Aqui não se declara outro `max-h`: o `cn`
+ * deixa o local ganhar ao da base, e com `max-h-full` (que resolve contra o
+ * *initial containing block*, o `lvh` no iOS) o X voltava a ficar acima do
+ * bordo com a barra de URL visível.
  */
 
 interface CalendarDayData {
@@ -177,10 +179,7 @@ export function CalendarDayDialog({
       )}
 
       <DialogContent
-        className={cn(
-          'flex max-h-full flex-col',
-          view === 'form' ? 'gap-2 p-3 sm:max-w-md' : 'sm:max-w-md',
-        )}
+        className={cn('flex flex-col', view === 'form' ? 'gap-2 p-3 sm:max-w-md' : 'sm:max-w-md')}
       >
         {view === 'day' ? (
           <>
