@@ -4127,7 +4127,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
 | T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
 | T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (medição em 2 voltas, **sem código mudado**; Revisor «fecha assim: sim») | `relatorios/T99.md` |
-| T100 | **O `Select` «O mês começa no dia» fica vazio depois de gravar:** medido por mim em produção (2026-11-22, `financas-pessoais-psi-lac.vercel.app`): com dia 1 gravado, o carregamento **frio** mostra «Dia 1»; **depois** de Guardar (com o toast «Preferências guardadas.») o campo mostra `""`, e um reload volta a «Dia 1» — o valor está na base, o ecrã é que o perde. Causa provável: `SelectBubbleInput` do Radix a disparar `change` com `""` no mount, a passar por `onValueChange={setDia}` (`preferences-form.tsx:138`). **Achado meu na verificação pós-deploy; autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (a seguir à T99; fila autorizada) | esta linha, `relatorios/T97-qa.md` |
+| ~~T100~~ | **O `Select` «O mês começa no dia» fica vazio depois de gravar** — **retirada por mim a 2026-11-22, não reproduzida.** Vi-o uma vez em produção (captura + duas leituras de `""`) na sequência: escolha por teclado → Guardar → mudança de viewport para 320, com um clique de opção que não registou pelo meio. **Não tenho gatilho:** o Dev não o reproduziu localmente (o `onValueChange` nunca recebeu `""`, com log no mount, na gravação e numa navegação que remonta) e eu não o reproduzi de novo em produção (frio/Guardar/reload, clique imediato, 305↔1440↔305, `Escape` a meio). Um achado sem gatilho não é achado — a medição vence a hipótese, incluindo a minha. | Dev | **retirada** 2026-11-22 | `relatorios/T100.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4390,43 +4390,6 @@ Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o ca
 
 **Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
 mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
-
-### T100 — o `Select` fica vazio depois de gravar (Dev) — **aberta a 2026-11-22**
-
-**Achado meu na verificação pós-deploy do push de 2026-11-22, em produção.** Em `/definições`, com o dia
-de início **1** gravado: um carregamento **frio** mostra «Dia 1»; depois de carregar em **Guardar** (com o
-toast «Preferências guardadas.») o campo passa a mostrar **`""`** e um reload volta a «Dia 1». O valor está
-na base — o ecrã é que o perde. É a mesma família da T97, ao contrário: grava e parece que não.
-
-**Causa provável, a confirmar na alínea (b):** o `SelectBubbleInput` do Radix escreve no `<select>` nativo
-escondido e dispara `change`; como o conteúdo só monta ao abrir, a escrita fica em `""` e chega ao
-`onValueChange={setDia}` (`preferences-form.tsx:138`), num Select **controlado**. A receita está na skill
-`correc-a-o-de-select-controlado`: **derivar** o valor em vez de o guardar e **filtrar o `""` à entrada**.
-
-**Critério:**
-
-- (a) **Reproduzir primeiro:** registro frio de `/definições` → o campo mostra o dia da base; Guardar →
-  o campo **continua** a mostrar o dia da base (é isto que hoje falha); reload → igual. Nas duas direcções
-  (dia 1 → dia 21 → volta a 1), com o valor da base confirmado em cada passo.
-- (b) **Medir a origem do `""` antes de corrigir:** instrumenta o `onValueChange` para registar **cada**
-  valor recebido (e o instante: mount vs interacção). Se o `""` vier do Radix no mount, diz em que chamada;
-  se vier de outra coisa (inicialização, re-render, `key` que muda), di-lo — **não apliques a receita da
-  skill sem a confirmar no log**, porque um `useState` com valor inicial volta a ser apagado a cada mount e
-  a correção certa é derivar.
-- (c) **A escolha manual continua a funcionar:** escolher outro dia pela interface tem de mudar o campo, e
-  Guardar tem de gravar **esse** dia (não o derivado).
-- (d) **Nada regride:** as sete validações de tipo da T97 (`true`, `["21"]`, `[21,22]`, `""`, `null`, `{}`,
-  `"21abc"`) a rejeitar sem escrever; `where: { id: user.id }`; `currency`; o toast de sucesso; as setas do
-  radiogroup; a mensagem de rede da T98; e o `afterAll` a repor 1/CASH.
-- (e) **Spec que morde:** uma asserção em `e2e/97` que, **depois de gravar**, verifica que o trigger mostra
-  o dia guardado (hoje falharia). Prova de que fica vermelha sem a correção. Contagem **150 → 151**, ou diz
-  se a asserção entra no teste que já existe.
-- (f) Gate 5/5; a suite completa é do QA.
-- (g) **Sem componente nem dependência novos**, sem refactor não pedido; diff mínimo e justificado linha a
-  linha. Capturas do campo preenchido antes/depois, nos dois temas.
-
-**O que não fazer:** não inventes um dia quando não há valor válido (a skill é explícita: um valor inventado
-grava o dia errado em silêncio); não toques na server action nem no schema; não mudes o texto da página.
 
 ### T90 — os 39 imports de `cn` nos `components/ui/` (Dev) — **fechada 2026-11-22**
 
