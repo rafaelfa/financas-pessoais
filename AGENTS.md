@@ -27,9 +27,40 @@ relatórios, importação OFX/CSV e PWA. Sem integração bancária. Produção:
 
 Ordem do gate: `format:check` → `lint` → `typecheck` → `test` → `build`.
 
+## E2E — como se corre
+
+A suite completa são **149 testes, ~9 min, `workers: 1`** (a serialização é do
+`playwright.config.ts`: utilizador e base partilhados, números comparáveis). O CI
+**não** corre e2e, portanto a suite completa é o gate de fecho de cada tarefa.
+
+- durante o trabalho: `pnpm test:e2e e2e/84-nome.spec.ts` (só a área tocada);
+- depois de um flake: só as specs que falharam, pelo nome (`pnpm test:e2e e2e/29-…`); nunca os 149 outra vez;
+- fecho da tarefa (QA): `pnpm test:e2e` completo, com build frio, sem `E2E_REUSE_SERVER=1`;
+- nunca dois agentes a correr specs ao mesmo tempo: um apaga os dados do outro.
+
+## Ritmo — menos passos, mesmo trabalho
+
+O custo de um turno não é o modelo a pensar: é o **número de passos**. Cada passo é
+uma chamada ao modelo com o contexto todo. Medido a 2026-11-21: ~16 s por passo no
+Dev, e turnos de 32–44 passos — mais tempo em passos do que no comando longo.
+
+- **Um lote por passo.** Verificações juntas numa só chamada:
+  `pnpm format:check && pnpm lint && pnpm typecheck`. Não repitas `ls`, `grep` ou
+  `cat` sobre o mesmo ficheiro.
+- **Um ficheiro lê-se uma vez.** Se voltas a ele, usa `rg -n` na zona que te falta
+  em vez de o reler inteiro.
+- **Comando acima de ~60 s corre em background:** `nohup <cmd> > /tmp/<nome>.log 2>&1 &`,
+  e continuas (escrever o relatório, preparar a próxima verificação). Lês o log uma
+  vez, no fim, com `tail`. O turno acaba quando os dois acabam, não um depois do outro.
+- **Saída longa nunca entra no contexto:** escreve no ficheiro do relatório, lê
+  `tail -20`, e aponta o caminho. Colar 200 linhas custa passos em todos os passos
+  seguintes.
+- **Não repetir a prova do outro.** Se o QA vai correr a suite completa no fecho,
+  não a corras antes por precaução.
+
 ## Estrutura
 
-- `apps/web/src/app` — 14 ecrãs autenticados + `(auth)` + `api/`
+- `apps/web/src/app` — 17 ecrãs autenticados (16 em `(app)/*/page.tsx` + o painel em `(app)/page.tsx`) + `(auth)` + `api/`
 - `apps/web/src/server` — camada fina: consulta, validação, transação
 - `apps/web/src/components` — componentes, `ui/` é shadcn
 - `packages/shared/src` — motor financeiro puro, schema Zod, importação OFX/CSV
