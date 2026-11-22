@@ -1061,3 +1061,118 @@ apagado → `4 successful`, `Cached: 0`, EXIT=0; `apps/web` vermelho e verde na 
 KzqzgAu4qWMSToaA9A_EW`**. O `BUILD_ID` antigo (`EqGf_…`) era o da corrida do QA da volta 1,
 restaurado pelo cache do turborepo (hash de inputs igual) — o Next gera o id por build, e com `--force`
 saiu novo. Sem suite repetida.
+
+## Bloco de fecho — T96 (fechada 2026-11-22)
+
+- **Fechado:** T96 — *a regra base dá peso de controlo a todas as bordas decorativas*: o
+  `* { @apply border-border }` do `@layer base` passou a **`border-border-subtle`** (o token da T91), e o
+  gatilho «Mais» do cabeçalho ganhou `border-border` porque é **controlo** e tinha caído a 1,94.
+- **Prova:** cadeia Dev (3 voltas) → QA `PASS` → Revisor «pode commitar: **sim**» (0 bloqueia, 0 deve,
+  1 opcional de prosa, fechado na volta 3). No browser: **92 bordas** que vinham da base passam de
+  `131,139,141` a **`177,185,188`** no claro; os cinco controlos da fila do cabeçalho a **3,38 / 3,48**
+  (o «Mais» voltou de 1,94), com «sair» e gaveta sem limite (`border-width: 0` e 1 px transparente,
+  confirmados). `axe` sem violações; suite de frio **149 passed (9.6m)**, `0 restante(s)`, EXIT=0,
+  `BUILD_ID Tb4MIpXgcBD3FGAkrGPlm`. Layout igual: cartão **509,8**, linha **63**, `scrollHeight`
+  **2633**. **A T93 não regrediu:** a 320 com barra forçada, `305/305`, 0 filhos fora, seis alvos 44×44.
+  Relatórios: `relatorios/T96.md`, `relatorios/T96-qa.md`.
+- **O que isto não resolve:** (1) **no escuro a borda decorativa fica a 1,36:1** (1,14 contra o cartão) —
+  visível mas muito discreta; a leitura do cartão passa a vir do preenchimento. **Não abre tarefa**: o que
+  falta no escuro são os limites de **controlo** (`--input` a 1,58), não os divisores. (2) As **células
+  do calendário** (42, clicáveis) ficam subtis por **D31** — a borda é também o separador da grelha; se um
+  dia se quiser mais affordance, é `hover:border-border`, não uma grelha a 3,38. (3) As contagens
+  divergiram entre os três agentes: **139** (minhas ocorrências da utilidade), **96 strings / 219
+  elementos** (Dev) e **191 visíveis, 92 da base** (QA, a mais fina). Fica registado qual é qual.
+- **Aberto:** nada desta tarefa.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `31118ee` **por enviar**.
+- **Decisão:** **D31** (células do calendário).
+
+### T96 — a regra base dá peso de controlo a todas as bordas decorativas (Dev) — **fechada 2026-11-22**
+
+**Atualizações minhas para o arranque (2026-11-22):** a baseline da alínea (e) é **149**, não 147 (a T89,
+a T92 e a T97 entraram depois); o cabeçalho mudou de `px`/`gap` na T93 (o `border-b` dele é um dos 139,
+confirma-o a 320 com barra de scroll); e o `axe` (`e2e/80`) também olha para `/definicoes` — se a regra
+base baixar o contraste de uma borda de **controlo**, o axe apanha e é bom que apanhe, mas não o
+silencies.
+
+**Volta 1 — entrega do Dev (`relatorios/T96.md`), uma linha em `globals.css`:** a regra base passou a
+`@apply border-border-subtle` (token da T91, nenhum inventado); `--border` intocado; **zero** ficheiros
+do `src` a corrigir. Contagem dele: **96 strings em 55 ficheiros** e **219 elementos** com borda visível
+nas cinco rotas (o meu 139 contava ocorrências da utilidade; **vale o dele**). Depois da mudança, o que
+continua a `--border` é quem o declara: em `/transacoes`, `border-border` ×39, `border-input` ×35,
+`border-border` ×8, `border-input` ×4. Controlos no claro: Input **3,38/3,48**, Textarea 3,48, Select
+3,38/3,48, Button de contorno 3,38/3,48; no escuro 1,58/1,32 nos quatro, **igual a antes** (dívida da
+T78). Layout: cartão 509,8→509,8, linha 63→63, `scrollHeight` 2633→2633. Gate 5/5, `BUILD_ID
+_wwXJ_dHWzqF4_eFBH2-h`.
+
+**Volta 1 — QA `PASS` (`relatorios/T96-qa.md`), com ressalva no escuro:** 191 bordas visíveis nas
+cinco rotas, **92 da base** (o Dev contou 219 incluindo explícitas; eu 139 ocorrências da utilidade —
+três métodos, o do QA é o mais fino). Claro: as da base passam de `131,139,141` a **`177,185,188`**;
+controlos **3,38/3,48** nos quatro, bordas `131,139,141`, nenhum abaixo de 3. **Escuro:** `--border-subtle`
+`40,47,53` → **1,36:1** contra o fundo e **1,14:1** contra o cartão («filete muito discreto»; antes
+1,23:1 contra o cartão) — não desapareceu, a leitura do cartão passa a vir do preenchimento. `axe` sem
+violações em `/contas`, `/definicoes`, `/contas-pagar-receber`, `/consolidacao-contas`; suite **149 passed
+(8.8m)**, `0 restante(s)`, EXIT=0, `BUILD_ID kKjbrlhWUls4GP8hHlt3n`. Layout 509,8 / 63 / 2633 iguais.
+
+**Volta 1 — Revisor: 1 DEVE, 1 OPCIONAL, «pode commitar: não».** DEVE em `app-shell.tsx:98`: o
+gatilho «Mais» é um `<summary>` com `rounded-lg border` **sem cor**, herdava 3,38 da base e cai para
+**1,94** — o **único controlo da app que regride**, numa fila onde busca, montantes e tema são `Button`
+com `border-border` explícito; e sem fundo até ao hover, o contorno é o que desenha o botão. Confirmou
+o que a T96 fez bem: no CSS construído a regra só compila `border-color`/`outline-color` (sem `divide-*`
+nem `ring-*`), o `--border-subtle` não foi redefinido, e o comentário não promete número que não meça.
+**OPCIONAL** (células do calendário, `calendar-day-dialog.tsx:290,329`): **decidido por mim em
+`DECISOES.md` D31** — ficam subtis, porque a borda da célula é também o separador da grelha e 42
+células a 3,38 punham peso de campo em todo o ecrã. **Escuro a 1,36:1 passa** e não abre tarefa: é a
+dívida do T78, a leitura do cartão vem do preenchimento, o `axe` está limpo, e o que falta no escuro são
+os limites de **controlo** (`--input` a 1,58), não os divisores.
+
+**Volta 2 aberta com o Dev:** `border-border` no `summary` e a frase do comentário a enumerar **cinco**
+controlos, não quatro.
+
+**Volta 2 — entrega do Dev (`relatorios/T96.md` §9):** `border-border` no `summary` do «Mais»
+(`app-shell.tsx:98`) e o comentário do `globals.css` a enumerar os **cinco** controlos. Medido no browser:
+«Mais» **1,94 → 3,38** no claro e 1,36 → **1,47** no escuro (o `--border` do tema, dívida da T78); busca,
+montantes e tema **3,38 / 1,58** sem mudar; o «sair» **não tem borda** (`border-width: 0`) e não entra na
+contagem. Células do calendário intocadas (D31). Gate 5/5, `BUILD_ID DNYxxC366dLJYNCIgwJga`.
+
+**Volta 2 — QA `PASS` (`relatorios/T96-qa.md` §«Volta 2»):** «Mais» `131,139,141` · **3,38** · 3,48 no
+claro e `45,52,58` · **1,47** · 1,23 no escuro; as outras três da fila a 3,38/1,58; o «sair»
+`border-width: 0` e a gaveta com 1 px **transparente** — limites que não existem, **confirmados** em vez
+de aceites. `git diff` do `app-shell.tsx` = **uma linha**. **A T93 não regrediu:** a 320 com barra
+forçada, `clientWidth 305 · scrollWidth 305 · 0 filhos fora · seis alvos 44×44`. Suite **149 passed
+(9.6m)**, `0 restante(s)`, EXIT=0, `BUILD_ID Tb4MIpXgcBD3FGAkrGPlm`; `axe` sem violações. Calendário fora
+do diff, célula a **1,94** (D31).
+
+**Volta 2 — Revisor: 0 BLOQUEIA, 0 DEVE, 1 OPCIONAL, «pode commitar: sim».** Confirmou o DEVE fechado
+(`1/1` no diff, resto da classe intacto), que a **D31 resolve o OPCIONAL** das células (a borda é também o
+separador da grelha; conteúdo + `hover`/`active` identificam a célula; dívida fica com nome e número), e
+que a regra base só toca `border-color`/`outline-color` (sem `divide-*`/`ring-*`, `--border`/`--input`
+intactos). OPCIONAL, que **fecho agora** por ser prosa com prazo: a frase do `globals.css:216-217` diz
+que a lista é **completa** e enumera cinco controlos — um sexto com `border` nu torna-a falsa em silêncio
+(o mesmo rot da T78/T87/T92). **Volta 3:** «completa» sai, «por exemplo» entra, só o comentário.
+
+**Achado do Revisor na T91, alargado por mim com uma contagem.** O `border-b` do cabeçalho não tem
+cor e cai na regra base `* { border-color: var(--border) }` (`globals.css:210-211`). Depois da T78 o
+`--border` está a **3,38:1** — o mínimo da WCAG para **limites de controlo** — e essa regra pinta
+**toda** borda sem cor explícita: contei **139 linhas** no `src` (`rounded-xl border bg-card`,
+`border border-dashed` dos estados vazios, separadores de secção, o `border-b` do cabeçalho). A WCAG
+não exige 3:1 a nada disso. Efeito visível: cartões e caixas com um contorno que compete com o dos
+campos, e o cabeçalho a 3,38 a encontrar o bordo da barra lateral a 1,94 (T91).
+
+**Critério:**
+
+- (a) Medir primeiro: quantas bordas sem cor explícita existem, onde, e a que peso ficam hoje. A
+  contagem é a base do resto — sem ela a mudança é um chute.
+- (b) Decidir **uma** das saídas e justificar com números: (1) a regra base passa a
+  `--border-subtle` e quem precisa de 3:1 diz `border-input`/`border-border` de propósito; ou (2) a
+  regra base fica e cada família de sítio declara o seu token. A (1) é uma linha e é a que eu espero
+  que ganhe, mas a decisão é medida, não escolhida por gosto.
+- (c) **Prova de que os controlos continuam a 3:1:** `Input`, `Textarea`, `Select` e `Button` com
+  variante de contorno medidos no browser — se algum perder o limite de controlo, é FAIL, e o
+  conserto é uma classe nele, não o token.
+- (d) Capturas a 1440 e 390 nos dois temas de **cinco** ecrãs representativos: um com cartões
+  (`/contas`), um com tabela (`/transacoes`), um com estados vazios (`/cartoes` ou `/consolidacao-contas`),
+  um com formulário (`/transacoes`, o quick-add) e o calendário. Mais o canto superior esquerdo, onde o
+  cabeçalho encontra a barra lateral.
+- (e) Gate 5/5 e suite de frio com a baseline **147**, `0 restante(s)`.
+- (f) Se a mudança alterar alguma altura ou largura (borda fina não muda layout, mas confirma),
+  di-lo com o número.
