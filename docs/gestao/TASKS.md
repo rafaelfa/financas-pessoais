@@ -4125,7 +4125,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`a78cccd`; Dev 3 voltas — o Revisor apanhou a regra a cobrir só `apps/web` — + QA `PASS` + Revisor «pode commitar: sim»; shim apagado, 149) | `relatorios/T90-revisao.md`, `relatorios/T95.md`, `relatorios/T95-qa.md` |
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **fechada** 2026-11-22 (`31118ee`; Dev 3 voltas — o Revisor apanhou o «Mais» a 1,94 — + QA `PASS` + Revisor «pode commitar: sim»; 149) | `relatorios/T91-revisao.md`, `relatorios/T96.md`, `relatorios/T96-qa.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
-| T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22; fila autorizada pelo utilizador) | `relatorios/T97-qa.md` §«Volta 3» (c) |
+| T98 | **Falha de rede no formulário de preferências fica muda:** se o POST abortar, `startTransition` não tem `catch`, o ecrã não mostra erro nenhum e só a consola regista `TypeError: Failed to fetch`. Achado do QA na T97, **fora do teto de 3 voltas** dessa tarefa; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`f584d73`; Dev 2 voltas — o `try` foi alargado e o QA mediu-o — + QA `PASS` + Revisor «pode commitar: sim»; 149→**150**) | `relatorios/T97-qa.md` §«Volta 3» (c), `relatorios/T98.md`, `relatorios/T98-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
@@ -4437,32 +4437,6 @@ ao lado das de 3,38:1.
 - (f) **A barra lateral tem de usar mesmo o token:** a variável certa não chegava — a linha desenhada é o
   `border-right` da container (`ui/sidebar.tsx:231`), que estava sem cor e caía no `--border` (3,38:1);
   prova no browser que dá `rgb(177,185,188)`.
-
-### T98 — a falha de rede no formulário de preferências fica muda (Dev) — **em Dev a 2026-11-22**
-
-**Contexto de arranque (Lead):** a contagem da alínea (d) é **150** se acrescentares um teste; o `e2e/97`
-já existe e assere o toast de sucesso aos 3 s com o `esperarAviso`. A mensagem de erro deve ir pela via
-que a casa já usa (`toast` do `sonner`, que é o padrão em 39 ficheiros) e não por um parágrafo novo: o
-formulário já tem um `role="alert"` para o `fail()` de validação e não vale a pena ter dois canais para
-o mesmo utilizador.
-
-**Achado do QA na verificação final da T97, e não entrou nessa tarefa porque ela já tinha gasto as
-três voltas.** O `role="alert"` só aparece quando a acção devolve `fail()`; se o **POST abortar** (rede,
-servidor em baixo), o `startTransition` **não tem `catch`** — o ecrã não mostra nada, o botão volta ao
-normal e a única marca é `TypeError: Failed to fetch` na consola. Medido pelo QA abortando o pedido.
-
-**Critério:**
-
-- (a) Abortar o POST (o QA usou o bloqueio do pedido; serve `page.route` com `abort`) tem de produzir
-  **mensagem visível** — a mesma via dos outros erros (`toast.error` ou o parágrafo `role="alert"`), com
-  texto que diga que não gravou e que se pode tentar outra vez.
-- (b) O botão tem de voltar a `enabled` **em todos** os caminhos: sucesso, `fail()` e excepção.
-- (c) **Nada regride:** as sete validações de tipo (`true`, `["21"]`, `[21,22]`, `""`, `null`, `{}`,
-  `"21abc"`), o isolamento `where: { id: user.id }`, `currency` intocada, o toast de sucesso, as setas do
-  radiogroup, e o `afterAll` do spec a repor 1/CASH.
-- (d) Spec: um teste que aborta o pedido e assere a mensagem — e prova de que morde (sem o `catch`, fica
-  vermelho). Contagem **150** (149 + 1) ou a que resultar.
-- (e) Gate 5/5 e suite de frio, `0 restante(s)`.
 
 ### T97 — os controlos mortos de `/definicoes` (Dev) — **fechada 2026-11-22**
 

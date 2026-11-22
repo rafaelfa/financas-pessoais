@@ -1176,3 +1176,79 @@ campos, e o cabeçalho a 3,38 a encontrar o bordo da barra lateral a 1,94 (T91).
 - (e) Gate 5/5 e suite de frio com a baseline **147**, `0 restante(s)`.
 - (f) Se a mudança alterar alguma altura ou largura (borda fina não muda layout, mas confirma),
   di-lo com o número.
+
+## Bloco de fecho — T98 (fechada 2026-11-22)
+
+- **Fechado:** T98 — *a falha de rede no formulário de preferências fica muda*: a excepção do `await` da
+  server action passa a ser apanhada dentro do callback do `startTransition`, com `try` **mínimo** (só o
+  `await`, `catch` com `return`), e o utilizador lê «Não consegui ligar ao servidor — as preferências não
+  foram guardadas. Verifica a ligação e tenta outra vez.» em vez de perder o formulário.
+- **Prova:** cadeia Dev (2 voltas) → QA `PASS` → Revisor «pode commitar: **sim**» (0 bloqueia, 0 deve,
+  0 opcionais). Antes: a rejeição subia como *unhandled rejection*, o **error boundary** do segmento
+  apanhava-a — `form` → **0** e `main` → «Algo falhou ao carregar este ecrã». Depois: `forms` **1**, `h1`
+  «Definições», `[role="alert"]` com a frase, botão `disabled:false`, base **1/CASH/EUR** (não gravou);
+  com o `unroute` e sem recarregar, toast e base **21/CASH/EUR**. Sete validações de tipo a rejeitar sem
+  escrever. Suite **150 passed (8.7m)**, `0 restante(s)`, `BUILD_ID kraxTHyE8cWtMsgwbN6U2`, `axe` sem
+  violações; `e2e/97` a **2 passed**. O teste novo morde: sem o `catch`, `Expected substring: "não foram
+  guardadas" · element(s) not found · 1 failed`. Relatórios: `relatorios/T98.md`, `relatorios/T98-qa.md`.
+- **O que isto não resolve:** (1) **`requireUser()` faz `redirect('/entrar')`**, que lança; **ninguém
+  verificou** como o Next entrega esse `throw` ao cliente numa Server Action. Se chegar como rejeição, a
+  frase de rede fica errada nesse caso — o teste que decide é apagar o cookie da sessão e carregar em
+  Guardar. Fica por medir. (2) «as preferências **não foram guardadas**» é uma afirmação que o cliente só
+  pode fazer quando o pedido não chegou ao servidor; se a resposta se perder **depois** da escrita, a base
+  fica com o valor novo e a frase mente — inerente a Server Actions, e é a redacção que a alínea (a) pedia.
+  (3) O `catch` nu apanha qualquer rejeição de transporte sem distinguir a causa (é o certo: a acção já
+  converte falhas de domínio em `ok:false`, e as mensagens de rede variam por browser e locale).
+- **Aberto:** nada desta tarefa. A fila autorizada (T93–T98) está fechada.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `f584d73` **por enviar**.
+- **Decisão:** nenhuma nova.
+
+### T98 — a falha de rede no formulário de preferências fica muda (Dev) — **fechada 2026-11-22**
+
+**Contexto de arranque (Lead):** a contagem da alínea (d) é **150** se acrescentares um teste; o `e2e/97`
+já existe e assere o toast de sucesso aos 3 s com o `esperarAviso`. A mensagem de erro deve ir pela via
+que a casa já usa (`toast` do `sonner`, que é o padrão em 39 ficheiros) e não por um parágrafo novo: o
+formulário já tem um `role="alert"` para o `fail()` de validação e não vale a pena ter dois canais para
+o mesmo utilizador.
+
+**Volta 1 — entrega do Dev (`relatorios/T98.md`), e o achado era pior do que «mudo»:** a excepção
+morria na `await savePreferences(...)` **dentro** do callback do `startTransition`; a rejeição subia como
+*unhandled rejection* e o **error boundary do segmento** apanhava-a — `form` → **0** e o `main` passava a
+«Algo falhou ao carregar este ecrã». O `catch` ficou à volta do `await`, com a frase «Não consegui ligar
+ao servidor — as preferências não foram guardadas. Verifica a ligação e tenta outra vez.». Segundo teste
+no `e2e/97` (contagem **150**) que aborta, exige a mensagem, o botão ativo e o `h1`, e depois grava;
+**degradado** (sem `catch`) → `Expected substring: "não foram guardadas" · element(s) not found · 1
+failed`; restaurado → 2 passed (7.9 s). Gate 5/5, `BUILD_ID fcybuCGojuWiXcJ8rVkVY`.
+
+**Volta 1 — QA `PASS` (`relatorios/T98-qa.md`):** com o POST abortado (sessão QA própria), `forms` **1**,
+`h1` «Definições», `main` normal (**sem** «Algo falhou ao carregar este ecrã»), `[role="alert"]` com a frase
+de rede, botão `disabled:false`, base **1/CASH/EUR**; depois de `unroute`, **sem recarregar**, toast e base
+**21/CASH/EUR**. Sete validações a rejeitar sem escrever; `where: { id: user.id }`; `currency` EUR; setas
+ok; `afterAll` a repor 1/CASH (correu o `e2e/97` real sem `globalTeardown`). Saída vermelha **citada** do
+relatório do Dev, não corrida («não degradei o componente»). Suite **150 passed (8.7m)**, `0 restante(s)`,
+`BUILD_ID kraxTHyE8cWtMsgwbN6U2`, `axe` sem violações. **Achado do QA:** o `try` não era mínimo — cobria
+o `await`, o `if` com `setErro` e o `toast`.
+
+**Volta 2 — entrega do Dev (`relatorios/T98.md` §8):** `let resultado` fora do `try`, o `try` fecha logo
+depois do `await`, o `catch` faz `setErro` + `return`, e o `if (!resultado.ok)` e o `toast.success` ficam
+**fora**. Assim um `toast` que lance nunca se disfarça de erro de rede. `e2e/97` **2 passed (7.7 s)**; gate
+5/5, `BUILD_ID i7EXfAmFyBXw_EkAPkhF4`. Sem suite repetida (comportamento observável igual; a corrida do
+QA a **150** continua válida).
+
+**Achado do QA na verificação final da T97, e não entrou nessa tarefa porque ela já tinha gasto as
+três voltas.** O `role="alert"` só aparece quando a acção devolve `fail()`; se o **POST abortar** (rede,
+servidor em baixo), o `startTransition` **não tem `catch`** — o ecrã não mostra nada, o botão volta ao
+normal e a única marca é `TypeError: Failed to fetch` na consola. Medido pelo QA abortando o pedido.
+
+**Critério:**
+
+- (a) Abortar o POST (o QA usou o bloqueio do pedido; serve `page.route` com `abort`) tem de produzir
+  **mensagem visível** — a mesma via dos outros erros (`toast.error` ou o parágrafo `role="alert"`), com
+  texto que diga que não gravou e que se pode tentar outra vez.
+- (b) O botão tem de voltar a `enabled` **em todos** os caminhos: sucesso, `fail()` e excepção.
+- (c) **Nada regride:** as sete validações de tipo (`true`, `["21"]`, `[21,22]`, `""`, `null`, `{}`,
+  `"21abc"`), o isolamento `where: { id: user.id }`, `currency` intocada, o toast de sucesso, as setas do
+  radiogroup, e o `afterAll` do spec a repor 1/CASH.
+- (d) Spec: um teste que aborta o pedido e assere a mensagem — e prova de que morde (sem o `catch`, fica
+  vermelho). Contagem **150** (149 + 1) ou a que resultar.
+- (e) Gate 5/5 e suite de frio, `0 restante(s)`.
