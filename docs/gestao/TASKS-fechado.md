@@ -861,3 +861,90 @@ marca corta em 101 com «Mais» a 105; a 390 em 131 com «Mais» a 135. Verde he
 mutações vermelhas nas duas modalidades. Suite **149 passed (9.3m)**, `0 restante(s)`, EXIT=0, build
 `Rl7I5TP7awnNhriLjNGwv`. Contraste igual. Em revisão: risco dos 4 px de vão, `px-1` a 4 px do bordo, e
 se a folga a 305 é zero (qualquer acréscimo futuro rebenta em silêncio porque a guarda corre headless).
+
+## Bloco de fecho — T94 (fechada 2026-11-22)
+
+- **Fechado:** T94 — *endurecer a guarda dos 320 px*: `mutar()` passa a devolver quantos elementos
+  alterou e o ensaio exige `> 0`; as comparações de transbordo passam de `window.innerWidth` a
+  `documentElement.clientWidth`; o projeto `estreito` arranca com `ignoreDefaultArgs:
+  ['--hide-scrollbars']`; e nasceu a quinta mutação, `T89_MUTAR=parede`.
+- **Prova:** cadeia Dev (2 voltas) → QA `PASS` → Revisor «pode commitar: **sim**» (0 bloqueia, 0 deve,
+  0 opcionais). Sem `--headed`, o spec vê **320/305/305** com a barra forçada (320/320/320 sem ela);
+  `T89_MUTAR=parede` → `[]` vs `[309]`; **cinco** mutações vermelhas (`nav` 124,9 vs ≤122,5 · `toque`
+  28 · `cabecalho` `[]` vs `[424,8]` · `limiar` 1 vs >10 · `parede` `[]` vs `[309]`); `innerWidth` só
+  no `viewport` (`:158`), comparações em `:165,233,234`; zero `skip`/`only`/`fixme`; `--headed` verde
+  (4,1 s). Suite **149 passed (8.9m)**, `0 restante(s)`, EXIT=0, `BUILD_ID 03H7mPpSGRhy2HWUX1HXU`; gate
+  5/5. Relatórios: `relatorios/T94.md`, `relatorios/T94-qa.md`.
+- **O que isto não resolve:** (1) **a largura da barra é do sistema, não do teste.** Nesta máquina vale
+  **15 px** (320−305); com `--enable-features=OverlayScrollbar` a parede volta a **320** e **+16 px
+  ainda passa**. O teste garante «cabe na largura útil do browser onde corre», não «cabe em 305
+  sempre». Quem quiser o piso independente do SO precisa de uma segunda medição a `viewport 305` fixo.
+  (2) A conta do conteúdo do cabeçalho não fecha ao pixel entre o Revisor (~297 pelas classes), a
+  varredura do Dev (12 px ainda 305, 14 → 307) e as posições do QA (`right` 301 → 4 px de folga):
+  concordam no que importa (folga de um dígito, a mutação morde), não no número. (3) A mutação
+  `cabecalho` mudou de alvo (`sr-only` → `min-w-0`) — honesta, e o alvo antigo continua coberto pela
+  largura da marca (≤1 px a 320) e pelo `ariaSnapshot`.
+- **Aberto:** nada desta tarefa. As mutações passam a ser **cinco** e todas têm de continuar vermelhas
+  em qualquer trabalho futuro sobre o cabeçalho.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `764bc4e` **por enviar**.
+- **Decisão:** nenhuma. A D30 continua a valer.
+
+### T94 — endurecer a guarda dos 320 px (Dev) — **fechada 2026-11-22**
+
+**Atualização de 2026-11-22 (Lead), depois da T93:** a contagem da alínea (b) passa de **147** para
+**149**, e as mutações são **quatro**, não três — a `T89_MUTAR=toque` nasceu na T93.
+
+**Volta 1 — entrega do Dev (`relatorios/T94.md`), parada:** (a) feito — `mutar()` devolve quantos
+elementos alterou e `expect(alterados).toBeGreaterThan(0)` falha quando é 0; a mutação `cabecalho` mudou
+de alvo (`sr-only` → `min-w-0`) porque com o `min-w-0` da T93 o `sr-only` já não transbordava. (b) feito —
+`clientWidth` nas comparações de transbordo, `innerWidth` só para «a janela é 320». (c) quatro mutações
+vermelhas. (d) 149, zero testes novos. (e) **o ensaio `--headed` arranca e reprova por um defeito real
+do produto**: ver o bloco de fecho «T93, volta 3» em `TASKS-fechado.md`. (f) gate 5/5.
+
+**Critério novo (Lead, 2026-11-22), vindo do OPCIONAL do Revisor na T93 volta 3 — entra nesta
+tarefa porque é o mesmo defeito que ela existe para fechar:** a guarda compara contra
+`documentElement.clientWidth`, que em headless é 320 (sem barra de scroll) e portanto **tolera ~19 px**;
+a parede real é **305**. Uma etiqueta mais longa ou 5 px de padding passam o gate sem nada ficar
+vermelho, e só um `--headed` apanha. Exigência: o projeto `estreito` passa a **medir a parede de 305
+por omissão** — barra clássica forçada (por exemplo `ignoreDefaultArgs: ['--hide-scrollbars']` ou o
+`launchOptions` que o provar) **ou** a asserção do cabeçalho a correr também sem esconder a barra.
+Prova de que morde: acrescentar ~10 px de padding ao cabeçalho **em memória** e o spec tem de ficar
+vermelho no `pnpm test:e2e e2e/89` normal, sem `--headed`; sem o acrescento, verde. Se o mecanismo
+escolhido mudar o custo da suite, diz quanto.
+
+**Volta 2 — entrega do Dev (`relatorios/T94.md` §8):** o projeto `estreito` arranca com
+`launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] }`; a comparação continua a ser contra
+`clientWidth`. Sem barra `320/320/320`, com barra `320/305/305`; custo na suite **nenhum** (1 teste,
+4,7 s). Varredura do padding: 4/9/12 px não transbordam, **14** dá 307, 16 dá 309, 20 dá 313 — e só com
+a barra medida. Quinta mutação `T89_MUTAR=parede` (16 px) falha com «nenhum filho do cabeçalho passa da
+janela» · `Expected −1 / Received +3`. Quatro mutações antigas continuam vermelhas; 149,
+`0 restante(s)`; gate 5/5, `BUILD_ID Rl7I5TP7awnNhriLjNGwv`. Zero git, `apps/` intocado.
+
+**Volta 2 — QA `PASS` (`relatorios/T94-qa.md`):** sem `--headed`, o spec vê **320/305/305** com barra
+forçada (320/320/320 sem ela); `T89_MUTAR=parede` → `[]` vs `[309]`; **cinco** mutações vermelhas
+(`nav` 124,9 vs ≤122,5 · `toque` 28 · `cabecalho` `[]` vs `[424,8]` · `limiar` 1 vs >10 · `parede` `[]`
+vs `[309]`); `grep innerWidth` só na linha 158 (`viewport`) e comentários, comparações em 165/233/234;
+`--headed` verde (4,1 s); suite **149 passed (8.9m)**, `0 restante(s)`, EXIT=0, `BUILD_ID
+03H7mPpSGRhy2HWUX1HXU`. **Limite medido e escrito:** nesta máquina a barra vale **15 px**; com
+`--enable-features=OverlayScrollbar` a parede volta a **320** e +16 px **ainda passa** (320/320) — o
+piso de 305 é do sistema, não do teste. O teste garante «cabe na largura útil do browser onde corre».
+Em revisão: asserções não afrouxadas, alvo novo da mutação `cabecalho`, e se o `ignoreDefaultArgs` é a
+metade certa ou se o teste devia fixar a largura da barra.
+
+**Dois achados do Revisor na revisão da T89, ambos de uma a duas linhas, e ambos do mesmo tipo: um
+teste que pode mentir sem ninguém dar por isso.**
+
+1. **A mutação não verifica que a classe existia.** `T89_MUTAR=nav|cabecalho|limiar` remove classes
+   **por nome** (`e2e/89-guarda-320.spec.ts:128-144`) e não confirma que elas estavam lá. Se a T85 ou a
+   T88 mudarem de classe — o próprio QA escreveu esse cenário —, a mutação não remove nada, o spec
+   corre **verde** e a «prova de que a guarda morde» passa a ser falsa. Correção: antes de remover,
+   afirmar que a classe existe (ou contar os nodos alterados e exigir `> 0`).
+2. **`window.innerWidth` conta a barra de scroll, `scrollWidth` não.** Em headless o Chromium recebe
+   `--hide-scrollbars` e o número é exato; com `--headed` o `docScrollWidth` passa a 320−17 e a linha
+   do «a página não transborda» fica **vermelha sem o produto ter mudado** (`:74-80,120-121`).
+   Correção: comparar com `document.documentElement.clientWidth`, guardando o `innerWidth` só para o
+   «a janela é mesmo 320».
+
+**Critério:** (a) as duas correções, com as três mutações a continuarem a falhar; (b) o spec conta
+continuar a **147**; (c) um ensaio **`--headed`** a passar (é a prova do item 2, e é a única forma de
+o demonstrar); (d) `format:check`/`lint`/`typecheck` a 0. Não mexer em `apps/`.
