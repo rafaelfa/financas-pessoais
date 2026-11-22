@@ -58,10 +58,32 @@ export function PreferencesForm({
     setErro(null);
 
     startTransition(async () => {
-      const resultado = await savePreferences({
-        monthStartDay: Number(dia),
-        accountingBasis: regime === 'accrual' ? 'ACCRUAL' : 'CASH',
-      });
+      /*
+       * O `catch` é **obrigatório** e vive aqui, à volta do `await`, não à volta
+       * do `startTransition`. Se o POST abortar (rede, servidor em baixo), a
+       * promessa da Server Action rejeita; o React acompanha a transição mas não
+       * apanha a rejeição, e ela sobe como unhandled rejection — o error boundary
+       * do segmento substituía o ecrã inteiro por «Algo falhou ao carregar este
+       * ecrã». Aqui o erro fica na página e o formulário continua utilizável.
+       *
+       * **Só o `await` está dentro do `try`.** Se o `try` cobrisse também o
+       * `setErro` e o `toast`, uma falha *deles* passava a ler-se «não consegui
+       * ligar ao servidor» — a mentir sobre a causa, num ecrã que existe para
+       * dizer o que ficou gravado.
+       */
+      let resultado: Awaited<ReturnType<typeof savePreferences>>;
+
+      try {
+        resultado = await savePreferences({
+          monthStartDay: Number(dia),
+          accountingBasis: regime === 'accrual' ? 'ACCRUAL' : 'CASH',
+        });
+      } catch {
+        setErro(
+          'Não consegui ligar ao servidor — as preferências não foram guardadas. Verifica a ligação e tenta outra vez.',
+        );
+        return;
+      }
 
       if (!resultado.ok) {
         setErro(resultado.error);

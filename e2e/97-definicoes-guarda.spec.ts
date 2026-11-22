@@ -66,4 +66,28 @@ test.describe('T97 — guardar as preferências', () => {
       'true',
     );
   });
+
+  test('um POST abortado diz que não gravou e deixa tentar outra vez', async ({ page }) => {
+    /*
+     * T98: se o pedido abortar (rede, servidor em baixo) a promessa da Server
+     * Action rejeita dentro do `startTransition`; sem `try/catch` no sítio certo
+     * o ecrã era substituído pelo error boundary — «Algo falhou ao carregar este
+     * ecrã» — e nada dizia que não gravou.
+     */
+    await page.route('**/definicoes', (rota) =>
+      rota.request().method() === 'POST' ? rota.abort('failed') : rota.continue(),
+    );
+
+    await abrirRota(page, '/definicoes');
+    await page.getByRole('button', { name: 'Guardar preferências' }).click();
+
+    await expect(page.locator('form [role="alert"]')).toContainText('não foram guardadas');
+    await expect(page.getByRole('button', { name: 'Guardar preferências' })).toBeEnabled();
+    await expect(page.getByRole('heading', { level: 1, name: 'Definições' })).toBeVisible();
+
+    /* E o mesmo botão volta a funcionar quando a rede volta. */
+    await page.unroute('**/definicoes');
+    await page.getByRole('button', { name: 'Guardar preferências' }).click();
+    await esperarAviso(page, 'Preferências guardadas.');
+  });
 });
