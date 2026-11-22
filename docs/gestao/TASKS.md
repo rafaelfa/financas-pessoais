@@ -4115,8 +4115,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
-| T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em revisão** (QA `PASS` a 2026-11-22: 8 larguras medidas de 320 a 1440, suite 146/146 de frio) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
-| T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, depois da T88) | `relatorios/T85-revisao.md` (opcional 3) |
+| T88 | **Cabeçalho a 320 px:** o menu «Mais» chega a x=341,3 num ecrã de 320 — **21,3 px fora** e `document.scrollWidth` 341, confirmado por mim na produção. Achado do Dev na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (`88e6e3f`; Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 da acessibilidade) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
+| T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T85-revisao.md` (opcional 3) |
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T89) | `relatorios/T78-revisao.md`, `docs/gestao/TASKS.md` §T78 dívida 1 |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T90) | `relatorios/T78-revisao.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | verificação pós-deploy de 2026-11-22 (`TASKS.md` §T92) |
@@ -4353,7 +4353,7 @@ Nenhuma destas três reabre a T86; ficam à espera de vaga autorizada pelo utili
 4. **Um token com um consumidor.** `--text-caption` só é usado na `mobile-nav`. Fica, porque o critério
    pedia o token; mas fica dito que ainda não provou ser uma escala.
 
-### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **em revisão a 2026-11-22**
+### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **fechada 2026-11-22**
 
 **Entrega do Dev:** o nome «Finanças Pessoais» do cabeçalho passa a `hidden … min-[360px]:inline
 md:hidden` — **abaixo de 360 px o nome sai** e volta aos 360. Medido: `/transacoes` de **341** para
@@ -4462,7 +4462,7 @@ do que está guardado.
 - (d) Gate 5/5 e as specs que toquem `definicoes` (se nenhuma tocar, di-lo — e considera um spec de
   uma linha que assere que a frase antiga não voltou).
 
-### T89 — guarda automática a 320 px no Playwright (Dev) — **aberta, autorizada a 2026-11-22**
+### T89 — guarda automática a 320 px no Playwright (Dev) — **em Dev a 2026-11-22**
 
 **Achado do Revisor na T85 (opcional 3).** O `truncate` que segura o rótulo a 320 não tem teste:
 não há projeto Playwright a 320 (`chromium` 1280, `telemovel` = Pixel 5 a 393, `escuro`), e o
