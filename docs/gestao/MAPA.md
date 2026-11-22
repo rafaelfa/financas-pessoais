@@ -393,3 +393,30 @@ subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/heal
    a exigir `main h1` visível, porque o esqueleto não tem `h1`. Toda a página de `(app)`
    tem `h1` dentro de `main` via `PageHeader` — se uma deixar de ter, os specs que a
    abrem falham com «element not found» e não com «a página não tem título».
+
+## Armadilhas medidas a 2026-11-22 (vaga 8, T88–T98)
+
+1. **O Chromium headless esconde a barra de scroll, e isso muda a parede de um ecrã estreito.**
+   Com `viewport 320` e sem barra, `documentElement.clientWidth` é **320**; com barra clássica são
+   **305**. Um teste que compare `scrollWidth` com `clientWidth` passa em headless e falha no browser
+   real (ou pior: passa nos dois por tolerar 15 px a mais). O projeto `estreito` do Playwright força a
+   barra com `launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] }` (T94). **A largura da barra
+   é do sistema**: numa máquina com barras overlay volta a 320 e a guarda tolera os mesmos 15 px.
+2. **Uma classe de cor de borda pode não fazer nada se outra variante a repuser.** O
+   `min-[360px]:not-sr-only` repõe `white-space` e `overflow` no mesmo elemento e **anula** o
+   `truncate` (`text-overflow: ellipsis` deixa de cortar). Medido na T93: o nome da app pintava-se em
+   duas linhas **por baixo** do ícone do «Mais» entre 360 e `md`. A correção foi um `<span>` interior,
+   onde o `not-sr-only` já não chega. Ao empilhar utilitários de recorte e de `sr-only`, confirmar no
+   CSS construído **qual regra entra por último**, não na ordem em que estão escritas.
+3. **O ESLint escolhe o config mais próximo, e o do `apps/web` não linta `packages/`.** Uma regra nova
+   em `apps/web/eslint.config.mjs` não cobre `packages/*`, que é lintado pelo `eslint.config.mjs` da
+   raiz (T95 — descoberto na revisão depois de a tarefa parecer fechada).
+4. **A parede do cabeçalho a 320 com barra são 305 px úteis.** O conteúdo cabe em ~301–305: a folga é
+   de **0 a 4 px** (T93/T94). Qualquer acrescento ao cabeçalho — uma etiqueta, 5 px de `padding`, uma
+   classe de borda — tem de ser medido com barra, não em headless. Os três agentes calcularam esta
+   conta com resultados diferentes (297 / 301 / 305); o número que vale é o medido no browser.
+5. **Um `startTransition` não engole a rejeição do `await`**: ela sobe como *unhandled rejection* e o
+   **error boundary do segmento** substitui o ecrã inteiro («Algo falhou ao carregar este ecrã», e o
+   formulário deixa de existir). Numa Server Action chamada por formulário, o `try` tem de estar
+   **dentro** do callback e à volta do `await` (T98) — e o mais estreito possível, para que um `toast`
+   que lance não se disfarce de erro de rede.
