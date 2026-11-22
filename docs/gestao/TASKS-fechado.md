@@ -786,3 +786,78 @@ polegar. Já estava assim antes da T88 — o Dev não os inflou porque isso muda
 - (d) Dois temas, sem regressão de contraste.
 - (e) Gate 5/5, suite de frio com a baseline da altura (146 + o que a T89 acrescentar), `0 restante(s)`.
 
+
+## Bloco de fecho — T93, volta 3 (fechada 2026-11-22)
+
+- **Fechado:** T93 volta 3 — *o cabeçalho cabe nos 320 px com barra de scroll*: `px-2 → px-1` (8 px) e
+  `gap-2 → gap-1` nos dois intervalos (8 px), **só abaixo de `sm`** (`sm:px-4`/`sm:gap-2` repõem acima
+  de 640). Nenhum alvo, nenhum controlo, nenhuma outra classe.
+- **Prova:** Dev (`relatorios/T93.md` §9) e QA (`relatorios/T93-qa.md` §«Volta 3») em **headed** com
+  barra de scroll de 15 px: 320 → `inner 320 / client 305 / scroll 305` (dif. **0**), 359 → 344/344,
+  360 → 345/345, 390 → 375/375, 1440 → 1425/1425, **0** filhos do cabeçalho fora. Seis alvos 44×44 em
+  `x` 4/65/113/161/209/257, vãos de **17 px** (gaveta→«Mais», com o separador) e **4,0 px** entre os
+  pares do grupo — encostados, **não sobrepostos**; os **54 pontos** acertam todos no controlo certo e
+  o QA **não alterou o teste**. A 360 a marca corta em 101 com o «Mais» a 105 (1 linha); a 390 em 131
+  com o «Mais» a 135; a 320 `sr-only` 1×1 com o nome na árvore. Verde headless **e** headed; quatro
+  mutações vermelhas nas duas modalidades. Suite **149 passed (9.3m)**, `0 restante(s)`, EXIT=0, build
+  `Rl7I5TP7awnNhriLjNGwv`; gate 5/5. Revisor: **0 BLOQUEIA, 0 DEVE, 1 OPCIONAL**, «pode commitar:
+  sim».
+- **O que isto não resolve:** (1) a folga a 305 é **0 a 4 px** — o cabeçalho está na parede: qualquer
+  acréscimo futuro (uma etiqueta mais longa, 5 px de padding) volta a rebentar, e **a guarda não o
+  apanha por omissão**, porque compara contra `clientWidth` (320 em headless, sem barra) e tolera ~19 px.
+  (2) Os 4 px de vão entre alvos: risco de toque a mais no vizinho, não de alvo falhado; não há folga
+  para o pagar sem tirar peça. (3) `px-1` deixa a gaveta a 4 px do bordo — custo visual, não funcional
+  (o swipe de voltar não se faz num gatilho de gaveta).
+- **Aberto:** o OPCIONAL do Revisor passou para a **T94** (fazer a guarda medir a parede de 305 por
+  omissão, não só em `--headed`).
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `8fd7461` **por enviar**.
+- **Decisão:** nenhuma. O separador abaixo de `sm` (≈13 px) ficaria disponível para recuperar `px-2`,
+  mas não chega para o `gap-2` do grupo e não vale uma volta.
+
+### T93 — volta 3 (reaberta) — o cabeçalho transborda 4 px quando há barra de scroll — **fechada 2026-11-22**
+
+**É continuação da T93**, fechada e commitada horas antes (`86d306e`, `7117b69`, `34d2ed6`). Reabre
+com o mesmo ID porque o defeito é da promessa da própria T93: a alínea (b) dizia «sem voltar a
+transbordar» e essa medição só era verdadeira **em headless**, onde o Chromium recebe
+`--hide-scrollbars`.
+
+**Achado do Dev na T94, na entrega do primeiro ensaio `--headed`:** a 320×640 com barra de scroll,
+`innerWidth` **320** mas `documentElement.clientWidth` **305**; `docScrollWidth` **309** e o grupo da
+direita do cabeçalho com `right` **309** — **4 px de transbordo**, scroll horizontal na página. Em
+headless o mesmo ecrã dá 320/320 porque não há barra. A conta do cabeçalho a 320 é 317 px
+(`8+44+8+5+8+236+8`), que não cabe em 305.
+
+**Critério:**
+
+- (a) A 320×640 **com barra de scroll** (headed): `documentElement.scrollWidth` ≤
+  `documentElement.clientWidth` **sem tolerância**, e **nenhum** filho do cabeçalho com `right` além
+do `clientWidth`. O mesmo a 359/360/390/1440.
+- (b) **Os seis alvos continuam ≥44×44** e sem sobreposição. Se dois tiverem de ficar encostados, di-lo
+  por extenso e mede o clique na aresta.
+- (c) Nenhum controlo sai do cabeçalho. **Se a única forma de caber for tirar um controlo, paras e
+  dizes qual** — essa decisão é minha.
+- (d) O nome da app continua a cortar em 1 linha a 360 e a 390 (o que a volta 2 fechou não regride) e o
+  `sr-only` a 320 continua na árvore.
+- (e) O ensaio `--headed` do `e2e/89` (que a T94 endureceu) passa **verde** e as quatro mutações
+  continuam vermelhas.
+- (f) Gate 5/5; suite completa é do QA.
+
+**Nota:** o `e2e/89-guarda-320.spec.ts` na árvore é a entrega da **T94** (por commitar). Podes corrê-la
+e só a mudas se a correção do cabeçalho o exigir — e nesse caso dizes a linha e o motivo.
+
+**Volta 3 — entrega do Dev (`relatorios/T93.md` §9):** `px-2 → px-1` (8 px) e `gap-2 → gap-1` nos dois
+intervalos (8 px), só abaixo de `sm`; **16 px** de folga contra os 12 que faltavam. Headed:
+320 → `305/305`, 359 → `344/344`, 360 → `345/345`, 390 → `375/375`, 1440 → `1425/1425`, **0** filhos
+fora, seis alvos a 44×44 (4 px entre eles, sem sobreposição). A 360 a marca corta em 1 linha (caixa
+40, 61→101, «Mais» a 105); a 390, 70 px (61→131), «Mais» a 135. `--headed` limpo 1 passed (4.7s);
+quatro mutações vermelhas; gate 5/5, `BUILD_ID 0F5O5rRqraipnQLo9zBmF`. `e2e/89` não tocado.
+
+**Volta 3 — QA `PASS` (`relatorios/T93-qa.md` §«Volta 3»), headed com barra de scroll de 15 px:**
+320 → `inner 320/client 305/scroll 305` (dif. **0**), 359 → 344/344, 360 → 345/345, 390 → 375/375,
+1440 → 1425/1425, **0** filhos fora. Seis alvos 44×44 com `x` 4/65/113/161/209/257 e `right`
+48/109/157/205/253/301 — vãos de **17 px** (gaveta→«Mais», com o separador) e **4,0 px** entre os
+pares do grupo: encostados, não sobrepostos; **54 pontos sem uma falha**, teste não alterado. A 360 a
+marca corta em 101 com «Mais» a 105; a 390 em 131 com «Mais» a 135. Verde headless **e** headed; quatro
+mutações vermelhas nas duas modalidades. Suite **149 passed (9.3m)**, `0 restante(s)`, EXIT=0, build
+`Rl7I5TP7awnNhriLjNGwv`. Contraste igual. Em revisão: risco dos 4 px de vão, `px-1` a 4 px do bordo, e
+se a folga a 305 é zero (qualquer acréscimo futuro rebenta em silêncio porque a guarda corre headless).

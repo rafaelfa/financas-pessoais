@@ -4120,8 +4120,8 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T90 | **Os 39 `components/ui/*` importam `cn` de `'cn'`** e não herdam a escala de texto da T78: `text-caption` desaparece em silêncio ao lado de uma cor. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim», 1 volta + 1 do comentário) | `relatorios/T90.md`, `relatorios/T90-qa.md` |
 | T91 | **`--border` faz dois trabalhos:** a A4 subiu-o a 3,38:1, mas ele também é `bg-border` em separadores de menu e do cabeçalho — hairlines escuros que ninguém olhou. Falta `--border-subtle`; `--sidebar-border` ficou a 1,31:1. Achado do Revisor na T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` na volta 2 — a 1 deu FAIL: a barra lateral não usava o token — + Revisor «pode commitar: sim» na volta 3) | `relatorios/T91.md`, `relatorios/T91-qa.md` |
 | T92 | **`/definicoes` tem uma frase morta:** «Guardar preferências fica disponível quando a aplicação estiver ligada à conta» aparece em produção, com base ligada e sem botão de guardar (`definicoes/page.tsx:78`). Achado meu na verificação pós-deploy da T78; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` + Revisor «pode commitar: sim»; baseline 148) | `relatorios/T92.md`, `relatorios/T92-qa.md` |
-| T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 3, 2026-11-22; reaberta — o transbordo de 4 px só aparece com barra de scroll) | `relatorios/T88-qa.md`, `relatorios/T93.md`, `relatorios/T93-qa.md` |
-| T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 1 entregue, **parada à espera da T93 volta 3**: o ensaio `--headed` reprova por transbordo real de 4 px) | `relatorios/T89-qa.md`, `e2e/89-guarda-320.spec.ts`, `relatorios/T94.md` |
+| T93 | **Alvos de toque do cabeçalho:** a 320 px só o menu «Mais» tem 44 px; barra lateral, busca, tema e sair medem **28–36 px** — abaixo do piso de 44×44 da skill de design, e **antes** da T88. Achado do Dev na T88; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (`86d306e`, `7117b69`, `8fd7461`; **3 voltas** — a 1 corrigiu o alvo e estragou o nome, a 2 corrigiu o nome, a 3 o transbordo de 4 px que só aparecia com barra de scroll — + QA `PASS` nas três + Revisor «pode commitar: sim» na 2 e na 3; 149) | `relatorios/T88-qa.md`, `relatorios/T93.md`, `relatorios/T93-qa.md` |
+| T94 | **Endurecer a guarda dos 320:** as mutações do `T89_MUTAR` removem classes **por nome** sem verificar que lá estavam (se a T85/T88 mudar de classe, a «prova de que a guarda morde» fica verde e falsa), e o `window.innerWidth` compara-se com `scrollWidth`, que não conta a barra de scroll — com `--headed` dá vermelho falso. Achados do Revisor na T89; **decidida por mim a 2026-11-22** | Dev | **em Dev** (volta 2, 2026-11-22; T93 fechada, retoma com o critério novo do Revisor: a guarda tem de medir a parede de 305 por omissão) | `relatorios/T89-qa.md`, `e2e/89-guarda-320.spec.ts`, `playwright.config.ts`, `relatorios/T94.md` |
 | T95 | **Uma só fonte de `cn`:** nada impede o próximo `from 'cn'` (um `no-restricted-imports` é uma linha), e `packages/shared/src/utils/cn.ts` reexporta o `cn` **nu** jurando «exactly one Tailwind class-conflict engine» — falso desde a T90; 0 imports hoje, basta um. Achados do Revisor na T90; **decidida por mim a 2026-11-22** | Dev | **aberta** (na fila, depois da T91) | `relatorios/T90-revisao.md` |
 | T96 | **A regra base pinta ~139 bordas decorativas com o peso de um controlo:** `* { border-border }` dá 3,38:1 a cartões, estados vazios e divisórias, porque a T78 subiu `--border` para o mínimo dos controlos. Achado do Revisor na T91 (o `border-b` do cabeçalho), alargado por mim com uma contagem no `src`. | Dev | **aberta** (na fila, depois da T95) | `relatorios/T91-revisao.md` |
 | T97 | **`/definicoes` tem controlos que mentem:** o `Select` «O mês começa no dia» muda no ecrã e não guarda nada (`page.tsx:37`, `defaultValue` sem tratador), e o cartão diz «Todos os totais e orçamentos passam a seguir esse calendário». A T92 pôs a frase a dizer que os valores são fixos — e agora o ecrã contradiz-se. Achado do Dev na T92; **decidida por mim a 2026-11-22** | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` em 3 voltas + Revisor «pode commitar: sim» com 1 DEVE fechado; baseline 149) | `relatorios/T97.md`, `relatorios/T97-qa.md` |
@@ -4513,37 +4513,6 @@ e do `package.json` se ficar a apontar para nada) **ou** reduzido a uma nota que
 fora de `apps/web`; (d) suite de frio com a baseline **147**, `0 restante(s)`; (e) as capturas de
 `/transacoes` nos dois temas continuam a bater `sha256` com as da T90 (nada disto muda pintura).
 
-### T93 — volta 3 (reaberta) — o cabeçalho transborda 4 px quando há barra de scroll — **em Dev a 2026-11-22**
-
-**É continuação da T93**, fechada e commitada horas antes (`86d306e`, `7117b69`, `34d2ed6`). Reabre
-com o mesmo ID porque o defeito é da promessa da própria T93: a alínea (b) dizia «sem voltar a
-transbordar» e essa medição só era verdadeira **em headless**, onde o Chromium recebe
-`--hide-scrollbars`.
-
-**Achado do Dev na T94, na entrega do primeiro ensaio `--headed`:** a 320×640 com barra de scroll,
-`innerWidth` **320** mas `documentElement.clientWidth` **305**; `docScrollWidth` **309** e o grupo da
-direita do cabeçalho com `right` **309** — **4 px de transbordo**, scroll horizontal na página. Em
-headless o mesmo ecrã dá 320/320 porque não há barra. A conta do cabeçalho a 320 é 317 px
-(`8+44+8+5+8+236+8`), que não cabe em 305.
-
-**Critério:**
-
-- (a) A 320×640 **com barra de scroll** (headed): `documentElement.scrollWidth` ≤
-  `documentElement.clientWidth` **sem tolerância**, e **nenhum** filho do cabeçalho com `right` além
-do `clientWidth`. O mesmo a 359/360/390/1440.
-- (b) **Os seis alvos continuam ≥44×44** e sem sobreposição. Se dois tiverem de ficar encostados, di-lo
-  por extenso e mede o clique na aresta.
-- (c) Nenhum controlo sai do cabeçalho. **Se a única forma de caber for tirar um controlo, paras e
-  dizes qual** — essa decisão é minha.
-- (d) O nome da app continua a cortar em 1 linha a 360 e a 390 (o que a volta 2 fechou não regride) e o
-  `sr-only` a 320 continua na árvore.
-- (e) O ensaio `--headed` do `e2e/89` (que a T94 endureceu) passa **verde** e as quatro mutações
-  continuam vermelhas.
-- (f) Gate 5/5; suite completa é do QA.
-
-**Nota:** o `e2e/89-guarda-320.spec.ts` na árvore é a entrega da **T94** (por commitar). Podes corrê-la
-e só a mudas se a correção do cabeçalho o exigir — e nesse caso dizes a linha e o motivo.
-
 ### T94 — endurecer a guarda dos 320 px (Dev) — **em Dev a 2026-11-22**
 
 **Atualização de 2026-11-22 (Lead), depois da T93:** a contagem da alínea (b) passa de **147** para
@@ -4554,7 +4523,18 @@ elementos alterou e `expect(alterados).toBeGreaterThan(0)` falha quando é 0; a 
 de alvo (`sr-only` → `min-w-0`) porque com o `min-w-0` da T93 o `sr-only` já não transbordava. (b) feito —
 `clientWidth` nas comparações de transbordo, `innerWidth` só para «a janela é 320». (c) quatro mutações
 vermelhas. (d) 149, zero testes novos. (e) **o ensaio `--headed` arranca e reprova por um defeito real
-do produto**: ver a secção «T93 — volta 3». (f) gate 5/5.
+do produto**: ver o bloco de fecho «T93, volta 3» em `TASKS-fechado.md`. (f) gate 5/5.
+
+**Critério novo (Lead, 2026-11-22), vindo do OPCIONAL do Revisor na T93 volta 3 — entra nesta
+tarefa porque é o mesmo defeito que ela existe para fechar:** a guarda compara contra
+`documentElement.clientWidth`, que em headless é 320 (sem barra de scroll) e portanto **tolera ~19 px**;
+a parede real é **305**. Uma etiqueta mais longa ou 5 px de padding passam o gate sem nada ficar
+vermelho, e só um `--headed` apanha. Exigência: o projeto `estreito` passa a **medir a parede de 305
+por omissão** — barra clássica forçada (por exemplo `ignoreDefaultArgs: ['--hide-scrollbars']` ou o
+`launchOptions` que o provar) **ou** a asserção do cabeçalho a correr também sem esconder a barra.
+Prova de que morde: acrescentar ~10 px de padding ao cabeçalho **em memória** e o spec tem de ficar
+vermelho no `pnpm test:e2e e2e/89` normal, sem `--headed`; sem o acrescento, verde. Se o mecanismo
+escolhido mudar o custo da suite, diz quanto.
 
 **Dois achados do Revisor na revisão da T89, ambos de uma a duas linhas, e ambos do mesmo tipo: um
 teste que pode mentir sem ninguém dar por isso.**
