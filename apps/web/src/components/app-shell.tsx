@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 cima da página nova.
               */
               <details key={pathname} className="relative">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground max-sm:min-w-11 max-sm:justify-center max-sm:px-0 sm:min-h-9 [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg border border-border px-2.5 text-sm font-medium text-muted-foreground transition-colors select-none hover:bg-muted hover:text-foreground max-sm:min-w-11 max-sm:justify-center max-sm:px-0 sm:min-h-9 [&::-webkit-details-marker]:hidden">
                   <Ellipsis className="size-4" aria-hidden />
                   {/*
                     Abaixo de `sm` (640 px) o grupo do cabeçalho não cabe com o

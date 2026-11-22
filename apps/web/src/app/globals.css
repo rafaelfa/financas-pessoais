@@ -205,10 +205,19 @@
 }
 
 @layer base {
-  /* Mantido do tema shadcn: os componentes usam `border-t`/`border-b` sem cor
-     explícita (card, dialog, header) e ficariam com `currentColor` sem isto. */
+  /*
+   * Mantido do tema shadcn: os componentes usam `border-t`/`border-b` sem cor
+   * explícita (card, dialog, header) e ficariam com `currentColor` sem isto.
+   *
+   * T96: a cor por omissão é a **subtle**, não a de controlo. A WCAG 1.4.11 pede
+   * 3:1 a limites de **controlo**, não a cartões, divisórias e estados vazios —
+   * e a T78 subiu a `--border` a 3,38:1 exactamente por causa disso. Quem é
+   * controlo diz o token de propósito (`border-input`, `border-border`) — por
+   * exemplo o Input, o Textarea, o Select, o Button de contorno e o gatilho do
+   * menu «Mais» (`app-shell.tsx`).
+   */
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border-subtle outline-ring/50;
   }
   html {
     @apply font-sans;

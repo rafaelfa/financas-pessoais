@@ -760,3 +760,25 @@ O Revisor levantou-o na T93: `max-sm:min-h-11 max-sm:min-w-11` faz os alvos volt
 
 **O que a torna irreversível:** não é irreversível — é uma classe por controlo. Fica escrita para não
 se redescobrir como achado novo a cada tarefa que mexa no cabeçalho.
+
+### D31 — As células do calendário ficam com borda subtil, não com peso de controlo — **decisão do Lead (2026-11-22)**
+
+Achado do Revisor na T96: as células do dia (`calendar-day-dialog.tsx:290,329`) são `<div>` com
+`onClick` e `border` nu, portanto apoiam-se na regra base e caem de **3,38:1** para **1,94:1** depois de
+a base passar a `--border-subtle`. São clicáveis — a pergunta é se a borda é «informação visual
+necessária para identificar o componente» (WCAG 1.4.11) e tem de ficar a 3:1.
+
+**Decisão: ficam subtis.** Não se lhes põe `border-border`.
+
+- **Porque não:** a borda da célula é, ao mesmo tempo, o separador da grelha. Uma grelha com 42 células a
+  3,38:1 põe peso de campo em tudo o que está no ecrã e traz de volta exactamente o problema que a T96
+  fechou (cartões e divisórias a competir com os controlos). O separador não é o que identifica a
+  célula: o dia, os montantes e os movimentos é que a identificam, e o `cursor-pointer` + `hover` +
+  `active` dão a indicação de clique.
+- **Alternativa rejeitada:** `border-border` permanente nas células. Resolvia o número e estragava a
+  hierarquia em todos os outros ecrãs onde o calendário aparece.
+- **Se um dia se quiser mais affordance:** borda de controlo **no `hover`** (`hover:border-border`), que
+  só pesa no que está debaixo do rato — não uma grelha permanente. Isso é tarefa própria, com medição.
+
+**O que a torna irreversível:** nada — é uma classe por célula. Fica escrita para o próximo que medir
+1,94 e achar que encontrou um defeito novo.
