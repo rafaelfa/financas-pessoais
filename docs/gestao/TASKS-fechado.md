@@ -1480,3 +1480,109 @@ ninguém volta a olhar.
 **Reporta em `relatorios/T101.md`** com o pedido forjado colado (corpo e resposta) e o `count` de transações
 antes/depois. Se a confirmação **aceitar** o `cardId` de outra conta, é **FAIL** e é grave — nesse caso páras
 e dizes-me, não tentas corrigir.
+
+## Bloco de fecho — T102 (fechada 2026-11-22)
+
+- **Fechado:** T102 — *os diálogos sem limite de altura*. `max-h-[calc(100dvh-1rem)] overflow-y-auto
+  overscroll-contain` na **classe base** do `DialogContent` (um sítio só, nenhum `className` novo em
+  diálogo nenhum); e o `max-h-full` do `calendar-day-dialog` **saiu**, porque o `cn` o deixava ganhar à
+  base e anulava a correção ali.
+- **Prova:** cadeia Dev (2 voltas) → QA `PASS` (2 voltas) → Revisor «pode commitar: **sim**» (0 bloqueia, 0
+  deve, 0 opcionais). Diálogo mais alto («Nova recorrência», `recurrence-dialog.tsx:132`): **1227 px → 828**
+  a 1440×844 e **651** a 390×667, com o X de −183/−272 (fora) para **dentro**. Pequenos **sem barra**
+  (conta 676/676, objetivo 637/637, categoria 644/644); a 390 rolam, como devem. `calendar-day`: formulário
+  **667 → 651** com `max-height: 100% → 651px`; estado do dia **651/651** com a lista interna **751/474** a
+  rolar sozinha (12 movimentos criados por SQL e apagados) — **uma barra só**. Única exceção declarada:
+  `transaction-edit-dialog` (`max-h-[85vh]`, 717,4 a 844; 566,95 a 667), intacta. Teclado: `Escape` fecha, 25
+  `Tab` dentro, 18.º `Tab` traz «Fechar» com o diálogo no fundo. Suite **150 passed (8.6m)**,
+  `0 restante(s)`, EXIT=0, `BUILD_ID vJD2Soos55IWoY1ucvRZq`, `axe` limpo. Relatórios:
+  `relatorios/T102.md`, `relatorios/T102-qa.md`.
+- **O que isto não resolve:** (1) **o `lvh` do iOS não se mede nesta máquina** (`100dvh == 100vh` sem barra
+  de URL): a correção do `calendar-day` foi verificada **pela regra e pelo valor calculado** (`651px`, não
+  `100%`), **não** por observação — este fecho **não promete iPhone**. (2) O X rola com o conteúdo: com o
+  diálogo no fundo está a −1094 e só o `Tab` (18.º) ou o `Esc` ou o clique fora o alcançam. Aceite como
+  limite; no telemóvel a saída é rolar de volta ou acertar na faixa de overlay (8 px de cada lado a 320). Um
+  cabeçalho `sticky` seria tarefa nova. (3) **A garantia do `max-h` da base é por diálogo e manual**: o `cn`
+  deixa o local ganhar, e um `max-h` local novo reintroduz o defeito **em silêncio** — não há teste que o
+  apanhe, porque em Playwright o diálogo parece correto.
+- **Aberto:** nada desta tarefa.
+- **Repositório:** `fix/t73-parcelamentos-cartoes`; commit `5dd9646`.
+- **Decisão:** nenhuma nova.
+
+### T102 — os diálogos sem limite de altura (Dev) — **fechada 2026-11-22**
+
+**Último defeito funcional visível da lista.** `ui/dialog.tsx` tem **0** ocorrências de
+`max-h`/`overflow-y-auto`: um `DialogContent` de 1761 px num ecrã de 844 px fica com o botão de fechar fora do
+ecrã, e no telemóvel não há como chegar ao fundo. A decisão D24/C2 manda pôr a regra **na classe base** e só
+depois rever os 28 sítios.
+
+**Critério:**
+
+- (a) A regra na **classe base** do `DialogContent` (`max-height` relativa ao viewport + `overflow-y-auto` no
+  corpo), num sítio só — sem `className` novo em cada diálogo.
+- (b) **Medir num diálogo real e alto:** antes, a altura do `DialogContent` e se o botão de fechar está dentro
+  do ecrã; depois, o mesmo. A 844 de altura e a 390×667 (telemóvel). Diz qual caminho mediste — no telemóvel
+  o diálogo usa o `Drawer` — e o que acontece ao outro.
+- (c) **Rever os 28 sítios**: a lista de quem usa `DialogContent`, e para cada um uma linha do que acontece
+  (cabe, passa a ter scroll, ou não é afetado). Os que passarem a ter scroll **têm** de manter o foco e o
+  botão de fechar alcançáveis por teclado.
+- (d) Nada regride: `Esc` fecha, o foco fica preso no diálogo, o `aria` do Radix intacto, e os diálogos
+  pequenos não ganham barra de scroll.
+- (e) Gate 5/5; suite é do QA. Capturas antes/depois do diálogo mais alto, a 1440 e a 390.
+
+**O que não fazer:** não redesenhes diálogos, não mudes larguras, não toques nos formulários que vivem lá
+dentro; sem dependência nova.
+
+**Volta 1 — entrega do Dev (`relatorios/T102.md`), uma linha:**
+`max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain` na classe base do `DialogContent`
+(`dialog.tsx:56`), sem `className` novo em diálogo nenhum. Mais alto: `recurrence-dialog.tsx:132`
+(«Nova recorrência») **1227 px → 828** a 844 e **651** a 667; o X passa de −183 e −272 (fora) para **24**
+(dentro). Escolheu **1 rem** e não 2 porque a 2 rem os diálogos de categorias (644) e objetivos (637)
+ganhavam barra sem precisar. **Exceções respeitadas:** `transaction-edit-dialog.tsx:78` (`max-h-[85vh]`,
+717,4/567 inalterada) e `calendar-day-dialog.tsx:179` (`max-h-full`). **25** `DialogContent` (a auditoria
+dizia 28 — o QA conta), 19 medidos, 7 passaram a ter scroll, pequenos sem barra. Teclado: 25 `Tab` dentro,
+`Escape` fecha, e com o diálogo rolado 18 `Tab` levam a «Fechar» e o browser rola-o para dentro. Gate 5/5,
+`BUILD_ID 2Cfswj7u31Pse9U7u9mxL`.
+
+**Volta 1 — QA `PASS` (`relatorios/T102-qa.md`):** recorrência a 1440×844 `topo 8 · altura 828 ·
+scrollHeight 1227/828 · X 16→44`; a 390×667 `topo 8 · 651 · 1761/651 · X dentro`. Pequenos sem barra
+(conta 676/676, objetivo 637/637, categoria 644/644); a 390 os três rolam, como devem. Exceções intactas
+(`transaction-edit` 717,4 = 85vh; `calendar-day` 237 = 100%), sem descendente com scroll. `Escape` fecha,
+25 `Tab` dentro, e com o diálogo no fundo (X a −1094) o **18.º `Tab`** traz «Fechar» e o browser rola.
+**Contagem resolvida:** `grep` → **25** em **23 ficheiros** (quatro têm duas tags); o 28 era da auditoria de
+2026-11-20 e três diálogos saíram desde então — **não falta linha**. Paleta ⌘K a 667: topo 222,3, altura 332,
+sem barra, sem X por desenho (`showCloseButton={false}`) e `Esc` fecha. Suite **150 passed (8.9m)**,
+`0 restante(s)`, EXIT=0, `BUILD_ID P9ni8MthoFTlJ7UNzPntl`, `axe` limpo. **Pergunta em revisão:** com o
+cabeçalho a rolar com o conteúdo, no telemóvel (sem `Esc`) é preciso rolar de volta para fechar — aceitável
+ou `sticky`?
+
+**Volta 1 — Revisor: 1 DEVE, 2 OPCIONAIS, «pode commitar: não até esse DEVE».** DEVE em
+`calendar-day-dialog.tsx:181`: o `max-h-full` local **ganha à base** (o `cn` descarta o `max-h` da base quando
+o local traz outro) e anula a correção; e o próprio ficheiro já dizia em `:37-39` que essa classe tinha de
+sair quando o limite entrasse na base. **Consequência não latente:** `max-h-full` num `fixed` resolve contra
+o *initial containing block* = **lvh** no iOS Safari, com o conteúdo de **777 px** — o X volta a ficar acima do
+bordo num iPhone com a barra visível. O QA não o viu porque o Playwright não tem barra de URL (`100dvh ==
+100vh == viewport`). **OPCIONAL 1 (fechado por mim, uma linha):** escrever porque é `dvh` e não `svh` — o pior
+caso é o gesto da barra do iOS e é um salto da caixa, não um X fora do ecrã. **OPCIONAL 2 (aceite como
+limite):** o X rola com o conteúdo (a −1094 no fundo); o `Esc`, o clique fora e o `Tab` (18.º) alcançam-no, e
+a faixa de overlay a 320 tem 8 px de cada lado — se incomodar, é tarefa nova com cabeçalho `sticky`.
+**Nota estrutural:** a garantia do `max-h` da base é **por diálogo e manual** — um `max-h` local novo
+reintroduz o defeito em silêncio.
+
+**Volta 2 — entrega do Dev (`relatorios/T102.md` §9):** `max-h-full` **removido** de
+`calendar-day-dialog.tsx:181` (`className={cn('flex flex-col', …)}`), comentário de `:37` reescrito (a condição
+venceu; o limite entrou pela T102), e a linha do `dvh`/`svh` junto à classe da base. Medido nos dois estados ×
+duas alturas: a 390, **formulário 667 → 651**, topo **0 → 8**, `max-height: 100% → 651px`; o estado do dia
+fica em 237 e a 1440 nada muda. X dentro nas quatro. `e2e/84` + `e2e/39` → **14 passed**; gate 5/5,
+`BUILD_ID F1L1qeqiHmYbUr-daiSDi`. **Limite honesto:** o `lvh` do iOS não se mede neste ambiente — a correção
+verifica-se **pela regra** (o `max-h` calculado é `651px`, não `100%`), não por observação do `lvh`.
+
+**Volta 2 — QA `PASS` (`relatorios/T102-qa.md` §«Volta 2»):** `calendar-day` a 390×667 — dia topo 215,
+altura 237, `max-height: 651px`, X dentro; **formulário topo 8, altura 651, `max-height: 651px`**, X dentro;
+a 1440 dia 237 e formulário 595,8 com `max-height: 828px`. Com **12 movimentos temporários** (SQL, apagados,
+0 restantes) o estado do dia deu **651/651** no diálogo e **751/474** na lista interna — **uma barra só**.
+`transaction-edit` continua a única exceção (717,4 a 844; 566,95 a 667). Amostra dos pequenos igual à volta 1
+(676 / 637 / 644) e recorrência 828 / 651. Suite **150 passed (8.6m)**, `0 restante(s)`, EXIT=0, `BUILD_ID
+vJD2Soos55IWoY1ucvRZq`, `axe` limpo. **E o limite ficou escrito:** o `lvh` do iOS **não se mede** neste
+ambiente; a correção foi verificada **pela regra e pelo valor calculado** (`651px`, não `100%`), não por
+observação — o fecho **não promete iPhone**.

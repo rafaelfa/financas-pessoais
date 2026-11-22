@@ -1278,30 +1278,6 @@ serve de cronómetro da vaga (nenhum schema, nenhuma dependência).
 exportações; não mascarar inputs; não mudar o atalho `Ctrl+K`; não acrescentar
 dependências; não escrever em `e2e/` (é do QA); não fazer commit nem push.
 
-### T102 — os diálogos sem limite de altura (Dev) — **em Dev a 2026-11-22**
-
-**Último defeito funcional visível da lista.** `ui/dialog.tsx` tem **0** ocorrências de
-`max-h`/`overflow-y-auto`: um `DialogContent` de 1761 px num ecrã de 844 px fica com o botão de fechar fora do
-ecrã, e no telemóvel não há como chegar ao fundo. A decisão D24/C2 manda pôr a regra **na classe base** e só
-depois rever os 28 sítios.
-
-**Critério:**
-
-- (a) A regra na **classe base** do `DialogContent` (`max-height` relativa ao viewport + `overflow-y-auto` no
-  corpo), num sítio só — sem `className` novo em cada diálogo.
-- (b) **Medir num diálogo real e alto:** antes, a altura do `DialogContent` e se o botão de fechar está dentro
-  do ecrã; depois, o mesmo. A 844 de altura e a 390×667 (telemóvel). Diz qual caminho mediste — no telemóvel
-  o diálogo usa o `Drawer` — e o que acontece ao outro.
-- (c) **Rever os 28 sítios**: a lista de quem usa `DialogContent`, e para cada um uma linha do que acontece
-  (cabe, passa a ter scroll, ou não é afetado). Os que passarem a ter scroll **têm** de manter o foco e o
-  botão de fechar alcançáveis por teclado.
-- (d) Nada regride: `Esc` fecha, o foco fica preso no diálogo, o `aria` do Radix intacto, e os diálogos
-  pequenos não ganham barra de scroll.
-- (e) Gate 5/5; suite é do QA. Capturas antes/depois do diálogo mais alto, a 1440 e a 390.
-
-**O que não fazer:** não redesenhes diálogos, não mudes larguras, não toques nos formulários que vivem lá
-dentro; sem dependência nova.
-
 ### T46 — correção pedida pelo Lead (2026-11-17), depois da entrega do Dev
 
 **Aceite do desenho do Dev:** cookie `financas-privacidade` + atributo
@@ -4153,7 +4129,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T99 | **O `redirect` da sessão expirada numa Server Action não está medido:** o `requireUser()` faz `redirect('/entrar')`, que lança; ninguém verificou como o Next entrega esse `throw` ao cliente. Se chegar como rejeição, o `catch` da T98 mostra «não consegui ligar ao servidor» a quem só precisava de entrar de novo. Achado do Revisor na T98; **autorizada pelo utilizador a 2026-11-22** | Dev | **fechada** 2026-11-22 (medição em 2 voltas, **sem código mudado**; Revisor «fecha assim: sim») | `relatorios/T99.md` |
 | ~~T100~~ | **O `Select` «O mês começa no dia» fica vazio depois de gravar** — **retirada por mim a 2026-11-22, não reproduzida.** Vi-o uma vez em produção (captura + duas leituras de `""`) na sequência: escolha por teclado → Guardar → mudança de viewport para 320, com um clique de opção que não registou pelo meio. **Não tenho gatilho:** o Dev não o reproduziu localmente (o `onValueChange` nunca recebeu `""`, com log no mount, na gravação e numa navegação que remonta) e eu não o reproduzi de novo em produção (frio/Guardar/reload, clique imediato, 305↔1440↔305, `Escape` a meio). Um achado sem gatilho não é achado — a medição vence a hipótese, incluindo a minha. | Dev | **retirada** 2026-11-22 | `relatorios/T100.md` |
 | T101 | **Provar que a falha de autorização da T45 está fechada:** o QA forjou o pedido em 2026-11-03 (confirmação aceitava o `cardId` de outra utilizadora). **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | QA | **fechada** 2026-11-22 (QA `PASS` por execução: `Cartão não encontrado.`, transações 2→2, cartão da vítima 0→0) | `relatorios/T45.md`, `relatorios/T101.md` |
-| T102 | **Os diálogos sem limite de altura:** `ui/dialog.tsx` tem **0** ocorrências de `max-h`/`overflow-y-auto`; um `DialogContent` de 1761 px num ecrã de 844 não fecha. 28 sítios a rever depois da regra na base. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | Dev | **em Dev** (volta 1, 2026-11-22) | `relatorios/T45.md`, auditoria de design 2026-11-20 |
+| T102 | **Os diálogos sem limite de altura:** `ui/dialog.tsx` tinha **0** ocorrências de `max-h`/`overflow-y-auto`. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | Dev | **fechada** 2026-11-22 (`5dd9646`; Dev 2 voltas — o Revisor apanhou o `max-h-full` do `calendar-day` — + QA `PASS` + Revisor «pode commitar: sim»; 150) | `relatorios/T102.md`, `relatorios/T102-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
