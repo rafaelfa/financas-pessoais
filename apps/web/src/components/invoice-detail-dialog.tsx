@@ -159,7 +159,7 @@ export function InvoiceDetailDialog({ detail }: { readonly detail: InvoiceDetail
                 <TableBody>
                   {detail.purchases.map((purchase) => (
                     <TableRow key={purchase.id}>
-                      <TableCell className="font-numeric text-muted-foreground tabular-nums">
+                      <TableCell className="font-numeric text-muted-foreground">
                         {formatDay(purchase.date)}
                       </TableCell>
                       <TableCell className="whitespace-normal">

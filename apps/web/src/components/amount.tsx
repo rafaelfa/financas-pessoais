@@ -61,7 +61,7 @@ export function Amount({
 
   return (
     <span
-      className={cn('font-numeric tabular-nums', toneClass, className)}
+      className={cn('font-numeric', toneClass, className)}
       data-amount={hidden ? 'oculto' : 'visivel'}
     >
       {hidden ? (

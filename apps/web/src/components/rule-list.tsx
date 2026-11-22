@@ -246,7 +246,7 @@ function RuleRow({
   return (
     <TableRow data-invalid={!usable} className={cn(!usable && 'bg-destructive/5')}>
       <TableCell className="text-right">
-        <span className="font-numeric text-muted-foreground tabular-nums">{position + 1}</span>
+        <span className="font-numeric text-muted-foreground">{position + 1}</span>
         <span className="sr-only">
           (prioridade {rule.priority}; a primeira regra que corresponder ganha)
         </span>

@@ -168,7 +168,7 @@ export function CardSummary({
             <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Vencimento</dt>
-                <dd className="font-numeric tabular-nums">{formatDay(invoice.dueDate)}</dd>
+                <dd className="font-numeric">{formatDay(invoice.dueDate)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Compras</dt>

@@ -254,7 +254,7 @@ export function ImportPreviewPanel({
                       />
                     </TableCell>
 
-                    <TableCell className="font-numeric text-muted-foreground tabular-nums">
+                    <TableCell className="font-numeric text-muted-foreground">
                       {row.date === null ? '—' : formatDay(row.date)}
                     </TableCell>
 

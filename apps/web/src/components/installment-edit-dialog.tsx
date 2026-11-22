@@ -317,8 +317,8 @@ function InstallmentPlanForm({
               <TableBody>
                 {preview.rows.map((row) => (
                   <TableRow key={row.number}>
-                    <TableCell className="font-numeric tabular-nums">{row.number}</TableCell>
-                    <TableCell className="font-numeric text-muted-foreground tabular-nums">
+                    <TableCell className="font-numeric">{row.number}</TableCell>
+                    <TableCell className="font-numeric text-muted-foreground">
                       {formatDay(row.date)}
                     </TableCell>
                     <TableCell className="text-right">

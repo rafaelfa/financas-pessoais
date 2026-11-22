@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T88.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T90.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4115,7 +4115,9 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T86 | **Transferência sem conta de destino:** o modo Transferência do `quick-add` abre com «Para a conta» vazio e submeter dá «Falta o identificador». Igual em `/transacoes`. Achado do Dev na T84; **autorizada pelo utilizador a 2026-11-21**, 1.ª da fila | Dev | **fechada** 2026-11-22 (Dev + QA `PASS` 146/146×2 de frio + Revisor «pode commitar: sim», 0 voltas de código + 1 do spec) | `relatorios/T86.md`, `relatorios/T86-qa.md` |
 | T87 | **«Calendário» entra no menu «Dia a dia»:** a T84 deu escrita ao ecrã e ele só era alcançável pelo `Ctrl+K` ou por um botão que não existe numa conta vazia. Nove destinos contra os oito do D7 | Dev | **fechada** 2026-11-21 (D29) | `docs/gestao/DECISOES.md` D29 |
 | T84 | **N5 (reescrito) — painel de dia do calendário:** abrir um dia, ver os movimentos e lançar um, com o `quick-add` que já existe | Dev | **fechada** (Dev + QA `PASS` + Revisor «cumpre o critério: sim», 3 voltas de código + 1 do spec) | `relatorios/T84.md`, `relatorios/T84-qa.md` |
-| T78 | **A4 + V2 + V1 + V4 + V3:** o lote do tema (bordas, tokens, raios) num só passo | Dev | **aberta** («vai» do utilizador a 2026-11-21, 3.ª da fila) |
+| T88 | **Cabeçalho a 320 px:** o menu «Mais» (`ul.absolute w-52`) chega a x=341,3 num ecrã de 320 — **21,3 px fora do ecrã** e `document.scrollWidth` 341. Achado do Dev na T85, confirmado pelo QA; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, na fila depois da T78) | `relatorios/T85.md` §fora do âmbito, `relatorios/T85-qa.md` |
+| T89 | **Guarda a 320 px no Playwright:** nenhum projeto corre a 320 (`chromium`, `telemovel` = Pixel 5 a 393, `escuro`), portanto o `truncate` da T85 pode ser apagado pela T78 sem nada ficar vermelho. Achado do Revisor na T85; **autorizada pelo utilizador a 2026-11-22** | Dev | **aberta** (autorizada, depois da T88) | `relatorios/T85-revisao.md` (opcional 3) |
+| T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **em revisão** (QA `PASS` a 2026-11-22: 146/146 de frio, A4 3,38/3,48/3,15/3,09:1, V3 e V7 a 0) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**
 
@@ -4329,7 +4331,85 @@ do `Enter`) e `86` (novo) escritos pelo QA para a suite ficar verde — os dois 
 
 Nenhuma destas três reabre a T86; ficam à espera de vaga autorizada pelo utilizador.
 
-### T78 — A4 + V2 + V1 + V4 + V3 + V7: o lote do tema (Dev) — **Pendente (mão)**
+**Dívida que a T78 deixa escrita (achados do Revisor na revisão, não corrigidos aqui):**
+
+1. **`cn` com dois caminhos.** `lib/utils.ts` passa a `createCn` com a escala, mas **39 ficheiros de
+   `components/ui/` importam `cn` de `'cn'` diretamente** e não herdam a extensão: ali
+   `cn('text-caption', 'text-muted-foreground')` descarta a classe (medido no runtime) e o texto sai a
+   16 px em silêncio. Hoje nenhum `ui/*` usa `text-caption`; o risco é a **T82/T83**, que escrevem
+   `ui/card.tsx`. Saída: uma vaga que aponte os 39 imports a `@/lib/utils` — **não** se faz dentro da
+   T82 para não misturar dois âmbitos.
+2. **`--border` faz dois trabalhos.** O 3:1 que a A4 exigia é de limites de controlo, mas `--border`
+   também é `bg-border` (separadores de menu e do cabeçalho em `app-shell.tsx:57`,
+   `ui/combobox.tsx:193`, `ui/dropdown-menu.tsx:170`, `ui/select.tsx:131`) e passou de 1,31:1 para
+   3,38:1 — hairlines escuros dentro dos menus, que o passe visual não olhou. Proposta registada:
+   `--border-subtle` para separadores, `--input` a 3:1. Não se pede agora: a alínea (a) está cumprida.
+3. **`--sidebar-border` ficou a `0,9`** (`globals.css:137`): no claro é a única borda a 1,31:1 ao lado
+   das de 3,38:1 — inconsistência visível, decisão não tomada.
+4. **Um token com um consumidor.** `--text-caption` só é usado na `mobile-nav`. Fica, porque o critério
+   pedia o token; mas fica dito que ainda não provou ser uma escala.
+
+### T88 — cabeçalho a 320 px: o menu «Mais» sai do ecrã (Dev) — **aberta, autorizada a 2026-11-22**
+
+**Achado do Dev na T85, confirmado pelo QA.** A 320 px o `document.scrollWidth` é **341** e o que
+transborda é o bloco da direita do cabeçalho: `div.ml-auto` com x **133,3**, largura **208**, `right`
+**341,3**; o último botão chega igualmente a 341,3 — **21,3 px fora do ecrã**. Não é da nav: esta
+resolveu-se na T85 (`nav.scrollWidth` 320) e a página continuou a rolar porque o culpado é outro.
+Num telemóvel a 320 px isto é scroll horizontal em **todas** as rotas com o cabeçalho.
+
+**Critério de aceitação (por escrever por mim antes de abrir, como a D24 ponto 5 exige):**
+
+- (a) A 320×640, `document.scrollWidth` **= 320** em três rotas com cabeçalho (`/painel`,
+  `/transacoes`, `/contas`), e nenhum elemento com `right > 320` que não esteja dentro de um
+  contentor com `overflow` próprio e fechado.
+- (b) Os controlos do cabeçalho continuam **alcançáveis e clicáveis** a 320: os cinco botões
+  (barra lateral, menu «Mais», busca, tema, «sair») e o item do menu «Mais» abrem com
+  um toque, sem ficarem cortados nem fora do ecrã.
+- (c) A 390 e a 1440 **nada muda**: mesmas posições e mesmos alvos de 56 px onde já eram 56.
+- (d) Os dois temas, sem regressão de contraste.
+- (e) Correção mínima: classes ou `max-w` no próprio cabeçalho — **sem** componente novo e sem
+  dependência nova; se mexer em `mobile-nav.tsx`, não apagar o `max-w-full truncate` da T85.
+- (f) Suite: baseline **146** (147 quando a T89 entrar), com `0 restante(s)`.
+
+**Não abrir sem repetir a medição**: o número acima foi medido na rota `/transacoes` a 320; o Dev
+mede outra vez antes de tocar em nada, porque a T78 vai mudar bordas e tipografia no meio.
+
+### T89 — guarda automática a 320 px no Playwright (Dev) — **aberta, autorizada a 2026-11-22**
+
+**Achado do Revisor na T85 (opcional 3).** O `truncate` que segura o rótulo a 320 não tem teste:
+não há projeto Playwright a 320 (`chromium` 1280, `telemovel` = Pixel 5 a 393, `escuro`), e o
+`e2e/15` não mede larguras. O lote de classes da T78 pode reescrever `mobile-nav.tsx:47` e o
+transbordo volta sem nada ficar vermelho. A 320 o rótulo «Transações» mede **67** para **56** úteis.
+
+**Critério de aceitação:**
+
+- (a) Um projeto novo no `playwright.config.ts` com viewport **320×640**, e **`testMatch` restrito**
+  a um spec próprio (por exemplo `e2e/88-*.spec.ts`): não se multiplica a suite por dois. Custo
+  declarado: quantos testes a mais e quanto tempo a mais.
+- (b) A asserção mede **geometria**, não texto: para cada um dos 5 links, `scrollWidth` do conteúdo
+  ≤ largura útil da célula, e nenhuma sobreposição entre rótulos vizinhos (`right` de um < `left` do
+  seguinte); mais `nav.scrollWidth === 320` e `document.scrollWidth === 320` (este último só passa
+  **depois** da T88).
+- (c) **Prova de que a guarda morde:** tirar `max-w-full truncate` do `<span>` em memória (ou num
+  patch temporário) e o spec novo tem de ficar **vermelho**; com a classe, verde. Cola as duas saídas.
+- (d) Suite com contagem nova (146 + o que a T89 acrescentar), `0 restante(s)`, de frio.
+- (e) Nada em `apps/` nesta tarefa além do que a asserção precise; o spec é do QA/Dev conforme o
+  `AGENTS.md`, e não muda asserções existentes.
+
+### T78 — o lote do tema, reduzido a A4 + V3 + V7 + texto pequeno (Dev) — **em revisão a 2026-11-22**
+
+**Âmbito cortado pelo Lead a 2026-11-22, com o motivo escrito:** o item **V4** saiu para a **T72** (a
+premissa antiga — «o T72 pôs a regra na classe base» — era falsa: `grep -n "max-h\|overflow-y-auto"
+components/ui/dialog.tsx` → vazio e a T72 está `Pendente (mão)`); o item **V2/V1** saiu por não ter
+critério em ficheiro (D24, ponto 5) e fica à espera da definição do utilizador. O que segue em prova:
+**A4** (bordas do claro a ≥3:1, escuro por resolver), **V3** (0 raios arbitrários fora de `ui/`, 13
+dentro justificados), **V7** (18 duplas no `HEAD` → 0; a contagem anterior de 9 era um erro meu) e o
+**token de texto pequeno** (`--text-caption` a 12 px + `cn` a conhecer a escala em `lib/utils.ts`,
+`createCn` do pacote `cn@0.4.0` que já era dependência — nada de novo instalado).
+
+**Também corrigido por mim nesta volta:** `relatorios/*-qa/` no `.prettierignore` (os JSON de
+evidência do QA pintavam o `format:check` de vermelho sem serem código) e `relatorios/**/*.png` no
+`.gitignore` (antes só `relatorios/*.png`: as capturas em subpastas não estavam ignoradas, contra a D26).
 
 **Achado do Revisor na T77 (2026-11-21), a herdar aqui:** a dívida «passar os 12 px de
 `mobile-nav.tsx:37` a um token» **não tinha dono** — os itens escritos deste lote (A4/V2/V1/V4/V3/V7)
@@ -4349,14 +4429,17 @@ porque cinco mudanças no mesmo ficheiro em tarefas separadas são cinco mãos n
    no escuro, que hoje está a **1,32:1** mas onde escurecer a borda custa o contraste do texto que
    lá vive. **O handoff e o fecho têm de dizer por extenso que o tema escuro fica por resolver** —
    escrevê-lo como «resolvido» é mentira de relatório.
-2. **V2 / V1 — tokens de superfície e de raio** (o que está no plano). Antes de escrever, o Dev
-   lista no post de mão os tokens existentes em `globals.css` e os valores que cada um tem hoje;
-   nenhum número de contraste, raio ou sombra entra num commit sem esta lista.
-3. **V4 — os 28 diálogos sem limite de altura** entram aqui **só como re-verificação**: o T72 pôs a
-   regra na classe base, portanto não há 28 ficheiros para editar; há 28 para confirmar um por um
-   que não ficaram piores (o `div` interior com `max-h` dos 7 que já tinham limite é o caso a
-   olhar). Critério: os quatro diálogos medidos no T72 voltam a medir-se e os números batem certo;
-   lista dos 28 no post de QA com `ok`/`não ok`.
+2. **V2 / V1 — tokens de superfície e de raio.** ⚠️ **Bloqueado a 2026-11-22:** o critério nunca saiu
+   do chat para ficheiro — a D24, ponto 5, exige que a definição de cada item vá para `docs/gestao/`
+   antes de o bloco abrir, e isso não foi feito. O Dev entrega o inventário de tokens (`relatorios/T78.md`
+   §1: 59 em `@theme inline`, 58 em `:root`, 53 em `.dark`, com valores) e **não inventa a mudança**.
+   Falta a definição de V1 e V2 na palavra do utilizador; sem ela, o item não entra em commit.
+3. **V4 — os 28 diálogos sem limite de altura: FORA da T78, e a premissa antiga era falsa.** Este
+   ponto afirmava que «o T72 pôs a regra na classe base». Não pôs: verificado a 2026-11-22 —
+   `grep -n "max-h\|overflow-y-auto" apps/web/src/components/ui/dialog.tsx` → **vazio**, e a T72 está
+   **`Pendente (mão)`** (`:3957`). A decisão D24/C2 diz que a regra entra na classe base **pela T72**, e
+   só depois os 28 ecrãs passam a re-verificação. O V4 e a T72 são a mesma mão (`ui/dialog.tsx"):
+   a re-verificação dos 28 diálogos pertence à T72, não aqui.
 4. **V3 — raios.** O inventário de hoje, no `src` todo: `rounded-lg` ×84, `rounded-xl` ×52,
    `rounded-md` ×33, `rounded-full` ×19, `rounded-none` ×6, `rounded-sm` ×5, `rounded-4xl` ×1, e
    **13 ocorrências de raio arbitrário** — `rounded-[2px]` ×3, `rounded-[4px]` ×1,
@@ -4372,14 +4455,14 @@ porque cinco mudanças no mesmo ficheiro em tarefas separadas são cinco mãos n
 5. **V7 (achado do Revisor na T73, `56ca442c`) — a dupla redundante `font-numeric tabular-nums`.**
    `globals.css:206-208` já define `font-variant-numeric: tabular-nums` dentro de `.font-numeric`, e a
    ferramenta Tailwind `tabular-nums` escreve a mesma propriedade: onde as duas classes vêm juntas,
-   uma sobra. Medido por mim: **8 ocorrências em 8 ficheiros em `2acacbc`**
-   (`amount.tsx:64`, `card-summary.tsx:171`, `goal-card.tsx:206`, `goal-detail-dialog.tsx:184`,
-   `installment-edit-dialog.tsx:320`, `installment-list.tsx:151`, `invoice-table.tsx:100`,
-   `recurrence-list.tsx:269`) e **9 no HEAD**, todas em 8 ficheiros, porque a T73 seguiu o padrão da
-   casa em `installment-list.tsx:261`. Critério: decidir **uma** das duas mãos (ficar com o token
-   `.font-numeric`
-   ou com a ferramenta Tailwind), aplicar em todo o `src` e deixar **0** ficheiros com as duas classes;
-   sem mudança visual — prova é o `before`/`after` da mesma linha renderizada.
+   uma sobra. **Contagem corrigida a 2026-11-22** (a anterior dizia «9 no HEAD» e estava errada): com
+   o padrão que não depende de ordem — `git grep -n "font-numeric" HEAD -- apps/web/src | grep "tabular-nums" | wc -l`
+   — são **18** duplas no `HEAD`, não 9. A volta 1 limpou 9; **faltam 9**:
+   `import-preview.tsx:257`, `installment-edit-dialog.tsx:321`, `invoice-detail-dialog.tsx:162`,
+   `invoice-table.tsx:118`, `money-input.tsx:146`, `recurrence-dialog.tsx:564`,
+   `rule-apply-dialog.tsx:193`, `rule-list.tsx:249`, `transaction-table.tsx:404`. Critério: decidir
+   **uma** das duas mãos (ficou o token `.font-numeric`), aplicar em todo o `src` e deixar **0** linhas
+   com as duas classes; sem mudança visual — prova é o `before`/`after` da mesma linha renderizada.
 
 **O que não fazer neste passo:** não tocar em `ui/card.tsx` mais do que os tokens exigirem (V5/V6 é
 o T82, C3 é o T83); não tocar em `ui/button.tsx`/`ui/input.tsx` (T75); não reabrir a **T23** — se o
@@ -4400,7 +4483,7 @@ código**, e o Lead confirma antes da primeira linha mudar.
 | T79 | **F5 + F6 + F7 + N4 (B6):** painel de previsões e exportação | Dev | **Pendente (mão) — critério por escrever** |
 | T80 | **F10 + R1 (B7):** os dois itens que sobraram do 2.º e 3.º passes | Dev | **Pendente (mão) — critério por escrever** |
 | T81 | **F8 + N6 (B8):** calendário (segunda passagem) | Dev | **Pendente (mão) — critério por escrever** |
-| T82 | **V5 + V6 (B9):** densidade do `Card` e `CardFooter` | Dev | **Pendente (mão) — critério por escrever** |
+| T82 | **V5 + V6 (B9):** densidade do `Card` e `CardFooter` — ⚠️ `ui/card.tsx` importa `cn` de `'cn'` e **não** herda a escala de texto da T78: não usar `text-caption` lá até haver vaga para os 39 imports | Dev | **Pendente (mão) — critério por escrever** |
 | T83 | **C3 (B9):** o `Card size="sm"` — decidir depois do T82 | Lead | **Pendente — à espera do T82** |
 
 Ficheiros por tarefa, para o mapa de colisões continuar a valer:

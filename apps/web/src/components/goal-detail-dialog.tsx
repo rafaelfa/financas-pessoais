@@ -181,7 +181,7 @@ export function GoalDetailDialog({ detail }: { readonly detail: GoalDetailData |
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Prazo</dt>
-            <dd className="font-numeric tabular-nums">
+            <dd className="font-numeric">
               {formatDay(detail.targetDate)}
               {detail.periodsLeft > 0 ? (
                 <span className="ml-1 text-xs text-muted-foreground">

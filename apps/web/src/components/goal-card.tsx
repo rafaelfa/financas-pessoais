@@ -203,7 +203,7 @@ export function GoalCard({
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Prazo</dt>
-            <dd className="font-numeric tabular-nums">
+            <dd className="font-numeric">
               {formatDay(goal.targetDate)}
               {goal.periodsLeft > 0 ? (
                 <span className="ml-1 text-xs text-muted-foreground">

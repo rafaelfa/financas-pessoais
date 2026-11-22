@@ -143,7 +143,7 @@ export function MoneyInput({
           [error !== null ? errorId : null, describedBy ?? null].filter(Boolean).join(' ') ||
           undefined
         }
-        className="font-numeric text-right tabular-nums"
+        className="font-numeric text-right"
         onChange={(event) => handleChange(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {

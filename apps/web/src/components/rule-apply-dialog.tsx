@@ -190,7 +190,7 @@ export function RuleApplyDialog({ preview }: { readonly preview: RulePreview | n
                     <TableBody>
                       {preview.matches.map((match) => (
                         <TableRow key={match.transactionId}>
-                          <TableCell className="font-numeric text-muted-foreground tabular-nums">
+                          <TableCell className="font-numeric text-muted-foreground">
                             {formatDay(match.transactionDate)}
                           </TableCell>
                           <TableCell className="max-w-[16rem] whitespace-normal">

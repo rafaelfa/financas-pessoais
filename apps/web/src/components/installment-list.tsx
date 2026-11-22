@@ -156,7 +156,7 @@ function InstallmentRow({
       </TableCell>
 
       <TableCell className="text-right">
-        <span className="font-numeric tabular-nums">
+        <span className="font-numeric">
           {`${Math.min(plan.nextInstallmentNumber, plan.installmentCount)} de ${plan.installmentCount}`}
         </span>
       </TableCell>
@@ -258,9 +258,7 @@ function InstallmentParcelRow({ parcela }: { readonly parcela: InstallmentInvoic
           <span>{`Parcela ${parcela.installmentNumber}`}</span>
           <Amount amountInCents={parcela.amountInCents} tone="neutral" />
           {parcela.dueDate === '' ? null : (
-            <span className="font-numeric tabular-nums">
-              {formatDate(`${parcela.dueDate}T12:00:00Z`)}
-            </span>
+            <span className="font-numeric">{formatDate(`${parcela.dueDate}T12:00:00Z`)}</span>
           )}
         </span>
       </TableCell>

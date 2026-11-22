@@ -266,7 +266,7 @@ function RecurrenceRow({
 
       <TableCell>
         <span className="flex flex-col">
-          <span className="font-numeric tabular-nums">{formatDay(recurrence.nextRunDate)}</span>
+          <span className="font-numeric">{formatDay(recurrence.nextRunDate)}</span>
           {recurrence.due ? (
             <Badge variant="outline" className="mt-0.5 w-fit border-warning/50 font-normal">
               <CalendarClock className="size-3" aria-hidden />A vencer

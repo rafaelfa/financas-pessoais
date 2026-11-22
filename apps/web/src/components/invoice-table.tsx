@@ -97,9 +97,7 @@ export function InvoiceTable({
                       className={isCurrent ? 'bg-muted/40' : undefined}
                     >
                       <TableCell className="align-top">
-                        <span className="font-numeric tabular-nums">
-                          {formatDay(invoice.closingDate)}
-                        </span>
+                        <span className="font-numeric">{formatDay(invoice.closingDate)}</span>
                         {isCurrent ? (
                           <span className="mt-0.5 block text-xs font-medium text-primary">
                             Atual
@@ -117,7 +115,7 @@ export function InvoiceTable({
                         ) : null}
                       </TableCell>
 
-                      <TableCell className="font-numeric hidden text-muted-foreground tabular-nums sm:table-cell">
+                      <TableCell className="font-numeric hidden text-muted-foreground sm:table-cell">
                         {formatDay(invoice.dueDate)}
                       </TableCell>
 

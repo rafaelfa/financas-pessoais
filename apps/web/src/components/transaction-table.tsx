@@ -401,7 +401,7 @@ export function TransactionTable({
                       </div>
                     </TableCell>
 
-                    <TableCell className="font-numeric text-muted-foreground tabular-nums">
+                    <TableCell className="font-numeric text-muted-foreground">
                       {formatDay(transaction.date)}
                     </TableCell>
 

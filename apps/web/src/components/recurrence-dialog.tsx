@@ -559,10 +559,7 @@ function RecurrenceForm({
         ) : (
           <ul className="flex flex-wrap gap-2 text-sm" aria-live="polite">
             {preview.map((date) => (
-              <li
-                key={date}
-                className="font-numeric rounded-md border bg-muted/40 px-2 py-1 tabular-nums"
-              >
+              <li key={date} className="font-numeric rounded-md border bg-muted/40 px-2 py-1">
                 {formatDay(date)}
               </li>
             ))}
