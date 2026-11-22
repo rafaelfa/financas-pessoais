@@ -41,6 +41,31 @@ export default defineConfig([
     },
   },
 
+  /*
+   * Uma só fonte de `cn` (T95), também fora de `apps/web`: este config é o que
+   * linta `packages/*`, e sem a regra aqui alguém podia repor o shim em
+   * `packages/shared/src/utils/` sem o lint dizer nada. O especificador `'cn'`
+   * é o único restringido — `'cn/config'` é outro nome e continua permitido
+   * (é o que `apps/web/src/lib/utils.ts` usa para construir o `createCn`).
+   */
+  {
+    files: ['**/*.{ts,tsx,mjs,js}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'cn',
+              message:
+                "Importa `cn` de '@/lib/utils' — é o que tem a escala de texto do tema. O motor `'cn'` só se toca em `lib/utils.ts`, por `'cn/config'`.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Must stay last so formatting-related rules never fight Prettier.
   prettier,
 ]);

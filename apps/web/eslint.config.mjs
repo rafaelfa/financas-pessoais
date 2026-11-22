@@ -31,6 +31,30 @@ export default defineConfig([
     },
   },
 
+  /*
+   * Uma só fonte de `cn` (T90/T95): o da app é o de `@/lib/utils`, que traz a
+   * escala de texto do tema (`createCn`, `classGroups['font-size']`). O pacote
+   * nu (`'cn'`) continua a ser o motor, mas só lá dentro — via `'cn/config'`,
+   * que é outro especificador e **não** é restringido por esta regra.
+   */
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'cn',
+              message:
+                "Importa `cn` de '@/lib/utils' — é o que tem a escala de texto do tema. O motor `'cn'` só se toca em `lib/utils.ts`, por `'cn/config'`.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'dist/**']),
 
   // Must stay last so formatting-related rules never fight Prettier.

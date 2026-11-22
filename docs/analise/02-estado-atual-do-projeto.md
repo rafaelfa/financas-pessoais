@@ -5,6 +5,7 @@
 > **Data da auditoria:** 2026-10-10.
 > **Não executado (por regra da tarefa):** `pnpm install`, `prisma generate/migrate/push`, `pnpm build`, `pnpm typecheck`.
 > **Convenção de evidência:** cada afirmação refere o caminho relativo do ficheiro que a sustenta. Onde não foi possível confirmar por execução, está marcado **[a confirmar]**.
+> **Nota de estado (2026-11-22):** este documento é um retrato de **2026-10-10** e **não** é atualizado — o corpo abaixo descreve o ponto de partida. O que mudou desde então está em `docs/gestao/` (`TASKS.md`, `DECISOES.md`, `MAPA.md`). Em particular, a **R13** (`duplicação de cn em dois caminhos`, `packages/shared/src/utils/cn.ts:11`) foi **resolvida na T95**: o shim foi apagado e um `no-restricted-imports` em `apps/web/eslint.config.mjs` impede o próximo `from 'cn'` (o motor só se usa por `cn/config`, em `lib/utils.ts`).
 
 ---
 
