@@ -39,7 +39,11 @@ export function KpiCard({
         <p
           className={cn(
             'font-semibold tracking-tight tabular-nums',
-            prominent ? 'text-4xl' : 'text-2xl sm:text-[1.75rem]',
+            // O degrau `prominent` é 36 px, mas em duas colunas a 375 px o
+            // número não cabe no cartão (175 px de texto para 130 de caixa) e
+            // saía cortado. Um degrau abaixo só nessa largura — decidido aqui,
+            // não em cada sítio que passa o valor.
+            prominent ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-[1.75rem]',
           )}
         >
           {children}

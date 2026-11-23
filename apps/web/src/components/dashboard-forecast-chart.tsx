@@ -40,13 +40,6 @@ export function DashboardForecastChart({ data }: { readonly data: readonly Forec
   return (
     <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">
       <AreaChart data={[...data]} accessibilityLayer margin={{ top: 8, right: 8 }}>
-        <defs>
-          <linearGradient id="previsao-saldo" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-saldo)" stopOpacity={0.6} />
-            <stop offset="95%" stopColor="var(--color-saldo)" stopOpacity={0.05} />
-          </linearGradient>
-        </defs>
-
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="data"
@@ -82,7 +75,9 @@ export function DashboardForecastChart({ data }: { readonly data: readonly Forec
           type="monotone"
           stroke="var(--color-saldo)"
           strokeWidth={2}
-          fill="url(#previsao-saldo)"
+          strokeDasharray="6 4"
+          fill="var(--color-saldo)"
+          fillOpacity={0.12}
         />
       </AreaChart>
     </ChartContainer>

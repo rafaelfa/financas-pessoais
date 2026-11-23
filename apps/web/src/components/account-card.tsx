@@ -86,10 +86,10 @@ export function AccountCard({
         'h-full',
         // Arquivada distingue-se por superfície e borda tracejada — não por
         // opacidade: a 70% o texto cinzento desce a 3,12:1 e reprova o axe.
-        // O `border` explícito é preciso: o Card desenha com `ring-1` e o
-        // preflight põe `border: 0 solid`, por isso um `border-dashed` sozinho
-        // não pintava nada. `ring-0` evita duas linhas no mesmo sítio.
-        account.archived && 'border border-dashed border-foreground/10 bg-muted/40 ring-0',
+        // Desde a T103 o `Card` desenha um `border` de 1 px (o mesmo token dos
+        // painéis à mão), por isso aqui basta trocar o estilo da linha: o
+        // `border-dashed` substitui a cor e o traço, sem segunda moldura.
+        account.archived && 'border-dashed border-foreground/10 bg-muted/40',
       )}
     >
       <CardHeader>

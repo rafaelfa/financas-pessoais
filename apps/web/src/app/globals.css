@@ -105,7 +105,7 @@
   /*
    * Limites de controlo a 3:1 (WCAG 1.4.11). Os 0,9 davam 1,31:1 sobre o fundo
    * e 1,34:1 sobre o cartão. 0,63 dá 3,39:1 / 3,49:1 (e 3,11:1 sobre `muted`,
-   * 3,06:1 sobre `secondary`). **Só no tema claro** — o escuro fica por resolver.
+   * 3,06:1 sobre `secondary`). O escuro foi resolvido na T103/D33, abaixo.
    */
   --border: oklch(0.63 0.01 220);
   --input: oklch(0.63 0.01 220);
@@ -132,7 +132,7 @@
   --chart-expense: var(--expense);
   --chart-balance: var(--chart-1);
   --chart-savings: var(--goal);
-  --chart-forecast: oklch(0.52 0.13 245 / 45%);
+  --chart-forecast: oklch(0.52 0.13 245);
   --shadow-e1: 0 1px 2px oklch(0.22 0.02 250 / 6%);
   --shadow-e2: 0 4px 12px oklch(0.22 0.02 250 / 8%);
   --shadow-e3: 0 12px 32px oklch(0.22 0.02 250 / 14%);
@@ -175,10 +175,16 @@
   --goal: oklch(0.76 0.12 285);
   --info: oklch(0.76 0.1 245);
   --neutral-amount: oklch(0.7 0.02 250);
-  --border: oklch(0.32 0.015 250);
-  --input: oklch(0.34 0.015 250);
-  /* Escuro: 1,36:1 sobre o fundo — abaixo da borda de controlo (1,46). */
-  --border-subtle: oklch(0.3 0.015 250);
+  --border: oklch(0.55 0.015 250);
+  --input: oklch(0.58 0.015 250);
+  /*
+   * T103/D33: no escuro as bordas de controlo sobem ao mesmo piso do claro.
+   * `--border` a 0.55 dá 3,20:1 sobre o cartão e 3,81:1 sobre o fundo;
+   * `--input` a 0.58 dá 3,63:1 e 4,32:1. A `--border-subtle` sobe só o
+   * suficiente para o cartão se destacar (1,69:1 sobre o cartão) e fica
+   * sempre abaixo do controlo — divisória não é limite de campo.
+   */
+  --border-subtle: oklch(0.4 0.015 250);
   --ring: oklch(0.72 0.11 185);
   --chart-1: oklch(0.76 0.1 250);
   --chart-2: oklch(0.8 0.12 75);
@@ -190,7 +196,7 @@
   --chart-8: oklch(0.8 0.11 110);
   --chart-grid: oklch(0.32 0.015 250);
   --chart-axis: oklch(0.7 0.02 250);
-  --chart-forecast: oklch(0.76 0.1 245 / 45%);
+  --chart-forecast: oklch(0.76 0.1 245);
   --shadow-e1: none;
   --shadow-e2: 0 4px 12px oklch(0.05 0 0 / 40%);
   --shadow-e3: 0 12px 32px oklch(0.05 0 0 / 55%);

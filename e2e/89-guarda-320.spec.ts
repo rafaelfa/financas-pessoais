@@ -7,14 +7,18 @@ import { abrirRota } from './support/ui';
  *
  * Não há nenhum projeto Playwright tão estreito como 320 (o `telemovel` é Pixel 5,
  * 393), e por isso o `max-w-full truncate` do rodapé móvel (T85) e o
- * `sr-only … min-[360px]` do cabeçalho (T88) podiam ser apagados por qualquer
+ * `sr-only … min-[370px]` do cabeçalho podiam ser apagados por qualquer
  * alteração de classes sem um único teste vermelho. Esta é a asserção que os
  * guarda: geometria, não texto.
  *
- * Mede a **320** (o piso) e a **360** (onde a marca do cabeçalho volta e o
- * `min-[360px]` tem de ser exatamente 360): mudar o limiar para 380 deixaria a
- * marca escondida sem necessidade entre 360 e 379, e era invisível para um teste
- * só a 320.
+ * Mede a **320** (o piso), a **369** e a **370** — o limiar da marca (T103/D35).
+ * A 369 «finanças» ainda não cabe e tem de estar escondida; a 370 tem de estar
+ * visível, inteira (`scrollWidth == clientWidth`) e sem empurrar nenhum filho do
+ * cabeçalho. Mexer no limiar para cima ou para baixo fica vermelho.
+ *
+ * O número 370 é da condição **com barra de scroll clássica** (a deste projeto,
+ * 15 px). Sem barra, o mesmo texto caberia a 355 — não é esse o ambiente da
+ * guarda.
  *
  * Desde a T93 também mede a **área de toque** dos seis controlos do cabeçalho
  * (≥44×44 em telemóvel), que é a barra que se usa com o polegar.
@@ -51,6 +55,12 @@ interface Medido {
   readonly rotulos: readonly Rotulo[];
   readonly headerFilhosFora: readonly number[];
   readonly marcaLargura: number;
+  /** O `<span aria-hidden>` visível («finanças»): inteiro = `scrollWidth == clientWidth`. */
+  readonly marcaVisivel: {
+    readonly texto: string;
+    readonly scrollWidth: number;
+    readonly clientWidth: number;
+  } | null;
   readonly alvosToque: readonly { readonly nome: string; readonly w: number; readonly h: number }[];
 }
 
@@ -103,7 +113,7 @@ async function mutar(page: Page, qual: Mutacao): Promise<number> {
     }
 
     if (nome === 'limiar') {
-      tirar(document.querySelector('header > span'), ['min-[360px]:not-sr-only']);
+      tirar(document.querySelector('header > span'), ['min-[370px]:not-sr-only']);
     }
 
     if (nome === 'parede') {
@@ -160,10 +170,30 @@ async function medir(page: Page): Promise<Medido> {
       navScrollWidth: nav.scrollWidth,
       docScrollWidth: document.documentElement.scrollWidth,
       rotulos,
+      /*
+       * A parede é `header.left + clientWidth`: a partir de `md` o cabeçalho
+       * começa depois da barra lateral e comparar só com o `clientWidth` dava
+       * falsos positivos (T103).
+       */
       headerFilhosFora: [...header.children]
         .map((filho) => Math.round(filho.getBoundingClientRect().right * 10) / 10)
-        .filter((right) => right > document.documentElement.clientWidth + 0.5),
+        .filter(
+          (right) =>
+            right >
+            header.getBoundingClientRect().left + document.documentElement.clientWidth + 0.5,
+        ),
       marcaLargura: Math.round(marca.getBoundingClientRect().width * 10) / 10,
+      marcaVisivel: (() => {
+        const visivel = marca.querySelector('span[aria-hidden]');
+
+        return visivel === null
+          ? null
+          : {
+              texto: (visivel.textContent ?? '').trim(),
+              scrollWidth: visivel.scrollWidth,
+              clientWidth: visivel.clientWidth,
+            };
+      })(),
       alvosToque: [...header.querySelectorAll('button, summary')]
         .filter((el) => el.getBoundingClientRect().width > 0)
         .map((el) => {
@@ -270,8 +300,24 @@ test.describe('T89 — a 320 px nada transborda', () => {
     ).toContain('Finanças Pessoais');
     expect(a320.marcaLargura, 'a 320 a marca não ocupa largura').toBeLessThanOrEqual(1);
 
-    /* 360 é o limiar do `min-[360px]`: aqui a marca tem de voltar e caber. */
-    await page.setViewportSize({ width: 360, height: 640 });
+    /*
+     * 369 é a última largura em que «finanças» (49,2 px a 12 px) ainda não cabe
+     * com a barra clássica: a marca tem de continuar escondida e anunciada.
+     */
+    await page.setViewportSize({ width: 369, height: 640 });
+    await page.waitForTimeout(150);
+
+    const a369 = await medir(page);
+
+    verificar(a369, 369);
+    expect(a369.marcaLargura, 'a 369 a marca continua escondida').toBeLessThanOrEqual(1);
+    expect(
+      await page.locator('header > span').ariaSnapshot(),
+      'a 369 o nome completo continua a ser anunciado',
+    ).toContain('Finanças Pessoais');
+
+    /* 370 é o limiar do `min-[370px]`: aqui a marca volta, inteira e a caber. */
+    await page.setViewportSize({ width: 370, height: 640 });
     await page.waitForTimeout(150);
 
     if (MUTAR === 'limiar') {
@@ -279,19 +325,31 @@ test.describe('T89 — a 320 px nada transborda', () => {
 
       expect(
         alterados,
-        'a mutação «limiar» não encontrou `min-[360px]:not-sr-only` — a marca mudou de classe e esta prova deixou de provar',
+        'a mutação «limiar» não encontrou `min-[370px]:not-sr-only` — a marca mudou de classe e esta prova deixou de provar',
       ).toBeGreaterThan(0);
       await page.waitForTimeout(150);
     }
 
-    const a360 = await medir(page);
+    const a370 = await medir(page);
 
-    verificar(a360, 360);
+    verificar(a370, 370);
     /*
-     * 1 px é o que o `sr-only` deixa — e 1 > 0 deixava passar o limiar mudado. O
-     * real a 360 é 63 px; 10 separa os dois estados com folga sem ser um número
-     * decorado do dia.
+     * 1 px é o que o `sr-only` deixa; o texto visível a 370 mede 49,2 px. O
+     * limite de 10 separa os dois estados sem ser um número decorado do dia.
      */
-    expect(a360.marcaLargura, 'a 360 a marca da app aparece').toBeGreaterThan(10);
+    expect(a370.marcaLargura, 'a 370 a marca da app aparece').toBeGreaterThan(10);
+    /*
+     * E aparece **inteira**: o `<span aria-hidden>` dá `scrollWidth == clientWidth`.
+     * É a asserção que impede o regresso do nome cortado com reticências (D34) —
+     * a marca é inteira ou ausente.
+     */
+    expect(a370.marcaVisivel, 'a marca visível existe a 370').not.toBeNull();
+    expect(a370.marcaVisivel?.texto, 'o texto visível é «finanças» (D35)').toBe('finanças');
+    expect(a370.marcaVisivel?.scrollWidth, 'a 370 «finanças» cabe inteira (sem reticências)').toBe(
+      a370.marcaVisivel?.clientWidth,
+    );
+    await expect(page.locator('header > span'), 'o nome completo é o nome acessível').toHaveCount(
+      1,
+    );
   });
 });

@@ -81,7 +81,7 @@ function labelFor(start: string): string {
   const index = Number(month) - 1;
   const name = MONTH_NAMES[index] ?? month ?? '';
 
-  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${year ?? ''}`.trim();
+  return `${name} de ${year ?? ''}`.trim();
 }
 
 /** Passos que **bloqueiam** o fecho. Os restantes são recomendações. */

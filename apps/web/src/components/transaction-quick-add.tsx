@@ -322,96 +322,6 @@ export function TransactionQuickAdd({
           className="space-y-4"
           noValidate
         >
-          <div className="space-y-1">
-            <span id="lancamento-tipo" className="text-sm font-medium">
-              Natureza
-            </span>
-            <div
-              role="radiogroup"
-              aria-labelledby="lancamento-tipo"
-              className="flex flex-wrap gap-2"
-            >
-              {QUICK_MODES.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === option.value}
-                  onClick={() => {
-                    setMode(option.value);
-                    setCategoryId('');
-                  }}
-                  className={cn(
-                    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
-                    mode === option.value
-                      ? 'border-transparent bg-primary text-primary-foreground'
-                      : 'border-border bg-background hover:bg-muted',
-                  )}
-                >
-                  {option.value === 'transfer' ? (
-                    <ArrowLeftRight className="size-4" aria-hidden />
-                  ) : null}
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {isTransfer ? null : (
-            <div className="space-y-1">
-              <span id="lancamento-pagamento" className="text-sm font-medium">
-                Forma de pagamento
-              </span>
-              <div
-                role="radiogroup"
-                aria-labelledby="lancamento-pagamento"
-                className="flex flex-wrap gap-2"
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'debit'}
-                  onClick={() => setPaymentMethod('debit')}
-                  className={cn(
-                    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
-                    paymentMethod === 'debit'
-                      ? 'border-transparent bg-primary text-primary-foreground'
-                      : 'border-border bg-background hover:bg-muted',
-                  )}
-                >
-                  <Wallet className="size-4" aria-hidden />
-                  Conta
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === 'credit'}
-                  disabled={activeCards.length === 0}
-                  onClick={() => setPaymentMethod('credit')}
-                  className={cn(
-                    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
-                    paymentMethod === 'credit'
-                      ? 'border-transparent bg-primary text-primary-foreground'
-                      : 'border-border bg-background hover:bg-muted',
-                    activeCards.length === 0 ? 'cursor-not-allowed opacity-50' : '',
-                  )}
-                >
-                  <CreditCard className="size-4" aria-hidden />
-                  Cartão de crédito
-                </button>
-              </div>
-              {activeCards.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Ainda não tens cartões.{' '}
-                  <Link href="/cartoes" className="underline underline-offset-2">
-                    Cria um cartão
-                  </Link>{' '}
-                  para registar compras a crédito.
-                </p>
-              ) : null}
-            </div>
-          )}
-
           <div className="grid gap-3 sm:grid-cols-2">
             <Field data-invalid={errorFor('amountInCents') !== undefined}>
               <FieldLabel htmlFor={amountFieldId}>Valor</FieldLabel>
@@ -452,7 +362,101 @@ export function TransactionQuickAdd({
               />
               <FieldError id="lancamento-data-erro">{errorFor('date')}</FieldError>
             </Field>
+          </div>
 
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+            <div className="space-y-1">
+              <span id="lancamento-tipo" className="text-sm font-medium">
+                Natureza
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="lancamento-tipo"
+                className="flex flex-wrap gap-2"
+              >
+                {QUICK_MODES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === option.value}
+                    onClick={() => {
+                      setMode(option.value);
+                      setCategoryId('');
+                    }}
+                    className={cn(
+                      'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8 sm:flex-none',
+                      mode === option.value
+                        ? 'border-primary bg-muted text-foreground'
+                        : 'border-border bg-background hover:bg-muted',
+                    )}
+                  >
+                    {option.value === 'transfer' ? (
+                      <ArrowLeftRight className="size-4" aria-hidden />
+                    ) : null}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isTransfer ? null : (
+              <div className="space-y-1">
+                <span id="lancamento-pagamento" className="text-sm font-medium">
+                  Forma de pagamento
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="lancamento-pagamento"
+                  className="flex flex-wrap gap-2"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === 'debit'}
+                    onClick={() => setPaymentMethod('debit')}
+                    className={cn(
+                      'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8 sm:flex-none',
+                      paymentMethod === 'debit'
+                        ? 'border-primary bg-muted text-foreground'
+                        : 'border-border bg-background hover:bg-muted',
+                    )}
+                  >
+                    <Wallet className="size-4" aria-hidden />
+                    Conta
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === 'credit'}
+                    disabled={activeCards.length === 0}
+                    onClick={() => setPaymentMethod('credit')}
+                    className={cn(
+                      'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8 sm:flex-none',
+                      paymentMethod === 'credit'
+                        ? 'border-primary bg-muted text-foreground'
+                        : 'border-border bg-background hover:bg-muted',
+                      activeCards.length === 0 ? 'cursor-not-allowed opacity-50' : '',
+                    )}
+                  >
+                    <CreditCard className="size-4" aria-hidden />
+                    Cartão de crédito
+                  </button>
+                </div>
+                {activeCards.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Ainda não tens cartões.{' '}
+                    <Link href="/cartoes" className="underline underline-offset-2">
+                      Cria um cartão
+                    </Link>{' '}
+                    para registar compras a crédito.
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             {usesCredit ? (
               <div className="space-y-1">
                 <FieldLabel htmlFor="lancamento-cartao">Cartão</FieldLabel>
@@ -628,7 +632,7 @@ export function TransactionQuickAdd({
                     className={cn(
                       'inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
                       installmentMode === 'single'
-                        ? 'border-transparent bg-primary text-primary-foreground'
+                        ? 'border-primary bg-muted text-foreground'
                         : 'border-border bg-background hover:bg-muted',
                     )}
                   >
@@ -642,7 +646,7 @@ export function TransactionQuickAdd({
                     className={cn(
                       'inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
                       installmentMode === 'installment'
-                        ? 'border-transparent bg-primary text-primary-foreground'
+                        ? 'border-primary bg-muted text-foreground'
                         : 'border-border bg-background hover:bg-muted',
                     )}
                   >

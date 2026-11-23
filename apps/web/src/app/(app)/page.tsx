@@ -256,7 +256,7 @@ export default async function PainelPage({
       {hasScope && scopedLabel !== null ? (
         <p role="status" className="mb-4 rounded-xl border border-dashed px-4 py-2 text-sm">
           <span className="font-medium">
-            {isCardScope ? 'A preensar pelo cartão' : 'A ver a conta'}:
+            {isCardScope ? 'A pensar pelo cartão' : 'A ver a conta'}:
           </span>
           <span className="ml-1">
             Estás a ver só {isCardScope ? 'as compras e faturas' : 'os movimentos'} de{' '}
@@ -271,7 +271,7 @@ export default async function PainelPage({
 
       {/* KPIs organizados: património → entradas → saídas → sobra */}
       <section
-        className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="mb-6 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 xl:grid-cols-4"
         aria-label="Indicadores principais"
       >
         <KpiCard label={firstKpiLabel()} hint={firstKpiHint()} prominent>

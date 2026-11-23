@@ -99,7 +99,7 @@ export async function listAccounts(
       id: account.id,
       name: account.name,
       institution: account.institution,
-      type: account.type,
+      type: account.type.toLowerCase(),
       openingBalanceInCents: account.openingBalanceInCents,
       isPrimary: account.id === user.primaryAccountId,
       archived: account.archivedAt !== null,

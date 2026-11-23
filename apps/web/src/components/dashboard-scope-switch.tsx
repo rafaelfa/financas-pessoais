@@ -142,7 +142,7 @@ export function DashboardScopeSwitch({
                 className={cn(
                   'inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors sm:min-h-8',
                   selected
-                    ? 'border-transparent bg-primary text-primary-foreground'
+                    ? 'border-primary bg-muted text-foreground'
                     : 'border-border bg-background hover:bg-muted',
                 )}
               >

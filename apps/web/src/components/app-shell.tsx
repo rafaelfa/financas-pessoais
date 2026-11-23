@@ -70,14 +70,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             esteve.
           */}
           {/*
-            T93: com os seis controlos a 44 px o nome não cabe inteiro a 360.
-            O `min-w-0` deixa a caixa ceder; o corte vive num `<span>` **interior**
-            porque `min-[360px]:not-sr-only` (T88) repõe `white-space: normal` e
-            `overflow: visible` na caixa de fora — um `truncate` ali seria anulado
-            e o nome pintava-se em duas linhas por baixo do «Mais».
+            A marca é inteira ou ausente (D34) e no telemóvel lê-se «finanças»
+            (D35, escolha do utilizador). O nome acessível continua «Finanças
+            Pessoais»: o texto curto visível vai `aria-hidden` e o completo fica
+            `sr-only`, por isso o leitor de ecrã ouve uma vez, não duas.
+            O limiar foi medido em `/transacoes` — a rota com o sexto controlo
+            («Mais») — e com a barra de scroll clássica, que rouba 15 px: a
+            12 px «finanças» mede 49,2 px. A 369 a caixa dá 49 para 49,2 de
+            texto — perde uma fracção; a 370 iguala 49,2, zero de folga; a
+            partir de 371 sobra ≥1 px. O limiar é 370 porque é a primeira em
+            que não se perde fracção (D35).
           */}
-          <span className="sr-only min-w-0 text-sm font-medium min-[360px]:not-sr-only md:hidden">
-            <span className="block truncate">Finanças Pessoais</span>
+          <span className="sr-only min-w-0 text-xs font-medium min-[370px]:not-sr-only md:hidden">
+            <span aria-hidden className="block truncate">
+              finanças
+            </span>
+            <span className="sr-only">Finanças Pessoais</span>
           </span>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {/*
