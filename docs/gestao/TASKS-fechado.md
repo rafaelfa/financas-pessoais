@@ -1586,3 +1586,184 @@ a 1440 dia 237 e formulário 595,8 com `max-height: 828px`. Com **12 movimentos 
 vJD2Soos55IWoY1ucvRZq`, `axe` limpo. **E o limite ficou escrito:** o `lvh` do iOS **não se mede** neste
 ambiente; a correção foi verificada **pela regra e pelo valor calculado** (`651px`, não `100%`), não por
 observação — o fecho **não promete iPhone**.
+
+---
+
+## Vaga 8 · T103 — o design em uso (o que a navegação em produção revelou)
+
+Aberta a 2026-11-23, a pedido do utilizador («analise a parte de design… as cores e o design das cartas
+podem melhorar») e depois de eu percorrer a produção com a conta de teste: **17 rotas, 1440 e 375, claro
+e escuro**, só leitura. Sete itens, todos vistos no ecrã ou medidos — nenhum inventado.
+
+### T103 — sete itens, um deles é defeito (Dev) — **fechada 2026-11-23**
+
+**(a) Defeito, não gosto — o tipo de conta sai em inglês e com o ícone errado.** `/contas` mostra
+«WALLET», «CHECKING · Millennium bcp», «SAVINGS», e **os três cartões têm o mesmo ícone** (a balança, que
+é o recurso). Causa: `apps/web/src/server/accounts.ts:102` entrega o enum do Prisma (`CHECKING`), e
+`ACCOUNT_TYPE_LABELS`/`ACCOUNT_TYPE_ICONS` (`components/account-dialog.tsx:52-63`) são indexados por
+minúsculas — falham **o rótulo e o ícone**. Aparece igual na captura do QA de 22/11: não é de hoje, e
+nenhum e2e o apanha porque nenhum lê o tipo.
+
+**(b) Microcopy.** `app/(app)/page.tsx:257` diz «A **preensar** pelo cartão» (confirmado em produção, com
+cartão escolhido) e tem espaço antes dos dois pontos; `server/month-close.ts:84` capitaliza o mês
+(«Fecho de Novembro 2026») quando em pt-PT é «novembro», com «de».
+
+**(c) A seleção usa a cor da ação.** No lançamento rápido (`transaction-quick-add.tsx:347,378,394,631,645`)
+e no «Ver por» do Painel (`dashboard-scope-switch.tsx:145`) o estado «selecionado» é `bg-primary` — a mesma
+cor do botão «Lançar». E os dois grupos de rádio do lançamento ocupam a largura toda em duas filas, pelo
+que o campo **Valor** (o número, que é o herói) só aparece depois deles.
+
+**(d) Bordas de controlo no escuro: 1,23:1 e 1,57:1.** `--border` sobre o cartão e `--input` sobre o fundo.
+O `globals.css:186` já escreve «o escuro fica por resolver». Ver **D33**.
+
+**(e) Dois pesos de contorno no mesmo ecrã.** `ui/card.tsx:17` desenha `ring-1 ring-foreground/10` =
+**1,22:1** no claro; os 43 painéis escritos à mão usam `border` (= `--border-subtle`) = **2,00:1**. O cartão
+é o contorno mais fraco do sistema, e mais fraco do que um divisor de menu.
+
+**(f) A previsão de saldo lê-se a 2,00:1.** `dashboard-forecast-chart.tsx:27` usa `--chart-forecast` (token
+já a 45% de alfa) como traço **e** um gradiente cujos stops multiplicam o alfa (0,6 × 0,45): traço
+**2,00:1** no claro e **2,61:1** no escuro; topo do gradiente 1,49:1 / 1,76:1. Num gráfico, o traço é o
+que se lê.
+
+**(g) Telemóvel.** A 375×844 os quatro KPI empilham-se e «Sobra do mês» fica fora do primeiro ecrã; na
+barra de topo a marca corta («Finanças Pesso…») ao lado de cinco controlos.
+
+**Ficheiros que pode escrever:** `apps/web/src/server/accounts.ts`, `components/account-card.tsx`,
+`components/account-dialog.tsx`, `app/(app)/page.tsx`, `server/month-close.ts`,
+`components/transaction-quick-add.tsx`, `components/dashboard-scope-switch.tsx`, `components/ui/card.tsx`,
+`app/globals.css`, `components/dashboard-forecast-chart.tsx`, `components/kpi-card.tsx`,
+`components/app-shell.tsx` e `relatorios/T103.md`. Mais nada. *(Os dois últimos entraram na volta 2: o
+`app-shell` porque o item (g) fala da barra de topo e a lista original o esqueceu — falha minha, não do
+Dev — e o `kpi-card` porque o degrau do número pertence ao componente que o define.)*
+
+**Critério de aceitação (verificável, segue a skill `design-do-projeto`):**
+
+- **(a)** Os três cartões de `/contas` dizem «Carteira», «Conta à ordem», «Poupança» e mostram **três
+  ícones diferentes**; o mesmo na vista por conta do Painel; e o formulário de edição abre com o tipo
+  preenchido, não vazio. Prova: os três rótulos e a classe de cada `<svg>`, mais a captura.
+- **(b)** `grep -rn "preensar" apps/web/src` → 0 ocorrências; o texto lê-se «A pensar pelo cartão:» sem
+  espaço antes dos dois pontos; e o mês sai «novembro» minúsculo, com «de».
+- **(c)** A 1440×900 o topo do `<input>` do Valor mede **< 400 px** (`getBoundingClientRect().top`), cada
+  grupo de seleção mede **≤ 32 px** de altura e não ocupa a largura do cartão, e **nenhum** controlo de
+  seleção usa `bg-primary` (o teal fica no botão «Lançar»). Igual no «Ver por» do Painel.
+- **(d)** No escuro, `--border` e `--input` calculadas dão **≥ 3,0:1** quer sobre `--card` quer sobre
+  `--background`, com o número e a conta no relatório; `--border-subtle` fica **≥ 1,6:1** sobre o cartão e
+  **sempre abaixo** do controlo; e o claro **não muda** (3,39:1 nas bordas de controlo, 2,00:1 nos
+  divisores, medidos antes e depois).
+- **(e)** O contorno do `Card` e o dos painéis à mão têm o **mesmo** peso: mesmo valor calculado (2,00:1 no
+  claro) e `grep "ring-foreground/10" components/ui/card.tsx` → 0.
+- **(f)** O traço da previsão mede **≥ 3:1** sobre o cartão nos dois temas (valor no relatório); o
+  preenchimento é uma só cor, `grep -c linearGradient` no ficheiro → 0, e o traço é tracejado.
+- **(g)** A 375×844 os quatro KPI formam grelha **2×2** e o quarto está inteiro no primeiro ecrã; a
+  320×640 `document.scrollWidth` ≤ 320 e nenhum montante transborda o cartão; na barra de topo não aparece
+  texto truncado com reticências.
+- **Todos:** capturas a **1440 e a 390, nos dois temas**, em `relatorios/T103/`, e o gate verde.
+
+**O que não fazer:** não correr a suite e2e completa (é do QA no fecho) nem specs enquanto o QA as corre;
+não escrever em `e2e/` (é do QA); não tocar em `ui/button.tsx`/`ui/input.tsx` (T75) nem no `max-h` do
+`DialogContent` (T102); não reabrir a T96/D31 — as células do calendário continuam subtis; não escurecer o
+tema claro para «compensar»; não trocar `dvh` por `svh`; zero dependências novas; zero git.
+
+**Prova esperada:** `relatorios/T103.md` com, por item (a)-(g), o **antes** (o número ou o que se via) e o
+**depois**, o comando e a saída do gate (`format` → `lint` → `typecheck` → `test` → `build`), o
+`git diff --stat`, as capturas em `relatorios/T103/`, e uma linha «o que não consegui medir» (o `lvh` do
+iOS não se mede aqui, como na T102).
+
+**No QA (passo 2):** além de repetir as medições, acrescenta a **asserção de regressão** em `e2e/` para o
+item (a) — o cartão de conta mostra o tipo em português. É o único sítio onde este defeito podia ficar
+verde para sempre.
+
+**Voltas.** *Volta 1 (Dev):* os sete itens entregues, gate verde. *Volta 2 (Dev):* o degrau do número
+passou para o `KpiCard` e o comentário do `account-card` ficou verdadeiro; o `page.tsx` caiu de 20 para 4
+linhas de diff. *QA volta 2:* **(a)–(g) PASS** com os números do QA, conta arquivada provada no ecrã
+(criada, arquivada, apagada), `axe` limpo — mas **FAIL** porque `e2e/89` fica vermelho: o limiar da marca
+passou de `min-[360px]` para `min-[370px]` e a guarda da T88 mede a marca **a 360** (`Expected: > 10`,
+`Received: 1`; 150 passed, 1 failed). O QA não tocou no guarda — a escolha era minha, e é a **D34**:
+limiar = menor largura em que o nome cabe **inteiro**, medido. *Volta 3 (Dev):* `min-[364px]` e `text-xs`,
+com uma tabela de sete larguras que diz «cabe a 364». *QA volta 3:* **FAIL** — na rota da guarda não cabe.
+
+**Impasse da volta 3 — a marca do cabeçalho. O que falhou, com a prova real:**
+
+| medição | 375 | 411 | 425 | 426 |
+|---|---|---|---|---|
+| caixa da marca, sem barra (QA, DOM) | 70 | **106 — cabe** | — | — |
+| caixa da marca, barra de 15 px (QA, DOM) | 55 | — | — | **106 — cabe** |
+| Dev, volta 3 (larguras 358–375) | 106,1 | — | — | — |
+
+O Dev mediu numa rota **sem o controlo «Mais»**: `lib/nav.ts:226` só o dá em cinco rotas, e a guarda corre
+em `/transacoes`, que é uma delas. A conta dele reproduz-se sem esse controlo (364 → 107 livres ≈ 106
+medidos); com ele o consumo é **305 px** e sobram 59 (barra por omissão) ou 44 (barra clássica). O
+«106,1 a 375» que o QA citou na volta 1 era o `span` da **barra lateral**. **As duas medições explicam-se,
+e a que vale é a da rota da guarda:** o nome inteiro só cabe a **411/426**.
+
+Assim, `min-[364px]` deixa a marca **presente e cortada entre 364 e 409/425** — o que a D34 proíbe. As duas
+saídas, para o utilizador decidir (toca no que se vê no telemóvel):
+
+1. **Marca fora do cabeçalho móvel** (recomendada): sai o `min-[…]:not-sr-only` e fica `sr-only` + `aria`.
+   Sem número mágico, sem classe de limiar para manter, e acaba a família de defeito. Custo: no telemóvel
+   o nome não aparece na barra de topo — o que já é verdade hoje abaixo de 426.
+2. **Limiar em `min-[426px]`**: o nome aparece inteiro dos 426 aos 767 px. Custo: um número que depende da
+   barra de scroll (426 com barra, 411 sem), invisível no telemóvel comum.
+3. **Nome curto no telemóvel** («finanças»): decisão de identidade, e precisa de ser medida outra vez
+   (cabe a partir de ~375 sem barra).
+
+Três voltas de correção gastas: paro aqui, como manda o §4. Nada commitado; a guarda `e2e/89` continua com
+a asserção a 360 e a mutação `limiar` aponta para a classe antiga (o QA não a escreveu porque já sabia o
+resultado). O `format:check` global está a **0** (o QA formatou o spec novo). A suite de frio da volta 3:
+**150 passed · 1 failed**, build `VAtPEy3ZhPQj_8--iVbJuP`.
+
+**Saída escolhida pelo utilizador (2026-11-23): a 3.ª — nome curto no telemóvel.** Ele escolheu, entre as
+três, «nome curto no telemóvel («finanças»)». É a **D35**: abaixo de `md` o cabeçalho diz **«finanças»**
+(minúscula, como ele escreveu), o nome completo fica como nome acessível e na barra lateral, e a D34
+continua: **inteira ou ausente**, limiar = primeira largura com ≥1 px de folga no **pior caso**
+(`/transacoes`, com «Mais», nas duas condições de barra de scroll).
+
+**Volta 4 (Dev), aberta com a decisão do utilizador:** medir «finanças» a 12 px e o espaço disponível nas
+duas condições, fixar o limiar medido, e pôr o nome completo como texto acessível sem o repetir no ecrã.
+É a última volta desta tarefa: se falhar, o problema não é mais medição nem código — volto ao utilizador com
+o que resta.
+
+**Volta 4 fechada.** *Dev:* «finanças» mede **49,2 px**; com barra clássica a 368 faltam 1,2 px, a 369 dá
+igualdade, e o limiar ficou **`min-[370px]`**; achou ainda que os contextos `isMobile` do Playwright têm
+barras sobrepostas e mediu em desktop estreito. *QA:* **PASS** — 320/369 marca a 1 px com «Finanças
+Pessoais» anunciado uma só vez; **370 e 375** com **49/49** e zero filhos fora; a 768 `display:none` e a
+barra lateral com o nome completo; suite de frio **151 passed · 0 failed**, `BUILD_ID JHhm1jtLvdlu1NWfN7vuNP`;
+`T89_MUTAR=limiar` vermelho como deve. *Revisor:* **0 BLOQUEIA, 0 DEVE, 3 OPCIONAIS — pode commitar: sim**;
+confirmou o (a) sem tocar no `account-dialog` (o `Select` já usava os rótulos), que o export mantém o enum
+em maiúsculas, e corrigiu-me uma frase: o `month-close` **não** usa `Intl` — só deixou de capitalizar.
+
+**Opcionais do Revisor, registados e NÃO abertos** (só com autorização do utilizador):
+1. *Corrigido antes do commit:* o comentário do `app-shell` dizia «370 … com folga» e há igualdade (49,2 =
+   49,2); a D35 foi reescrita para «não perde fracção» e o comentário vai atrás.
+2. Quatro controlos de seleção continuam com `bg-primary` (`budget-dialog.tsx:226`,
+   `goal-movement-dialog.tsx:189`, `preferences-form.tsx:205`, `report-basis.tsx:91`) — fora da lista desta
+   tarefa; ficam dois padrões para «selecionado». Candidata a tarefa.
+3. Dois breakpoints arbitrários novos e vizinhos (`min-[370px]` no cabeçalho, `min-[375px]` no painel);
+   independentes hoje. Se um dia forem token, entram juntos.
+
+**Publicada e verificada (2026-11-23 09:15).** Commit `ce5742a` em `main`, push feito (`origin` = local,
+`git ls-remote` confirmado), deploy **READY** a servir `ce5742a`. Verificado em produção com a conta de teste:
+`/contas` com «Carteira / Conta à ordem / Poupança» e `lucide-wallet`/`landmark`/`piggy-bank`; `Card` e painel
+à mão com a **mesma** borda (`lab(30.3812 …)`) e sem sombra; `linearGradient` **0**; no escuro `--border`
+**3,18/3,80** e `--input` **3,62/4,32**; traço da previsão **7,29:1**; marca **«finanças»** a 375 com
+**49/49** e o nome completo no `aria`; KPI em **2×2** e `document` 360/360.
+
+**Volta 5 — regressão encontrada na verificação de produção.** A 375 (clientWidth 360) o cartão
+«Património líquido» mede **16→172** e o `<p>` do montante **33→179**: passa **7,2 px** do cartão, que tem
+`overflow: hidden`, por isso o «€» é cortado. Fonte 30 px (`text-3xl`); os outros três (24 px) ficam dentro.
+A 320 não acontece (uma coluna, cartão de 273 px); entre ~376 e ~404 volta a acontecer — **os telefones de
+390/393**. O QA tinha medido `document.scrollWidth` (360/360) e o documento não transborda: o corte é
+**dentro** do cartão. Reaberta ao Dev com a medição **por cartão** como critério; depois o QA e uma
+asserção no `e2e/` que olhe para o cartão, não para o documento.
+
+---
+
+
+### Fecho da T103 — 2026-11-23
+
+- **Fechado:** T103 — o design em uso: sete itens saídos de navegar a produção com a conta de teste (tipo de conta em inglês, «A preensar», seleção com a cor da ação, bordas do escuro, dois pesos de contorno, previsão a 2,00:1, KPI empilhados), mais a regressão do valor do KPI encontrada depois do primeiro push.
+- **Prova:** suite de frio **152 passed · 0 failed** (`BUILD_ID zbczpjaMja0_gNg5eOo4f`), `format:check` 0, QA **PASS** na volta 7 e Revisor «pode commitar: sim» sem achados; em produção (`d0ff511`, READY) o cartão de 163,5 px a 24 px deixa **8,3 px livres** com cinco dígitos e o «€» inteiro, o `@container` dispara a 24/30/36 como a D36 manda, `--border` **3,18/3,80**, previsão **7,29:1**, marca **«finanças»** com `49/49`, KPI em 2×2. Relatórios: `relatorios/T103.md`, `relatorios/T103-qa.md`.
+- **O que isto não resolve:** com **seis dígitos** o valor não cabe em 20 dos 225 viewports (limite da D36, pior a 375: −6,7 px); a **folga** a 375 é de ~8 px, não os 4 que a D36 pede como mínimo teórico — decisão escrita, o piso de 24 px vale mais; entre **320 e 369 px** o cabeçalho continua sem marca (nem a curta cabe); e **quatro** controlos de seleção noutros diálogos continuam com `bg-primary` (`budget-dialog.tsx:226`, `goal-movement-dialog.tsx:189`, `preferences-form.tsx:205`, `report-basis.tsx:91`).
+- **Aberto:** nada bloqueado nesta tarefa. A **T75** (alvos de toque do `Button`/`Input` base) continua de fora por decisão minha; os quatro `bg-primary` são candidatos a tarefa nova, **não abertos**.
+- **Repositório:** `main` em `d0ff511` e no `origin` (`git ls-remote` confirmado), deploy de produção **READY** a servir esse commit; sem tags.
+- **Decisão:** nenhuma pendente para fechar. A única coisa que peço é autorização se quiseres abrir a tarefa dos quatro `bg-primary`.

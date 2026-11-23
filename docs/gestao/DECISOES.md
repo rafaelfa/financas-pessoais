@@ -809,3 +809,125 @@ tokens, as bordas, os raios, a tipografia — já foi fechado na T78, T91 e T96.
 
 **O que a torna irreversível:** nada. As secções ficam em `TASKS.md` com o estado escrito; reabrir é mudar
 uma palavra, desde que haja um pedido de produto por trás.
+
+### D33 — No escuro, as bordas de controlo sobem a ≥3:1 (T103) — **decisão do Lead (2026-11-23)**
+
+O tema claro foi corrigido na T78/T91: `--border` e `--input` dão **3,39:1** sobre o cartão. O escuro
+ficou por resolver, e o próprio `globals.css:186` o diz: `--border` a **1,23:1** sobre `--card` e
+`--input` a **1,57:1** sobre `--background`. A WCAG 1.4.11 pede 3:1 a limites de controlo, e a skill
+`design-do-projeto` §4 trata isso como piso, não como meta. Naveguei a produção: no escuro os campos e
+os botões de contorno quase não têm limite.
+
+**Decisão:** no `.dark`, `--border` e `--input` passam a medir **≥3,0:1** sobre `--card` **e** sobre
+`--background`; `--border-subtle` sobe só o suficiente para o cartão se destacar (≥1,6:1 sobre o cartão) e
+fica **sempre abaixo** do controlo; `--sidebar-border` continua preso a `--border-subtle`. O tema claro
+não muda — os valores medidos antes e depois têm de ser os mesmos.
+
+- **Porque:** é o mesmo requisito que justificou a T78 no claro. Deixar o escuro a 1,2:1 é ter dois temas
+  com pisos diferentes, e o escuro é o tema que a doutrina diz ser desenhado primeiro.
+- **Alternativa rejeitada:** manter e declarar como limite assumido. Rejeitada porque não é gosto nem
+  escolha de produto: um campo que não se vê não se preenche, e o utilizador já disse que usa a app de
+  noite — a pergunta ficou aberta desde a T78.
+- **Limite que sobra:** subir `--border` no escuro pesa em todos os controlos do tema. Se algum ecrã
+  ficar com peso a mais, resolve-se por lá (uma classe), não baixando o token — baixá-lo reabre este
+  defeito em silêncio, como o `max-h-full` da T102.
+
+**O que a torna irreversível:** nada de verdade — são dois valores por tema. Fica escrita para o próximo
+que medir 1,2:1 no escuro e achar que encontrou um defeito novo, ou que 3,39:1 no claro é «demasiado».
+
+### D34 — A marca da app aparece inteira ou não aparece; o limiar segue a medição (T103) — **decisão do Lead (2026-11-23)**
+
+A T88 fixou que o nome da app volta ao cabeçalho a **360 px** (com `text-sm`, `min-[360px]`). A T93 trouxe
+o piso de 44 px aos seis controlos, e o nome deixou de caber inteiro a 360: com o `truncate` aparecia
+«Finanças Pesso…». A T103 (item g) fez o que faltava — `text-xs` e o limiar em 370 — e a 375 o nome mede
+**106,1 px, sem reticências**. O `e2e/89` ficou vermelho porque ainda mede a marca a 360.
+
+**Decisão:** a marca do cabeçalho é **inteira ou ausente**. O que se esconde é `sr-only` (anunciada, sem
+ocupa largura), nunca uma versão cortada com reticências. O limiar é **a menor largura em que o nome cabe
+inteiro sem empurrar nenhum filho do cabeçalho para fora da janela** — medida, não escolhida; hoje dá
+**370** com `text-xs`. O `e2e/89` passa a afirmar as duas direcções: abaixo do limiar, escondida mas
+anunciada (aria); no limiar, presente, inteira (`scrollWidth == clientWidth` no `<span>` interior) e sem
+transbordo. Assim o teste morde se o limiar subir para 400 **e** se descer para 320.
+
+- **Porque:** um nome de app cortado lê-se como um defeito de layout — foi o que o utilizador viu em
+  produção («Finanças Pesso…»). Entre cortado e escondido, escondido: a identidade continua na barra
+  lateral, no título da página e no `aria`.
+- **Alternativa rejeitada 1:** voltar aos 360 com `text-sm` e reticências, por fidelidade ao número da
+  T88. Rejeitada porque o número não é o requisito — o requisito é ver o nome; a T88 fixou 360 quando
+  cabia, e a T93 tornou esse número falso.
+- **Alternativa rejeitada 2:** baixar o alvo de toque abaixo de 44 px ou tirar um controlo do cabeçalho
+  para a marca voltar mais cedo. Rejeitada: troca um piso de acessibilidade (D30) por um logótipo.
+- **O que a torna irreversível:** nada estrutural — uma classe e um número no teste. Fica escrita para
+  que ninguém leia «360» na T88 como lei, nem reponha o `truncate` «porque sempre ali esteve».
+
+**Correção na volta 3 (2026-11-23) — o princípio fica, o número não existia.** O 370 desta D34 vinha da
+minha leitura do relatório do QA («106,1 px a 375») e o Dev, na volta 3, mediu **364**. O QA refez a medição
+no DOM e os dois números não se sustentam: o **106,1 px do QA era o `span` da barra lateral** (mesmo texto),
+não o do cabeçalho, e o Dev mediu numa rota **sem o controlo «Mais»** — `TRANSACTION_MENU_ROUTES`
+(`lib/nav.ts:226`) só o mostra em `/transacoes`, `/recorrencias`, `/regras`, `/categorias`, `/importar`,
+e a guarda `e2e/89` corre em `/transacoes`. A conta dele reproduz-se exactamente sem esse controlo
+(364 → 107 px livres ≈ os 106 medidos); na rota da guarda o consumo é **305 px** e sobram **59** (barra
+por omissão) ou **44** (barra clássica de 15 px).
+
+Consequência medida, na rota da guarda: o nome inteiro (106 px a 12 px) só cabe a **411** sem barra e a
+**426** com barra. Ou seja, **entre 364 e 425 a marca ficaria presente e cortada** — o que esta D34 proíbe.
+O princípio não muda; o que não existe é um limiar baixo que o cumpra com seis controlos a 44 px. As
+duas saídas estão escritas em `TASKS.md` (T103, impasse) e a escolha é do utilizador, porque muda o que
+se vê no telemóvel: marca fora do cabeçalho móvel, limiar em 426, ou nome curto.
+
+### D35 — No telemóvel o cabeçalho diz «finanças»; o nome inteiro fica para a barra lateral e para o `aria` (T103) — **decisão do utilizador (2026-11-23)**
+
+Depois do impasse da T103 — o nome inteiro («Finanças Pessoais», **106 px** a 12 px) só cabe no cabeçalho a
+**411** sem barra de scroll e a **426** com barra clássica, na rota onde vive o controlo «Mais»
+(`/transacoes`) —, o utilizador escolheu, entre três saídas, o **nome curto no telemóvel: «finanças»**.
+
+**Decisão:** abaixo de `md` (768) o cabeçalho mostra **«finanças»** — em minúscula, como o utilizador o
+escreveu, porque uma palavra de marca em minúscula é uma escolha e não uma gralha. O nome completo
+«Finanças Pessoais» continua a ser **o nome acessível** (o que o leitor de ecrã anuncia), o da barra
+lateral a partir de `md`, e o do título da página. A D34 não se emenda: **inteira ou ausente**, e o limiar
+é a primeira largura em que «finanças» não perde fracção, medido no **pior caso** (`/transacoes`, seis
+controlos) na condição da barra clássica, que é a que manda.
+
+**Correção da redacção (revisão, 2026-11-23).** Esta D35 dizia «≥1 px de folga» e o código ficou em 370,
+onde a caixa mede 49,2 e o texto 49,2 — **igualdade**, não folga. O critério verdadeiro é «o texto não
+perde fracção»: a 369 a caixa dá **49** para 49,2 de texto (perde uma fracção), a **370** iguala 49,2, e só
+a partir de **371** sobra ≥1 px. Fica 370 porque 369 já corta e 370 não, e porque um limiar de 371 não muda
+nenhum aparelho real (a 375 há 4,8 px). O comentário do código e o do teste passam a dizer este número e
+esta razão, em vez de «com folga».
+
+- **Porque:** das três saídas, é a única que deixa uma marca visível no telemóvel sem nome cortado. As
+  outras duas foram rejeitadas pelo dono do produto: ausência (a minha recomendação) e limiar em 426, que
+  só a mostra em telefones grandes.
+- **Alternativa rejeitada:** escrever «Finanças» com maiúscula por ser substantivo próprio. Rejeitada
+  porque contradiz a palavra que o utilizador escolheu; inverter é uma palavra, e ele sabe onde está.
+- **O que a torna irreversível:** nada estrutural. Fica escrita por duas razões: para ninguém «corrigir»
+  a minúscula por reflexo, e para ninguém subir o texto para o nome completo sem medir — a 375 o nome
+  completo não cabe, e voltar a ele é reabrir este impasse pela terceira vez.**Limite que sobra:** o «finanças» mede ~44 px, portanto o limiar rondará os 350–370 px: entre 320 e esse
+valor o cabeçalho continuará sem marca, agora por não caber nem a curta. O número final é o que a medição
+da volta 4 der — não o que esta frase estima.
+
+### D36 — O dinheiro do KPI nunca é cortado nem abreviado; o piso é 24 px e os seis dígitos ficam fora (T103) — **decisão do Lead (2026-11-23)**
+
+A grelha 2×2 do Painel pôs quatro cartões numa largura que não serve para números grandes: a 375 o cartão
+tem 163,5 px e o valor «Património líquido» a 30 px media 146 numa caixa de 130 — **7,2 px cortados** pelo
+`overflow: hidden`, e o mesmo acontecia entre ~376 e ~404 e nas faixas ~496–525 e ~769–797. A correção
+passou a decidir o tamanho pela **largura do cartão** (`@container`) e não pelo viewport.
+
+**Decisão:** em cada degrau de fonte tem de valer `texto + 2×padding + 2 (borda) + 4 ≤ largura do cartão`,
+com o padding devolvido **só depois** de a fonte parar de crescer. Os degraus são, hoje: 24 px com `px-2`
+(cartão ≥160), 28 px (≥183), 30 px (≥195), 36 px (≥229); o `px-4` só entra aos 16 rem (≥245). O **piso é
+24 px** — abaixo disso o número deixa de ser lido de relance, e a legibilidade vale mais do que a folga:
+a 375 ficam ~8 px livres. O valor **nunca é truncado nem abreviado** (nem reticências, nem «12,3 mil»).
+
+- **Porque:** dinheiro cortado é informação errada, e a primeira reação de quem vê «9608,55 €» cortado é
+duvidar do número, não do layout. Foi o defeito que a verificação em produção apanhou depois do primeiro
+push, e que o `document.scrollWidth` do QA não via porque o corte acontece **dentro** do cartão.
+- **Alternativa rejeitada:** baixar abaixo de 24 px ou apertar o padding a `px-1.5`. A primeira troca
+  legibilidade por estética; a segunda dava +6 px e **não** resolvia os seis dígitos, depois de este padding
+  já ter custado dois defeitos.
+- **Limite que sobra, medido e aceite:** com **seis dígitos** (`123 456,78 €` = 152,7 px a 24 px) o valor
+  não cabe em **20 dos 225 viewports** testados (pior a 375, −6,7 px). Fica como limite declarado desta
+  caixa. Quem quiser seis dígitos com destaque tem de mudar o desenho do cartão, e isso é tarefa nova, não
+  uma volta desta.
+- **O que a torna irreversível:** a invariante e o piso. Um degrau novo que não a cumpra volta a cortar, e
+  a lição desta vaga é sempre a mesma: o número tem de ser medido **no cartão**, não no documento.
