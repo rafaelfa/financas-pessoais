@@ -176,7 +176,7 @@ export function MonthCloseChecklist({ monthClose }: { readonly monthClose: Month
         )}
 
         {monthClose.steps.length === 0 ? null : (
-          <ul className="divide-y rounded-lg border">
+          <ul className="rounded-lg border">
             {monthClose.steps.map((step) => (
               <li key={step.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5">
                 {step.done ? (

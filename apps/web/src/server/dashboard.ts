@@ -118,6 +118,14 @@ export interface DashboardData {
     readonly name: string;
     readonly amountInCents: number;
   }>;
+  /**
+   * Nomes de todas as categorias não arquivadas, na ordem canónica.
+   *
+   * O donut só recebe as categorias com despesa no mês; a cor de cada uma é a
+   * posição nesta lista completa (T107), por isso é ela que viaja para a
+   * interface — um array de nomes, não uma função.
+   */
+  readonly categoryNames: readonly string[];
   readonly upcoming: ReadonlyArray<{
     readonly id: string;
     readonly date: string;
@@ -184,6 +192,7 @@ export async function getDashboard(scopeParams?: {
     prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
     prisma.category.findMany({
       where: { userId: user.id, archivedAt: null },
+      orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, kind: true, parentId: true, isInternal: true },
     }),
     prisma.transaction.findFirst({
@@ -423,6 +432,7 @@ export async function getDashboard(scopeParams?: {
       expenseInCents: item.expenseInCents,
     })),
     expensesByCategory,
+    categoryNames: categories.map((category) => category.name),
     upcoming,
     forecast: {
       days: forecast.days.map((day) => ({

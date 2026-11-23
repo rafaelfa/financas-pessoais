@@ -71,7 +71,7 @@ export default async function OrcamentoPage() {
                 }
               />
 
-              <BudgetLimitList budget={budget} />
+              <BudgetLimitList budget={budget} categoryNames={budget.categoryNames} />
             </section>
           ))}
         </div>

@@ -1,4 +1,5 @@
 import { CalendarClock, TrendingDown, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
 
 import { Amount } from '@/components/amount';
 import { ChartCard } from '@/components/chart-card';
@@ -77,10 +78,10 @@ export function DashboardForecast({
   const listed = changes.slice(0, MAX_LISTED_CHANGES);
   const remaining = changes.length - listed.length;
   /*
-   * A série nunca vem vazia (o primeiro dia é hoje), por isso o estado vazio não
-   * se pode medir pelo comprimento: mede-se por **haver ou não o que prever** —
-   * saldo diferente de zero ou algo agendado. Sem isso, um utilizador sem contas
-   * via um gráfico plano a zero em vez de uma explicação.
+   * A série **pode vir vazia** ou plana a zero (uma conta sem movimentos): o
+   * primeiro dia é hoje, mas o saldo e os itens podem ser todos zero. O estado
+   * vazio do gráfico mede-se por isso mesmo — nenhum saldo diferente de zero em
+   * nenhum dia — e não pelo comprimento.
    */
   const hasAnythingToForecast = forecast.days.some(
     (day) => day.balanceInCents !== 0 || (day.items?.length ?? 0) > 0,
@@ -107,133 +108,151 @@ export function DashboardForecast({
           ? undefined
           : `De hoje até ${formatDayLong(last.date)}: o saldo previsto conta com as recorrências ativas e as faturas por pagar nas respetivas datas de vencimento.`)
       }
-      isEmpty={!hasAnythingToForecast}
-      emptyMessage="Ainda não há saldo nem movimentos agendados para prever. Assim que houver uma conta com movimentos, uma recorrência ativa ou uma fatura por pagar, a previsão aparece aqui."
       className={className}
     >
-      <div className="space-y-4">
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-0.5">
-            <dt className="text-xs text-muted-foreground">Saldo hoje</dt>
-            <dd className="text-base font-medium">
-              {start === null ? (
-                <span className="text-muted-foreground">—</span>
-              ) : (
-                <Amount amountInCents={start.balanceInCents} tone="neutral" />
-              )}
-            </dd>
-          </div>
-
-          <div className="space-y-0.5">
-            <dt className="text-xs text-muted-foreground">Ponto mais baixo</dt>
-            <dd className="text-base font-medium">
-              <Amount
-                amountInCents={forecast.lowestBalanceInCents}
-                tone={forecast.lowestBalanceInCents < 0 ? 'expense' : 'neutral'}
-              />
-              {forecast.lowestDate === null ? null : (
-                <span className="block text-xs font-normal text-muted-foreground">
-                  a {formatDayLong(forecast.lowestDate)}
-                </span>
-              )}
-            </dd>
-          </div>
-
-          <div className="space-y-0.5">
-            <dt className="text-xs text-muted-foreground">Fica negativo?</dt>
-            <dd>
-              {forecast.goesNegative ? (
-                <Badge variant="destructive">
-                  <TrendingDown className="size-3" aria-hidden />
-                  Sim
-                  {negativeSince === null ? '' : `, a ${formatDayLong(negativeSince)}`}
-                </Badge>
-              ) : (
-                <Badge variant="secondary">
-                  <TrendingUp className="size-3" aria-hidden />
-                  Não
-                </Badge>
-              )}
-            </dd>
-          </div>
-        </dl>
-
-        <DashboardForecastChart data={points} />
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Dias em que o saldo muda</h3>
-
-          {listed.length === 0 ? (
-            <p className="rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground">
-              Não há nada agendado neste período: o saldo mantém-se em{' '}
-              <Amount
-                amountInCents={forecast.lowestBalanceInCents}
-                tone="neutral"
-                className="text-foreground"
-              />
-              . As recorrências e as faturas por pagar aparecem aqui assim que existirem.
-            </p>
-          ) : (
-            <>
-              <ul className="divide-y rounded-lg border">
-                {listed.map((change) => (
-                  <li
-                    key={change.date}
-                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm"
-                  >
-                    <div className="flex min-w-0 flex-col">
-                      <span className="font-medium">{formatDayLong(change.date)}</span>
-                      {change.items.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">
-                          {change.deltaInCents < 0
-                            ? 'O saldo desce neste dia.'
-                            : 'O saldo sobe neste dia.'}
-                        </span>
-                      ) : (
-                        <ul className="mt-0.5 space-y-0.5 text-xs text-muted-foreground">
-                          {change.items.map((item, index) => (
-                            <li key={`${item.label}-${String(index)}`}>
-                              {item.label} · <Amount amountInCents={item.amountInCents} withSign />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {change.balanceInCents < 0 ? (
-                        <Badge variant="destructive" className="mt-1 w-fit">
-                          Saldo negativo
-                        </Badge>
-                      ) : null}
-                    </div>
-
-                    <div className="text-right">
-                      <Amount amountInCents={change.deltaInCents} withSign />
-                      <span className="block text-xs text-muted-foreground">
-                        fica em <Amount amountInCents={change.balanceInCents} tone="neutral" />
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-              {remaining > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {remaining === 1
-                    ? 'Há mais 1 dia com alterações neste período.'
-                    : `Há mais ${remaining} dias com alterações neste período.`}
-                </p>
-              ) : null}
-            </>
-          )}
+      {/*
+        T107: o vazio tem **um dono só** — este componente. Antes, o `isEmpty` do
+        `ChartCard` desenhava outra frase (sem ligação) dentro de uma moldura
+        tracejada e o ramo vazio do gráfico nunca chegava ao ecrã.
+      */}
+      {!hasAnythingToForecast ? (
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Ainda não há nada para prever.</p>
+          <p className="text-muted-foreground">
+            A previsão aparece quando houver uma conta com saldo ou movimentos, uma recorrência
+            ativa ou uma fatura por pagar.{' '}
+            <Link href="/recorrencias" className="underline underline-offset-2">
+              Registar uma recorrência
+            </Link>
+            .
+          </p>
         </div>
+      ) : (
+        <div className="space-y-4">
+          <dl className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-0.5">
+              <dt className="text-xs text-muted-foreground">Saldo hoje</dt>
+              <dd className="text-base font-medium">
+                {start === null ? (
+                  <span className="text-muted-foreground">—</span>
+                ) : (
+                  <Amount amountInCents={start.balanceInCents} tone="neutral" />
+                )}
+              </dd>
+            </div>
 
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <CalendarClock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          <span>
-            A previsão só inclui o que está agendado (recorrências ativas e faturas por pagar) e o
-            saldo atual das contas. Gastos que ainda não registaste não aparecem aqui.
-          </span>
-        </p>
-      </div>
+            <div className="space-y-0.5">
+              <dt className="text-xs text-muted-foreground">Ponto mais baixo</dt>
+              <dd className="text-base font-medium">
+                <Amount
+                  amountInCents={forecast.lowestBalanceInCents}
+                  tone={forecast.lowestBalanceInCents < 0 ? 'expense' : 'neutral'}
+                />
+                {forecast.lowestDate === null ? null : (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    a {formatDayLong(forecast.lowestDate)}
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div className="space-y-0.5">
+              <dt className="text-xs text-muted-foreground">Fica negativo?</dt>
+              <dd>
+                {forecast.goesNegative ? (
+                  <Badge variant="destructive">
+                    <TrendingDown className="size-3" aria-hidden />
+                    Sim
+                    {negativeSince === null ? '' : `, a ${formatDayLong(negativeSince)}`}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">
+                    <TrendingUp className="size-3" aria-hidden />
+                    Não
+                  </Badge>
+                )}
+              </dd>
+            </div>
+          </dl>
+
+          <DashboardForecastChart data={points} />
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Dias em que o saldo muda</h3>
+
+            {listed.length === 0 ? (
+              <p className="py-2 text-sm text-muted-foreground">
+                Não há nada agendado neste período: o saldo mantém-se em{' '}
+                <Amount
+                  amountInCents={forecast.lowestBalanceInCents}
+                  tone="neutral"
+                  className="text-foreground"
+                />
+                . As recorrências e as faturas por pagar aparecem aqui assim que existirem.
+              </p>
+            ) : (
+              <>
+                <ul className="divide-y rounded-lg border">
+                  {listed.map((change) => (
+                    <li
+                      key={change.date}
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm"
+                    >
+                      <div className="flex min-w-0 flex-col">
+                        <span className="font-medium">{formatDayLong(change.date)}</span>
+                        {change.items.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            {change.deltaInCents < 0
+                              ? 'O saldo desce neste dia.'
+                              : 'O saldo sobe neste dia.'}
+                          </span>
+                        ) : (
+                          <ul className="mt-0.5 space-y-0.5 text-xs text-muted-foreground">
+                            {change.items.map((item, index) => (
+                              <li key={`${item.label}-${String(index)}`}>
+                                {item.label} ·{' '}
+                                <Amount amountInCents={item.amountInCents} withSign />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {change.balanceInCents < 0 ? (
+                          <Badge variant="destructive" className="mt-1 w-fit">
+                            Saldo negativo
+                          </Badge>
+                        ) : null}
+                      </div>
+
+                      <div className="text-right">
+                        <Amount amountInCents={change.deltaInCents} withSign />
+                        <span className="block text-xs text-muted-foreground">
+                          fica em <Amount amountInCents={change.balanceInCents} tone="neutral" />
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {remaining > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {remaining === 1
+                      ? 'Há mais 1 dia com alterações neste período.'
+                      : `Há mais ${remaining} dias com alterações neste período.`}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <CalendarClock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>
+              A previsão só inclui o que está agendado (recorrências ativas e faturas por pagar) e o
+              saldo atual das contas. Gastos que ainda não registaste não aparecem aqui.
+            </span>
+          </p>
+        </div>
+      )}
     </ChartCard>
   );
 }

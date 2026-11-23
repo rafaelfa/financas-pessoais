@@ -42,8 +42,8 @@ export function ReportMonthlyEvolution({ byMonth }: { readonly byMonth: ReportVi
       <ChartCard
         title="Evolução mensal"
         description="Entradas e saídas dos últimos meses, no regime escolhido. O resultado de cada mês está na tabela abaixo."
-        isEmpty={byMonth.length === 0}
-        emptyMessage="Ainda não há meses suficientes para desenhar a evolução."
+        /* T107: o vazio é do gráfico (`cashflow-chart.tsx`), não do cartão — com
+           os dois a decidir, o cartão ganhava e a frase certa nunca aparecia. */
       >
         <CashflowChart data={data} />
       </ChartCard>

@@ -217,6 +217,7 @@ export default async function TransacoesPage({
           sumInCents={transactions.sumInCents}
           accounts={accounts}
           categories={categories}
+          categoryNames={categories.map((category) => category.name)}
           descriptions={descriptions}
           hasActiveFilters={hasActiveFilters}
         />

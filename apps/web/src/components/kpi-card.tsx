@@ -30,7 +30,7 @@ export function KpiCard({
   return (
     <Card className={cn('@container gap-2', className)}>
       <CardHeader className="px-2 pb-0 @min-[16rem]:px-4">
-        <CardTitle className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <CardTitle className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           {Icon ? <Icon className="size-3.5" aria-hidden /> : null}
           {label}
         </CardTitle>
@@ -53,7 +53,7 @@ export function KpiCard({
              */
             prominent
               ? 'text-2xl @min-[12.5rem]:text-3xl @min-[15rem]:text-4xl'
-              : 'text-2xl @min-[12.5rem]:text-[1.75rem]',
+              : 'text-lg @min-[12.5rem]:text-xl',
           )}
         >
           {children}

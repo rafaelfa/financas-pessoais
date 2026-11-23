@@ -82,7 +82,7 @@ export default async function RelatoriosPage({
 
         <ReportMonthlyEvolution byMonth={report.byMonth} />
 
-        <ReportCategoryBreakdown report={report} />
+        <ReportCategoryBreakdown report={report} categoryNames={report.categoryNames} />
 
         <ReportComparison comparison={comparison} />
       </div>

@@ -3,6 +3,7 @@ import { PieChart } from 'lucide-react';
 import { Amount } from '@/components/amount';
 import { CategoryDonut, type DonutSlice } from '@/components/category-donut';
 import { ChartCard } from '@/components/chart-card';
+import { categoryColourMap, isUncategorised } from '@/lib/category-colour';
 import { EmptyState } from '@/components/empty-state';
 import { formatPercentage } from '@/components/report-basis';
 import type { ReportView } from '@/server/reports';
@@ -26,7 +27,14 @@ const TOP_SLICES = 8;
 const INTERNAL_CATEGORY_NOTE =
   'As categorias internas — Transferência, Fatura de cartão, Ajuste de saldo e Investimento — aparecem no extrato mas nunca contam como despesa nem como ganho. É por isso que não estão nesta lista.';
 
-export function ReportCategoryBreakdown({ report }: { readonly report: ReportView }) {
+export function ReportCategoryBreakdown({
+  report,
+  categoryNames,
+}: {
+  readonly report: ReportView;
+  /** Nomes de todas as categorias não arquivadas, na ordem canónica: dá a cor. */
+  readonly categoryNames: readonly string[];
+}) {
   const expenses = report.byCategory
     .filter((category) => category.kind === 'expense' && category.amountInCents !== 0)
     .sort((left, right) => right.amountInCents - left.amountInCents);
@@ -44,6 +52,18 @@ export function ReportCategoryBreakdown({ report }: { readonly report: ReportVie
   }
 
   const slices = buildSlices(expenses);
+  /*
+   * O mapa é do ecrã, não do gráfico: a lista pinta todas as categorias com
+   * despesa e o donut só as maiores, por isso os dois têm de partilhar a mesma
+   * resolução de colisões — senão a mesma categoria saía com duas cores aqui.
+   */
+  const colours = categoryColourMap(
+    [
+      ...expenses.map((category) => category.categoryName),
+      ...slices.map((slice) => slice.categoria),
+    ],
+    categoryNames,
+  );
 
   return (
     <section aria-label="Despesas por categoria" className="space-y-4">
@@ -51,7 +71,7 @@ export function ReportCategoryBreakdown({ report }: { readonly report: ReportVie
         title="Despesas por categoria"
         description={`${describeBasis(report)} O gráfico mostra as maiores; a lista abaixo tem todas.`}
       >
-        <CategoryDonut data={slices} />
+        <CategoryDonut data={slices} categoryNames={categoryNames} colours={colours} />
       </ChartCard>
 
       <ul className="divide-y rounded-xl border">
@@ -60,7 +80,19 @@ export function ReportCategoryBreakdown({ report }: { readonly report: ReportVie
             key={category.categoryId}
             className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm"
           >
-            <span className="min-w-0 flex-1 truncate font-medium">{category.categoryName}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              {/* T107: a cor da categoria é a mesma em todos os ecrãs; o nome fica
+                  sempre escrito — a cor nunca é o único portador. «Sem categoria»
+                  não leva ponto: não é uma categoria. */}
+              {isUncategorised(category.categoryName) ? null : (
+                <span
+                  aria-hidden
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: colours[category.categoryName] }}
+                />
+              )}
+              <span className="truncate font-medium">{category.categoryName}</span>
+            </span>
 
             <span className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">

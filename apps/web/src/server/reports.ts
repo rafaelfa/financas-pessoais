@@ -70,6 +70,13 @@ export interface ReportView {
   readonly averageDailyExpenseInCents: number;
   readonly byCategory: readonly ReportCategoryLine[];
   readonly byMonth: readonly ReportMonthLine[];
+  /**
+   * Nomes de todas as categorias não arquivadas, na ordem canónica (T107).
+   *
+   * `byCategory` só traz as categorias com despesa no período; a cor de cada uma
+   * é a posição nesta lista completa, que é o que a interface recebe.
+   */
+  readonly categoryNames: readonly string[];
 }
 
 export interface ReportDelta {
@@ -155,7 +162,10 @@ async function loadContext() {
 
   const [transactions, categories] = await Promise.all([
     prisma.transaction.findMany({ where: { userId: user.id }, select: TRANSACTION_SELECT }),
-    prisma.category.findMany({ where: { userId: user.id } }),
+    prisma.category.findMany({
+      where: { userId: user.id },
+      orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    }),
   ]);
 
   return {
@@ -163,6 +173,9 @@ async function loadContext() {
     today: todayInLisbon(),
     transactions,
     categories,
+    categoryNames: categories
+      .filter((category) => category.archivedAt === null)
+      .map((category) => category.name),
     financeTransactions: transactions.map(toFinanceTransaction),
     financeCategories: categories.map(toFinanceCategory),
   };
@@ -285,6 +298,7 @@ function buildReport(args: {
     averageDailyExpenseInCents: Math.round(result.expenseInCents / days),
     byCategory,
     byMonth,
+    categoryNames: context.categoryNames,
   };
 }
 

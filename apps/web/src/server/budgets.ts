@@ -53,6 +53,13 @@ export interface BudgetView {
   readonly periodStart: string;
   readonly periodEnd: string;
   readonly totalAmountInCents: number;
+  /**
+   * Nomes de todas as categorias não arquivadas, na ordem canónica (T107).
+   *
+   * A cor de cada categoria é a posição nesta lista, não um hash: os limites e
+   * as categorias sem limite recebem a mesma cor que em Transações e Relatórios.
+   */
+  readonly categoryNames: readonly string[];
   readonly limits: readonly BudgetLimitView[];
   readonly withoutLimit: readonly {
     categoryId: string;
@@ -244,6 +251,7 @@ export async function listBudgets(): Promise<BudgetView[]> {
       periodStart: period.start,
       periodEnd: period.displayEnd,
       totalAmountInCents: budget.totalAmountInCents,
+      categoryNames: categories.map((category) => category.name),
       limits,
       withoutLimit: noLimit.map((category) => ({
         categoryId: category.id,

@@ -106,11 +106,7 @@ export function DashboardScopeSwitch({
   const pickerLabel = viewKind === 'cartao' ? 'Cartão' : 'Conta';
 
   return (
-    <section
-      aria-labelledby={GROUP_LABEL_ID}
-      className="mb-6 rounded-xl border p-4"
-      data-testid="painel-ambito"
-    >
+    <section aria-labelledby={GROUP_LABEL_ID} className="mb-6" data-testid="painel-ambito">
       <p id={GROUP_LABEL_ID} className="text-sm font-medium">
         Ver por
       </p>
@@ -184,7 +180,7 @@ export function DashboardScopeSwitch({
                 </SelectContent>
               </Select>
             ) : (
-              <p className="rounded-lg border border-dashed px-3 py-1.5 text-xs text-muted-foreground">
+              <p className="py-1 text-xs text-muted-foreground">
                 {viewKind === 'cartao'
                   ? 'Ainda não tens cartões. Cria um em Cartões para veres aqui os lançamentos dele.'
                   : 'Ainda não tens contas. Cria uma em Contas para veres aqui os movimentos dela.'}

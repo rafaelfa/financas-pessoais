@@ -12,7 +12,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 import { Amount } from '@/components/amount';
@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { categoryColourMap, isUncategorised } from '@/lib/category-colour';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -113,6 +114,7 @@ export function TransactionTable({
   sumInCents,
   accounts,
   categories,
+  categoryNames,
   descriptions,
   hasActiveFilters,
 }: {
@@ -121,6 +123,8 @@ export function TransactionTable({
   readonly sumInCents: number;
   readonly accounts: readonly AccountView[];
   readonly categories: readonly CategoryView[];
+  /** Nomes de todas as categorias não arquivadas, na ordem canónica: dá a cor. */
+  readonly categoryNames: readonly string[];
   readonly descriptions: readonly DescriptionUsage[];
   readonly hasActiveFilters: boolean;
 }) {
@@ -145,6 +149,18 @@ export function TransactionTable({
    */
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const { hidden: amountsHidden } = usePrivacy();
+
+  /* O ecrã pinta as categorias desta página do extrato: o mapa resolve as colisões entre elas. */
+  const colours = useMemo(
+    () =>
+      categoryColourMap(
+        items.flatMap((transaction) =>
+          transaction.categoryName === null ? [] : [transaction.categoryName],
+        ),
+        categoryNames,
+      ),
+    [items, categoryNames],
+  );
 
   const selectedOnPage = items.filter((transaction) => selectedIds.has(transaction.id));
   const allOnPageSelected = items.length > 0 && selectedOnPage.length === items.length;
@@ -449,6 +465,14 @@ export function TransactionTable({
                         <span className="text-muted-foreground">Sem categoria</span>
                       ) : (
                         <span className="flex items-center gap-1.5">
+                          {/* T107: mesmo ponto de cor do Orçamento e dos Relatórios. */}
+                          {isUncategorised(transaction.categoryName) ? null : (
+                            <span
+                              aria-hidden
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: colours[transaction.categoryName] }}
+                            />
+                          )}
                           {transaction.categoryName}
                           {isInternal ? (
                             <Badge variant="secondary" className="font-normal">

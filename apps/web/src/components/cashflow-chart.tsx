@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 import { usePrivacy } from '@/components/privacy-mode';
@@ -38,6 +39,22 @@ const euroCompact = new Intl.NumberFormat('pt-PT', {
  */
 export function CashflowChart({ data }: { readonly data: readonly CashflowPoint[] }) {
   const { hidden } = usePrivacy();
+
+  /* T107: seis meses sem dados são uma moldura vazia — diz-se o que falta. */
+  if (data.length === 0 || data.every((item) => item.entradas === 0 && item.saidas === 0)) {
+    return (
+      <div className="flex h-48 flex-col items-start justify-center gap-1 rounded-xl border bg-card px-4 py-6 text-sm sm:h-64">
+        <p className="font-medium">Ainda não há movimentos nestes seis meses.</p>
+        <p className="text-muted-foreground">
+          O fluxo de caixa aparece assim que registares um ganho ou um gasto.{' '}
+          <Link href="/transacoes" className="underline underline-offset-2">
+            Registar um lançamento
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
 
   return (
     <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">

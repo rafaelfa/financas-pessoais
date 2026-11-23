@@ -37,6 +37,14 @@ const euroCompact = new Intl.NumberFormat('pt-PT', {
 export function DashboardForecastChart({ data }: { readonly data: readonly ForecastPoint[] }) {
   const { hidden } = usePrivacy();
 
+  /*
+   * T107: sem pontos não há gráfico — e sem frase nenhuma: o estado vazio tem um
+   * dono só, o `dashboard-forecast.tsx`. Aqui é só uma guarda defensiva.
+   */
+  if (data.length === 0) {
+    return null;
+  }
+
   return (
     <ChartContainer config={CONFIG} className="h-48 w-full sm:h-64">
       <AreaChart data={[...data]} accessibilityLayer margin={{ top: 8, right: 8 }}>

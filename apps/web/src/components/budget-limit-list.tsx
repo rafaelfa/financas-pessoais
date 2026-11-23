@@ -1,7 +1,9 @@
 'use client';
 
 import { Pencil, PiggyBank, Plus, Trash, TriangleAlert } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
+
+import { categoryColourMap } from '@/lib/category-colour';
 import { toast } from 'sonner';
 
 import { Amount } from '@/components/amount';
@@ -41,8 +43,25 @@ const DEFAULT_THRESHOLD_PCT = 80;
 const TOUCH = 'min-h-11 sm:min-h-8';
 const ICON_TOUCH = 'min-h-11 min-w-11 sm:min-h-7 sm:min-w-7';
 
-export function BudgetLimitList({ budget }: { readonly budget: BudgetView }) {
+export function BudgetLimitList({
+  budget,
+  categoryNames,
+}: {
+  readonly budget: BudgetView;
+  /** Nomes de todas as categorias não arquivadas, na ordem canónica: dá a cor. */
+  readonly categoryNames: readonly string[];
+}) {
   const [addingCategoryId, setAddingCategoryId] = useState<string | null>(null);
+
+  /* Só os limites levam ponto neste ecrã: o mapa resolve as colisões entre eles. */
+  const colours = useMemo(
+    () =>
+      categoryColourMap(
+        budget.limits.map((limit) => limit.categoryName),
+        categoryNames,
+      ),
+    [budget.limits, categoryNames],
+  );
 
   /** Categorias que ainda podem receber um limite. */
   const categoryOptions = budget.withoutLimit.map((category) => ({
@@ -85,7 +104,12 @@ export function BudgetLimitList({ budget }: { readonly budget: BudgetView }) {
         <ul className="space-y-3">
           {budget.limits.map((limit) => (
             <li key={limit.id}>
-              <LimitRow budgetId={budget.id} limit={limit} categoryOptions={categoryOptions} />
+              <LimitRow
+                budgetId={budget.id}
+                limit={limit}
+                categoryOptions={categoryOptions}
+                colours={colours}
+              />
             </li>
           ))}
         </ul>
@@ -148,10 +172,12 @@ function LimitRow({
   budgetId,
   limit,
   categoryOptions,
+  colours,
 }: {
   readonly budgetId: string;
   readonly limit: BudgetLimitView;
   readonly categoryOptions: readonly { value: string; label: string }[];
+  readonly colours: Readonly<Record<string, string>>;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -183,7 +209,15 @@ function LimitRow({
     <div className="space-y-3 rounded-xl border p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
-          <p className="font-medium">{limit.categoryName}</p>
+          <p className="flex items-center gap-2 font-medium">
+            {/* T107: o mesmo ponto de cor de Transações e Relatórios. */}
+            <span
+              aria-hidden
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colours[limit.categoryName] }}
+            />
+            {limit.categoryName}
+          </p>
           <p className="text-xs text-muted-foreground">
             Limiar de aviso: {threshold}%{limit.alertsEnabled ? null : ' · alertas desligados'}
           </p>

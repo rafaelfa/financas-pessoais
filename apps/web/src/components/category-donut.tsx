@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Cell, Label, Pie, PieChart } from 'recharts';
 
+import { categoryColourMap } from '@/lib/category-colour';
 import {
   ChartContainer,
   ChartLegend,
@@ -19,17 +20,6 @@ export interface DonutSlice {
   readonly valor: number;
 }
 
-const SERIES = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-6)',
-  'var(--chart-7)',
-  'var(--chart-8)',
-];
-
 /**
  * Despesas por categoria.
  *
@@ -37,20 +27,44 @@ const SERIES = [
  * por quem tem daltonismo. O valor total fica no centro, porque é a informação
  * que se procura primeiro.
  */
-export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }) {
+export function CategoryDonut({
+  data,
+  categoryNames,
+  colours,
+}: {
+  readonly data: readonly DonutSlice[];
+  /** Nomes de todas as categorias não arquivadas, na ordem canónica: dá a base da cor. */
+  readonly categoryNames: readonly string[];
+  /**
+   * Mapa do ecrã, quando o donut é só uma parte do que está pintado. A lista de
+   * Relatórios tem nomes que as fatias não mostram; sem este mapa, a mesma
+   * categoria podia sair com duas cores no mesmo ecrã.
+   */
+  readonly colours?: Readonly<Record<string, string>>;
+}) {
   const total = useMemo(() => data.reduce((sum, slice) => sum + slice.valor, 0), [data]);
   const { hidden } = usePrivacy();
   const totalText = formatCurrency(Math.round(total * 100), 'EUR');
 
+  const palette = useMemo(
+    () =>
+      colours ??
+      categoryColourMap(
+        data.map((slice) => slice.categoria),
+        categoryNames,
+      ),
+    [colours, data, categoryNames],
+  );
+
   const config = useMemo(
     () =>
       Object.fromEntries(
-        data.map((slice, index) => [
+        data.map((slice) => [
           slice.categoria,
-          { label: slice.categoria, color: SERIES[index % SERIES.length] },
+          { label: slice.categoria, color: palette[slice.categoria] },
         ]),
       ),
-    [data],
+    [data, palette],
   );
 
   return (
@@ -65,8 +79,8 @@ export function CategoryDonut({ data }: { readonly data: readonly DonutSlice[] }
           outerRadius={92}
           strokeWidth={2}
         >
-          {data.map((slice, index) => (
-            <Cell key={slice.categoria} fill={SERIES[index % SERIES.length]} />
+          {data.map((slice) => (
+            <Cell key={slice.categoria} fill={palette[slice.categoria]} />
           ))}
           <Label
             content={({ viewBox }) => {

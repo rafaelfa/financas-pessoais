@@ -200,7 +200,7 @@ export default async function PainelPage({
       <p
         id={SCOPE_NOTICE_ID}
         role="status"
-        className="mb-6 flex items-start gap-2 rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground"
+        className="mb-6 flex items-start gap-2 text-sm text-muted-foreground"
       >
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>{scope.notice}</span>
@@ -254,7 +254,7 @@ export default async function PainelPage({
       {scopeNotice}
 
       {hasScope && scopedLabel !== null ? (
-        <p role="status" className="mb-4 rounded-xl border border-dashed px-4 py-2 text-sm">
+        <p role="status" className="mb-4 text-sm text-muted-foreground">
           <span className="font-medium">
             {isCardScope ? 'A pensar pelo cartão' : 'A ver a conta'}:
           </span>
@@ -271,10 +271,17 @@ export default async function PainelPage({
 
       {/* KPIs organizados: património → entradas → saídas → sobra */}
       <section
-        className="mb-6 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 xl:grid-cols-4"
+        className="mb-6 grid grid-cols-1 gap-4 min-[375px]:grid-cols-2 xl:grid-cols-5"
         aria-label="Indicadores principais"
       >
-        <KpiCard label={firstKpiLabel()} hint={firstKpiHint()} prominent>
+        {/* T107: o herói domina por **largura de cartão** (duas colunas) — o valor
+            continua a 24 px com os degraus `@container` que a D36 fixou. */}
+        <KpiCard
+          label={firstKpiLabel()}
+          hint={firstKpiHint()}
+          prominent
+          className="min-[375px]:col-span-2 xl:col-span-2"
+        >
           {isCardScope ? (
             <Amount amountInCents={card?.outstandingInCents ?? 0} tone="expense" />
           ) : data.balanceInCents !== null ? (
@@ -328,8 +335,11 @@ export default async function PainelPage({
           <Amount amountInCents={data.cash.expenseInCents} tone="expense" />
         </KpiCard>
 
+        {/* T107: entre 375 e 1279 a grelha tem duas colunas; sem isto o cartão
+            ficava sozinho com meia linha vazia ao lado. A 1440 volta a uma. */}
         <KpiCard
           label="Sobra do mês"
+          className="min-[375px]:col-span-2 xl:col-span-1"
           hint={
             accrualFirst
               ? 'Compras e entradas do cartão, em visão de competência'
@@ -350,7 +360,7 @@ export default async function PainelPage({
         aria-describedby={scope.notice === null ? undefined : SCOPE_NOTICE_ID}
         className="mt-6 space-y-4"
       >
-        <p className="rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {hasScope
             ? 'A previsão de saldo e o fecho do mês são sempre da carteira toda: prever o saldo de um cartão — que não guarda dinheiro — não diria nada, e o fecho é uma tarefa global. O que está acima é que segue o âmbito escolhido.'
             : 'A previsão de saldo e o fecho do mês são da carteira toda: contam todas as contas, as recorrências ativas e as faturas por pagar.'}
@@ -381,9 +391,6 @@ export default async function PainelPage({
               ? 'Entradas e saídas, mês a mês, no regime que escolheste — só do âmbito que estás a ver.'
               : 'Entradas e saídas, mês a mês, no regime que escolheste.'
           }
-          isEmpty={data.series.every(
-            (item) => item.incomeInCents === 0 && item.expenseInCents === 0,
-          )}
           className="lg:col-span-3"
         >
           <CashflowChart data={cashflow} />
@@ -395,7 +402,7 @@ export default async function PainelPage({
           isEmpty={donut.length === 0}
           className="lg:col-span-2"
         >
-          <CategoryDonut data={donut} />
+          <CategoryDonut data={donut} categoryNames={data.categoryNames} />
         </ChartCard>
       </section>
 
