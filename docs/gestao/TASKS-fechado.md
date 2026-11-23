@@ -9,6 +9,289 @@ Ordem: mais recente primeiro.
 
 ---
 
+## Bloco de fecho — T107 (fechada 2026-11-23)
+
+- **Fechado:** T107 — o passe visual que punha a superfície ao nível dos concorrentes: um número herói por
+  ecrã, menos caixas no Painel, cor por categoria em oito séries, superfícies mais macias e vazios a sério nos
+  dois gráficos.
+- **Prova:** QA **PASS** na volta 6 (`relatorios/T107-qa.md`): 8 fatias com **8 cores distintas**, as oito
+  primeiras posições também 8 de 8, a categoria arquivada sem colidir com a viva e estável entre cargas, 11
+  nomes → 8 cores e 3 repetições (só acima de oito), «Sem categoria» com 0 pontos; suite de frio **162 passed
+  (9.7m), EXIT=0**, `BUILD_ID o0n_BOgpFcGFM8-AjTe55`. Gate do Dev **605 testes** (inclui o teste do mapa de
+  cores, que cai com a mutação que o Revisor descreveu), `BUILD_ID F4VV8mDqmUtxREFiyl4TD`. Revisor:
+  «0 BLOQUEIA, 0 DEVE, 0 OPCIONAIS — pode commitar: sim». Fronteiras no primeiro ecrã a 1440: **8 → 7**;
+  contrastes calculados (`chart-1..8` claros 3,74–5,92; texto da categoria 17,35:1 / 14,18:1). Commit de
+  código `f696382`.
+- **O que isto não resolve:** (i) **criar uma categoria pode mudar até 28 cores** — `categories-actions.ts:89`
+  grava `sortOrder: value.sortOrder ?? 0`, por isso a nova entra à frente por nome e desloca as posições
+  seguintes; é o mesmo conflito de fundo (posição vs nome) e pede tarefa própria; (ii) acima de **oito nomes
+  pintados** no mesmo ecrã a repetição de cor é inevitável (há oito tokens) e a nona fica na base; (iii) a mesma
+  categoria pode **desviar-se num ecrã e não noutro** — é o preço da resolução por ecrã, aceite pelo utilizador
+  e escrito no critério 3 revisto; (iv) fica uma **caixa tracejada** do `empty-state` abaixo da dobra («Nada por
+  pagar nos próximos 7 dias»), fora do critério e com o padrão repetido em 15 componentes; (v) `apps/web` não
+  tem testes de componente (o `vitest` vive em `packages/shared`), por isso o mapa é provado em unidade fora da
+  app e o resto por e2e.
+- **Aberto:** nada bloqueado. **T108 candidata** (`sortOrder = max + 1` no create, para criar não deslocar
+  cores) — precisa da autorização do utilizador para abrir vaga.
+- **Repositório:** `main` com `f696382` (código, testes e relatórios) e o commit de gestão que se lhe segue,
+  ambos empurrados para `origin`; produção **não** foi tocada nesta tarefa.
+- **Decisão:** abrir ou não a T108 do `sortOrder`, e se esta entrega vai a produção (o deploy é sempre decisão
+  do utilizador).
+
+---
+
+## T107 — Passe visual: um herói, menos caixas, cor por categoria (2026-11-23)
+
+**Porque:** o utilizador comparou a nossa interface com Mobills, Organizze, Wallet, Toshl e Spendee e disse o
+que interessa: a estrutura está boa, **a superfície não**. A análise (`_analise/ANALISE-concorrentes-produto-e-design.md`,
+fora do repositório) isolou cinco causas: um acento só a fazer três trabalhos, caixas a mais, escala de tipo
+plana, moldura vazia em vez de estado vazio e superfícies duras. Isto não é sobre funcionalidades.
+
+**Ficheiros que pode escrever:** `apps/web/src/app/(app)/page.tsx`,
+`apps/web/src/components/{ui/card.tsx, dashboard-forecast-chart.tsx, dashboard-forecast.tsx,
+dashboard-forecast-alert.tsx, cashflow-chart.tsx, month-close-checklist.tsx, budget-overview.tsx,
+budget-status.tsx, budget-limit-list.tsx, category-donut.tsx, empty-state.tsx, amount.tsx, kpi-card.tsx,
+transaction-table.tsx, dashboard-scope-switch.tsx, report-category-breakdown.tsx}`, `app/(app)/relatorios/page.tsx`,
+`app/(app)/orcamento/page.tsx` e `apps/web/src/lib/category-colour.ts` (novo: cor estável por categoria). Mais nada: **sem schema, sem dependências novas, sem rotas novas**.
+
+**Critério de aceitação (verificável):**
+
+1. **Um número herói por ecrã.** No Painel, «Património líquido» passa a dominar por **posição, tamanho de
+   cartão e peso**, não por um valor gigante: **a D36 continua a mandar** — o valor do KPI fica a **24 px** com
+   os degraus por `@container`, e nenhum cartão pode cortar o «€». Os outros três números descem a um segundo
+   plano (18–20 px, mesma família e `font-numeric`). Rótulos deixam as MAIÚSCULAS: 12 px, sentence case.
+2. **Menos caixas no Painel.** «Ver por» deixa de ser um cartão (fica na linha do título, com o mesmo controlo
+   segmentado); a nota «A previsão de saldo e o fecho do mês…» deixa o tracejado e passa a uma linha
+   `muted-foreground`. A checklist do fecho perde as divisórias onde o espaçamento já separa. Contagem de
+   fronteiras visíveis no primeiro ecrã: **antes / depois** medida e escrita no relatório.
+3. **Cor por categoria, com sistema.** Cada categoria ganha uma cor de `chart-1..8` aplicada por
+   chip/ponto, **nunca só por cor** — o nome fica sempre escrito. Zero hex, zero `rgb()`: só tokens.
+   **A estabilidade é por ecrã, e é este o critério revisto a 2026-11-23** (era «a mesma cor nos quatro
+   sítios», que o código deixou de poder cumprir quando a resolução de colisões passou a ser local): a mesma
+   categoria tem a **mesma cor em todos os sítios onde aparece sem desvio**, e **nunca duas cores no mesmo
+   ecrã**; quando a base está tomada, desvia para a primeira cor livre e aí pode diferir de outro ecrã. Até
+   oito nomes pintados não há repetição; acima de oito, a nona repete e isso é aceite. Testemunho da medição:
+   §12 do relatório do Dev e §«Volta 6» do QA.
+4. **Superfícies.** `rounded-xl` e **uma** sombra do sistema nos cartões; borda só onde separa de facto. Medir
+   que nenhum cartão muda de altura por causa do raio e que o foco visível continua a existir.
+5. **Estados vazios a sério** no gráfico de previsão e no fluxo de 6 meses quando não há dados: uma frase que
+   diz o que falta e a ação que o resolve; nunca uma moldura vazia nem um eixo com 0 €.
+6. **Acessibilidade e temas:** 4,5:1 para texto e 3:1 para ícone/bordo, **calculado** e apresentado por limite;
+   claro e escuro; 1440 e 375 sem transbordo (`document.scrollWidth` = largura, medido por cartão e não só no
+   documento).
+7. Gate do `AGENTS.md` verde, com o número de testes por extenso. Nenhuma asserção antiga enfraquecida.
+
+**O que NÃO fazer:** não tocar em lógica, dados, rotas nem textos de negócio; não introduzir família
+tipográfica, sombra própria, gradiente, emoji ou animação em loop; não copiar nada dos sites de referência —
+nem cor, nem texto, nem ícone; não mexer no que a D36 fixou para além do que o critério 1 diz; no máximo 3
+dependências novas (**nenhuma é necessária**).
+
+**Prova esperada:** `relatorios/T107.md` com capturas a **1440 e 375, nos dois temas**, do Painel (antes/depois),
+de Transações, do Orçamento e dos Relatórios; a contagem de fronteiras do critério 2; os contrastes calculados
+com o valor de cada limite; e a skill `design-do-projeto` citada como cumprida.
+
+**2026-11-23 — entrega parcial do Dev (itens 1, 2, 4 e 5) e segunda metade autorizada.** Feitos e medidos:
+rótulos sem maiúsculas a 12 px, herói por largura de cartão com o valor a 24 px (seis dígitos medidos dentro do
+cartão: 229 px de texto em 445 px), «Ver por» sem caixa, nota sem tracejado, checklist sem divisórias, uma
+sombra em `ui/card.tsx` e vazios a sério nos dois gráficos. Gate verde, **599 testes**, `BUILD_ID
+RqUyfKQFLqiyNpGnAC65g`. **Faltam** o item 3 (cor por categoria) e as provas de contraste, capturas de
+Transações/Orçamento/Relatórios e transbordo por cartão. Autorizado `lib/category-colour.ts` (helper com as
+classes `bg-chart-1..5` literais e índice estável por id da categoria) e fixado o «antes» das fronteiras
+medido por mim na produção (`6bd62ee`): **8** caixas no primeiro ecrã a 1425×900 — o 9 do Dev era derivado.
+
+**2026-11-23 — QA devolveu FAIL em dois critérios, com a medição colada (`relatorios/T107-qa.md`).** Volta
+**3 de 3** (a última do teto). Passaram: hierarquia (herói 36 px num cartão de 445×122, 2,1× a área dos
+irmãos, primeiro número apanhado a 1440 e a 375), contrastes (≥3:1 nos cinco `chart-*`, texto a 17,35:1 no
+claro), transbordo por cartão (**0** em 16 combinações), «Ver por» a funcionar, suite de frio **162 passed**
+(`a2Ket8Olt_7fx-On8st2v`). Falharam dois, ambos pequenos:
+
+1. **Critério 3, a mesma categoria com duas cores.** Causa confirmada por mim no código: **duas chaves**. O
+   `transaction-table.tsx:456` indexa por `categoryName` e o donut por `slice.categoria` (nome), enquanto o
+   `budget-limit-list.tsx:192` e o `report-category-breakdown.tsx:69` indexam por `categoryId`. O hash é da
+   chave, logo nome≠id e a cor diverge. Habitação `chart-4` (Transações, donut) vs `chart-1` (Orçamento,
+   Relatórios). **Decisão: a chave passa a ser o nome em todos os quatro** — é a única chave que os quatro
+   sítios têm (o `DonutSlice` só recebe `categoria`), e obriga a duas linhas, não a mudar tipos.
+2. **Critério 2, o tracejado.** `page.tsx:360` continua `border border-dashed` e o diff do ficheiro não lhe
+   toca. O §7.2 justificou-a **fora da contagem de fronteiras**, mas o critério pede tirar o tracejado: a nota
+   vira texto simples (`text-sm text-muted-foreground`), sem caixa e sem raio.
+
+**Também decidido (pergunta do QA):** a previsão passa a ter estado vazio **alcançável** — quando todos os
+dias têm `balanceInCents === 0` e nenhum item, mostra a frase e a ligação, sem SVG e sem eixo a 0 €, com a
+mesma regra que o `cashflow-chart.tsx:44` já usa. Um gráfico com um ponto a 0,00 € e um eixo a 0 € é a moldura
+vazia que a tarefa foi tirar.
+
+**Correção de prova, não de código:** o herói está a **36 px**, não a 24. É o degrau `text-4xl` da escada da
+D36 (que fixa degraus 24/28/30/36 pela largura do cartão, piso 24) a funcionar com o cartão de 445 px — não é
+violação. A frase «valor a 24 px» do §7.1 do relatório é que não descreve o ecrã e passa a descrever a escada.
+
+**2026-11-23 — leitura do Lead da volta 3, antes de ir ao QA: (a) e (b) fechados, (c) não chega ao ecrã.**
+(a) confirmado por mim: as três chaves passaram a `categoryName` e o donut já usava nome — uma chave só.
+(b) confirmado: três tracejados saíram do `page.tsx` (aviso de âmbito, «A pensar pelo cartão», nota da
+previsão) e o `grep dashed` do ficheiro sai vazio; fronteiras **7** (6 `card` + `UL`), «antes» 8 medido por mim.
+(c) **falha**: o `ChartCard` recebe `isEmpty={!hasAnythingToForecast}` e o seu ramo de vazio desenha **outra**
+frase (`emptyMessage`, sem ligação) numa **moldura tracejada** (`chart-card.tsx:50`), por isso o estado vazio novo
+do `dashboard-forecast-chart.tsx` **nunca renderiza** — é a mesma falha de classe que o QA apontou («a frase
+existe no código e nenhum estado lhe chega»). O Dev assumiu não ter alcançado o estado; esse alcance é do QA,
+que já o fez (uma conta sem movimentos num utilizador `qa-t107-…`), mas o que ele veria era a frase antiga, sem
+ligação. Corrigido dentro da mesma volta: um só dono do vazio, no `dashboard-forecast.tsx`.
+
+**2026-11-23 — volta 3 corrigida e no QA (segunda passagem).** Fechado: (a) uma chave só — as três usam
+`categoryName`, o donut o nome da fatia; (b) cinco notas tracejadas saíram do Painel (`grep dashed` = **0** nos
+três ficheiros), fronteiras **7** contra 8; (c) o vazio da previsão passou a ter **um dono só** no
+`dashboard-forecast.tsx` (o `isEmpty` do `ChartCard` deixou de ser usado, o gráfico devolve `null` sem pontos) e
+a frase nomeia os três gatilhos reais da condição. `BUILD_ID L073q6RIRPPOhLpDJH3N9`, gate **599 testes**.
+Ao QA com o cenário de uma conta sem movimentos (vazio alcançado) e a conta `demo` (o gráfico continua a
+desenhar), o `grep`, a contagem e a suite de frio como prova de fecho. Sem infraestrutura de teste de
+componente em `apps/web` (vitest só em `packages/shared`), o alcance do vazio é provado no browser, não por
+teste de unidade.
+
+**2026-11-23 — QA assinou PASS na volta 3; segue ao Revisor.** (a) Habitação `chart-4` nos quatro sítios onde
+tem dado; Alimentação e Transportes coincidem em Transações e Orçamento e **não têm movimento em Relatórios** —
+o QA disse-o em vez de as dar por boas. (b) `grep dashed` = **0**, fronteiras **7**, `role="status"` e
+`#painel-ambito-aviso` intactos com `aria-describedby` a resolver. (c) vazio da previsão alcançado: frase +
+ligação, **0 SVG, 0 eixos, sem moldura tracejada**; na `demo` continua a desenhar (1 superfície no cartão, 3 na
+página). O cenário «uma conta sem movimentos» **não chega** a este cartão (cai no vazio global do Painel); o
+caminho real é conteúdo sem pontos de previsão — o QA usou um bem de 1 000 € com contas a 0. (d) Suite de frio
+**162 passed (9.8m), EXIT=0**, `BUILD_ID TBURWq65Se41myOvfS7GQ`. Achado fora do critério, registado e não
+corrigido: a caixa tracejada do `empty-state` «Nada por pagar nos próximos 7 dias», abaixo da dobra, com o
+padrão de vazio tracejado repetido em 15 componentes — tarefa nova só com autorização.
+
+## T107 — impasse ao teto das 3 voltas (2026-11-23)
+
+O QA assinou `PASS` na volta 3 e o Revisor respondeu **«pode commitar: não»**, com 1 DEVE e 2 opcionais. Fui
+verificar os três no código e nas capturas: **os três confirmam-se**, e os três nascem das minhas instruções,
+não de erro do Dev.
+
+**DEVE — o vazio do fluxo de seis meses nunca chega ao ecrã.** `page.tsx:391` passa
+`isEmpty={data.series.every(item => item.incomeInCents === 0 && item.expenseInCents === 0)}` ao `ChartCard` que
+envolve o `CashflowChart`, e o `report-monthly-evolution.tsx:45` passa `isEmpty={byMonth.length === 0}`. O
+`ChartCard` decide `isEmpty ? moldura tracejada com frase genérica : children` (`chart-card.tsx:47-55`), logo o
+estado vazio do `cashflow-chart.tsx:44` — que tem a frase certa e a ligação para `/transacoes` — só aparece
+quando `isEmpty` é falso, isto é, quando o cartão acha que há dados. **É a terceira vez que a mesma classe de
+defeito aparece nesta tarefa** (vazio com dois donos): primeiro na previsão, agora no fluxo. A causa é minha —
+o critério 5 nomeou os gráficos e nunca os `ChartCard` que os envolvem.
+
+**Confirmação de que é intermitente, não cosmético:** o QA deu o item 5 como PASS no fluxo («Ainda não há
+movimentos nestes seis meses.» + ligação, 0 SVG) — via a frase certa porque o `isEmpty` olha para
+`data.series` (12 meses) e o gráfico desenha `cashflow` (6 meses); com dados fora da janela, `isEmpty` é falso
+e o gráfico fala. Num utilizador sem movimentos nenhuns, `isEmpty` é verdadeiro e aparece a frase genérica
+numa moldura tracejada. **O mesmo estado tem dois ecrãs diferentes conforme os dados que estão fora da janela.**
+
+**Regressão que eu introduzi — o donut perdeu metade das cores.** O `HEAD` tinha `SERIES` com **8** cores
+(`category-donut.tsx:22-31`) e a T107 substituiu por 5 no helper. Com ≥6 categorias no período — o caso normal
+em `/relatorios` — há pelo menos duas fatias com a mesma cor por casa dos pombos. Os tokens `--chart-6..8`
+existem no `:root` e no `.dark` (`globals.css:126-128`, `:195-196`), mas **não** estão em `@theme inline`
+(só 1..5), por isso não há classes `bg-chart-6..8`; a solução que não toca no tema é o helper devolver
+`var(--chart-N)` e o ponto usar essa variável, em vez de uma classe.
+
+**Lacuna de grelha a 375, vista na captura.** O herói ocupa a linha toda (`col-span-2`) e sobram **1 + 2 + 1**:
+o «Sobra do mês» fica sozinho em meia linha, com meio cartão de vazio ao lado (`painel-375-primeiro-ecra.png`).
+A T103 tinha exigido 2×2 a 375. A saída que não perde o herói é o **último KPI ocupar as duas colunas**.
+
+**Saídas:** (A) abrir T108 com os três e fechar a T107 com os itens 1, 2, 3 e o vazio da previsão, deixando o
+fluxo vazio por fechar; (B) autorizar uma 4.ª volta na T107, acima do teto, com os três e uma prova de QA
+curta (vazio do fluxo + captura a 375 + suite). Pedido ao utilizador.
+
+**2026-11-23 — utilizador autorizou uma 4.ª volta (acima do teto), com os três achados.** Ao Dev: (a) tirar
+`isEmpty`/`emptyMessage` dos dois `ChartCard` que envolvem o `CashflowChart` (`page.tsx:391`,
+`report-monthly-evolution.tsx:45`) — o vazio passa a ter um dono só, o gráfico; (b) o helper devolve
+`var(--chart-N)` para ponto **e** fatia e o índice vai a **8** (os tokens existem, o `@theme inline` não os
+expõe como classe, e a solução não toca no tema); (c) o último KPI ocupa as duas colunas a 375
+(`min-[375px]:col-span-2 xl:col-span-1`) para fechar a meia linha vazia. Prova exigida: o vazio do fluxo
+alcançado no Painel e em `/relatorios` (e o que acontece a quem tem movimentos fora da janela de seis meses),
+oito cores distintas com a mesma categoria igual nos quatro sítios, contrastes de `chart-6..8` contra `card`
+com o método já usado, e as larguras dos KPI a 375 e a 1440. QA leva só isto; o resto está assinado e não se
+repete.
+
+**2026-11-23 — volta 4 entregue e no QA.** Os dois `isEmpty` que envolviam o `CashflowChart` saíram (o do donut
+ficou), o helper devolve `var(--chart-N)` até **8** e serve o ponto (`style`) e a fatia (`fill`) com a mesma
+função, e o último KPI passou a `min-[375px]:col-span-2 xl:col-span-1`: a 375 são **3 linhas** sem meia linha
+vazia, a 1440 é **1 linha** (445 + 214 + 214 + 214 = 1087 numa secção de 1136). Contrastes de `chart-6..8`
+contra `card`: claro **4,01 / 5,26 / 4,23**, escuro **8,03 / 6,89 / 8,44**. Corrigidos dois comentários no
+helper (JSDoc duplicada e «0–4» que agora é 0–7). `BUILD_ID 0fypEDAHeTGDWRa12AP1d`, gate **599 testes**.
+QA leva só o curto: vazio do fluxo no Painel e em `/relatorios` (o cenário é o bem de 1 000 € com contas a 0),
+o caso dos movimentos só fora da janela, as cores distintas com ≥6 categorias, os contrastes de 6..8
+recalculados, a grelha a 375 e a 1440 e a suite de frio. Sem volta 5 sem o utilizador.
+
+**2026-11-23 — QA reprovou só o (c) na volta 4 e o utilizador autorizou a volta 5.** O resto passou: o vazio do
+fluxo no Painel **e** em `/relatorios` (frase + ligação, 0 SVG, 0 eixos, sem moldura), o caso de movimentos só
+fora da janela com a mesma frase nos dois ecrãs, a grelha a 375 (3 linhas) e a 1440 (1 linha), os contrastes de
+`chart-6..8` reconferidos por cálculo (≤0,03 de diferença do Dev: claro 4,01/5,26/4,25 · escuro 8,01/6,86/8,42) e
+a suite de frio **162 passed**, `BUILD_ID yDUoisjhvMTHNPvK0Hgfo`. **Falhou o (c): 8 categorias davam 5 cores
+distintas** (Saúde=Alimentação, Habitação=Transportes, Animais=Lazer). A causa é o instrumento, não o código: um
+hash não distribui 8 nomes por 8 cores, e o meu critério pedia 8 distintas — a média esperada de 8 sorteios em 8
+casas é ~5, que é exatamente o que se mediu. **Decisão do utilizador: a cor passa a sair da posição na lista
+ordenada** (`kind, sortOrder, name`, a ordem do `listCategories`, sobre a lista completa do utilizador, igual nos
+quatro ecrãs). Fica escrito o efeito colateral: categoria inserida no meio reordena as seguintes; arquivada,
+sobe as que vêm depois; a partir da nona há repetição porque há oito tokens.
+
+**2026-11-23 — o Dev devolveu a volta 5 sem tocar em ficheiros, por falta de contexto da sessão.** Decisão dele,
+e certa: o (a) é uma mudança de contrato (a cor deixa de ser função do nome e passa a ser posição numa lista que
+tem de chegar a 4 páginas e 5 componentes), e fazer metade deixava o ecrã com duas fontes de cor. Árvore intacta
+(`format:check` 0, `typecheck` 0, `BUILD_ID yDUoisjhvMTHNPvK0Hgfo`). Recusado o corte em duas entregas — mais uma
+volta de cadeia por meia correção. Retomada em **conversa nova do Dev** (`start_new_chat`) com o brief completo e
+autónomo, incluindo as três respostas já lidas no código: `create` põe `sortOrder = max + 1` (criar **não** muda
+cores), arquivar sobe as seguintes (muda), e a nona categoria repete (oito tokens).
+
+**2026-11-23 — volta 5 entregue em conversa nova do Dev e no QA.** A cor saiu do hash: `categoryColour(name,
+orderedNames)` devolve `var(--chart-N)` pela **posição** na lista canónica (`kind`, `sortOrder`, `name`, 29
+categorias não arquivadas na conta de teste), com hash só como fallback para nome fora da lista (categoria
+arquivada ainda presente num extrato, «Outras (N)»). A lista vai nos DTOs de `dashboard`, `budgets` e `reports` e
+chega aos quatro componentes por prop; o `budget-overview` não pinta nada e ficou sem a prop (evitada uma prop
+morta). Gate **604 testes**, `BUILD_ID -W4g04WQk3ub2Jq3w0Awc`. O Dev só conseguiu medir **7 cores distintas
+em 7 fatias** — a oitava categoria da conta não tinha despesa no mês; o QA tem utilizadores próprios e vai montar
+as oito. **Dois desvios medidos, e o primeiro muda o custo da escolha:** (i) `categories-actions.ts:89` grava
+`sortOrder: value.sortOrder ?? 0`, ou seja, **criar uma categoria não a põe no fim** — fica com 0 e ordena por
+nome, o que muda até 29 cores (não as «nenhumas» que eu escrevi no brief). Fica como limite conhecido e
+candidato a tarefa nova (`sortOrder = max + 1` no create), **não** se corrige dentro da T107; (ii) arquivar a
+categoria na posição k muda 28−k cores.
+
+**2026-11-23 — QA reprovou a volta 5 com um número, e o utilizador autorizou a volta 6.** Com a lista canónica de
+**29** categorias, as oito com despesa no mês não são as oito primeiras posições: `8%8=0`, `9%8=1`, `15%8=7` dão
+**5 cores em 8 fatias** (Educação=Habitação, Lazer=Alimentação, Animais=Saúde). O QA mediu também o caso oposto —
+as **oito primeiras posições dão 8 de 8** —, o que mostra que o defeito é a aritmética, não a lista. Passaram: a
+coerência da mesma categoria nos quatro ecrãs (âncoras novas: Habitação `chart-1`, Alimentação `chart-2`,
+Transportes `chart-4`, Saúde `chart-8`), «Sem categoria» sem ponto, e a suite (162, `BUILD_ID j-n_70C1CNOqkeVgWw2iE`).
+Achado adicional do QA: a categoria **arquivada** cai no hash e **colide com uma viva do mesmo ecrã** (Animais =
+Saúde `chart-8`). **Decisão do utilizador: a posição continua a ser a base, mas cada ecrã resolve as suas
+colisões** — base = posição, processamento por ordem canónica, primeira cor livre seguinte quando a base está
+tomada; a arquivada entra na mesma resolução. Efeito aceite: a mesma categoria pode desviar-se num ecrã e não
+noutro, e fica escrito na tabela com a coluna «desviada?».
+
+**2026-11-23 — volta 6 entregue e no QA.** `categoryColourMap(nomesPintados, nomesCanónicos)`: base = posição
+`% 8`, processamento por ordem canónica (fora da lista no fim, por unidades de código — não `localeCompare`,
+que depende do ICU), quem tem a base tomada leva a primeira cor livre seguinte ciclicamente; acima de oito nomes
+a repetição é inevitável e o nono fica na base. As oito do QA (posições 0,1,3,7,8,9,13,15) dão **8 de 8** contra
+5; as oito primeiras continuam 8 de 8; a arquivada animas resolve de `chart-8` para `chart-7` e deixa de colidir
+com Saúde. No DOM: Transações 10 categorias→8 cores (Lazer desvia, Transferência e Salário repetem), Relatórios
+7/7, Orçamento 3/3, Painel 2/2. Gate **604 testes**, `BUILD_ID 4b0F7zCtmR0I1uAz0idZo`, só os cinco ficheiros
+autorizados. Preço aceite e escrito: a mesma categoria pode desviar num ecrã e não noutro — o que não pode é ter
+duas cores no mesmo ecrã.
+
+**2026-11-23 — QA assinou PASS na volta 6.** As oito do teste deram **8 de 8** no DOM (Habitação `chart-1`,
+Alimentação `chart-2`, Educação `chart-3`, Transportes `chart-4`, Lazer `chart-5`, Vestuário `chart-6`, Animais
+`chart-7`, Saúde `chart-8`), os três desvios previstos pelo Dev confirmados; as oito primeiras posições continuam
+8 de 8; a arquivada resolve para `chart-7` sem colidir com a Saúde viva e **duas cargas dão o mesmo mapa**; 8
+nomes → 8 cores, 11 nomes → 8 cores e 3 repetições (só acima de oito); nenhuma categoria com duas cores no mesmo
+ecrã; «Sem categoria» com 0 pontos; suite de frio **162 passed (9.7m), EXIT=0**, `BUILD_ID o0n_BOgpFcGFM8-AjTe55`.
+Utilizadores de teste apagados (restos a 0), nenhuma categoria ficou arquivada, porta 3000 fechada. Segue ao
+Revisor para o parecer final antes do push.
+
+**2026-11-23 — parecer final do Revisor: «0 BLOQUEIA, 2 DEVE, 1 OPCIONAL. Pode commitar: não».** O **DEVE 1** é
+meu, não do código: o critério 3 prometia «a mesma cor nos quatro sítios» e a decisão do utilizador na volta 6
+(«resolver a colisão no ecrã») tornou isso impossível acima de oito nomes pintados — a partir das 9 categorias,
+uma que desvia num ecrã e não noutro tem duas cores entre ecrãs. **Critério reescrito acima** para dizer o que
+é verdade (estabilidade por ecrã, nunca duas cores no mesmo ecrã, repetição só acima de oito), em vez de
+prometer o que o código não dá. O **DEVE 2** é real e aceite: os cinco testes novos exercitam
+`categoryColour`/`categoryColourIndex` e **nenhum** chama `categoryColourMap`, que é o que os quatro ecrãs usam —
+com `firstFreeIndex` a devolver a base quando está tomada, os 604 continuam verdes e o donut volta a repetir. Vai
+ao Dev uma volta **só de testes e API morta**, sem mudança de comportamento: três casos para o mapa (colisão
+resolve para a próxima livre, mapa igual com a entrada baralhada, nome fora da lista entra na resolução) e a
+remoção de `categoryColour`/`categoryColourIndex`, que nenhum ficheiro de `apps/` chama. Confirmado pelo Revisor
+e por mim: o mapa é determinístico, independente da ordem de entrada, pior caso O(8n) e sem ciclo infinito.
+
+---
+
 ## Bloco de fecho — T104 (fechada 2026-11-23)
 
 - **Fechado:** T104 — os sete números e frases que mentiam quando a conta tinha dados: o calendário contava
