@@ -76,13 +76,25 @@ export function AssetDialog({
   const uid = useId();
   const fieldId = (name: string) => `${uid}-${name}`;
 
+  /*
+   * T105/B: a data de aquisição de um bem não pode ser anterior a 1900 — o
+   * formulário chegou a abrir (e a gravar) com `0001-01-05`, o zero de alguns
+   * formatos, e o cartão do bem não mostra a data, por isso o erro era invisível.
+   * Qualquer coisa fora do formato `AAAA-MM-DD` ou com ano < 1900 conta como
+   * «sem data».
+   */
+  const dataValida = (value: string | null | undefined): string | undefined =>
+    value != null && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number(value.slice(0, 4)) >= 1900
+      ? value
+      : undefined;
+
   const valoresIniciais: AssetFormValues = {
     type: asset?.type ?? 'OTHER',
     name: asset?.name ?? '',
     description: asset?.description ?? '',
     valueInCents: asset?.valueInCents ?? 0,
-    acquiredOn: asset?.acquiredOn ?? undefined,
-    valuedOn: asset?.valuedOn ?? undefined,
+    acquiredOn: dataValida(asset?.acquiredOn),
+    valuedOn: dataValida(asset?.valuedOn),
   };
 
   const form = useForm<AssetFormValues>({
@@ -126,8 +138,13 @@ export function AssetDialog({
         name: data.name,
         description: data.description === '' ? undefined : data.description,
         valueInCents: data.valueInCents,
-        acquiredOn: data.acquiredOn,
-        valuedOn: data.valuedOn,
+        /*
+         * `?? null` (T105/B): um bem que já tem `0001-01-05` na base tem de a
+         * perder ao ser guardado. `undefined` não limpa o campo na ação de
+         * edição — só `null` diz «sem data».
+         */
+        acquiredOn: dataValida(data.acquiredOn) ?? null,
+        valuedOn: dataValida(data.valuedOn) ?? null,
       };
 
       const result =

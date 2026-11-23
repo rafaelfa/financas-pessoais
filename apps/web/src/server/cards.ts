@@ -65,6 +65,12 @@ export function buildCardViews(
   return context.cards.map((card) => {
     const invoices = context.byCard.get(card.id) ?? [];
     const openInvoice = pickOpenInvoice(invoices);
+    /*
+     * D38: «Em dívida» é o que a **última fatura da cadeia** tem por pagar,
+     * fechada ou não — é a dívida do cartão, uma pergunta diferente da de «faturas
+     * por pagar» (que só conta depois do fecho). A cadeia transita o resto, por
+     * isso somar faturas contaria o mesmo dinheiro uma vez por fatura.
+     */
     const lastInvoice = invoices[invoices.length - 1];
     const outstandingInCents = lastInvoice?.outstandingInCents ?? 0;
 

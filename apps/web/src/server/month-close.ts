@@ -5,6 +5,7 @@ import { todayInLisbon } from '@/lib/today';
 
 import { TRANSACTION_SELECT } from './accounts';
 import { loadInvoiceContext } from './invoice-context';
+import { lastInvoiceByCard } from './invoices';
 import { toFinanceCategory, toFinanceTransaction } from './mapping';
 import { requireUser } from './session';
 
@@ -164,7 +165,10 @@ export async function getMonthClose(): Promise<MonthCloseView> {
     }),
   ]);
 
-  const unpaid = context.summaries.filter((invoice) => invoice.outstandingInCents > 0);
+  /* T105/C + D38: a mesma lista do Painel e da Revisão. */
+  const unpaid = lastInvoiceByCard(context.summaries).filter(
+    (invoice) => invoice.status === 'closed' && invoice.outstandingInCents > 0,
+  );
   const unpaidTotal = unpaid.reduce((total, invoice) => total + invoice.outstandingInCents, 0);
   const financeTransactions = transactions.map(toFinanceTransaction);
   const financeCategories = categories.map(toFinanceCategory);

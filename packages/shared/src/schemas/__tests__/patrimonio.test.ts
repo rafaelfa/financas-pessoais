@@ -49,6 +49,18 @@ describe('createAssetSchema', () => {
     expect(createAssetSchema.safeParse({ ...bem, acquiredOn: '2026-02-30' }).success).toBe(false);
   });
 
+  it('aceita «sem data» como null — o formulário limpa o campo com null (T105)', () => {
+    /* Antes do `nullable()`: `null -> false`, e um bem sem data era recusado. */
+    expect(createAssetSchema.safeParse({ ...bem, acquiredOn: null }).success).toBe(true);
+    expect(createAssetSchema.safeParse({ ...bem, valuedOn: null }).success).toBe(true);
+    expect(createAssetSchema.safeParse({ ...bem, acquiredOn: null, valuedOn: null }).success).toBe(
+      true,
+    );
+
+    /* Ausente continua válido: as duas formas dizem «sem data». */
+    expect(createAssetSchema.safeParse(bem).success).toBe(true);
+  });
+
   it('aceita datas opcionais válidas', () => {
     expect(
       createAssetSchema.safeParse({ ...bem, acquiredOn: '2020-05-31', valuedOn: '2026-11-01' })

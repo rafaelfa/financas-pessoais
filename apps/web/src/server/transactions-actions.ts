@@ -642,6 +642,15 @@ export async function deleteTransaction(input: unknown): Promise<ActionResult> {
       return;
     }
 
+    /*
+     * T105/A: o movimento do objetivo criado por este lançamento tem de sair com
+     * ele. A relação é `onDelete: SetNull` — sem esta linha o movimento ficava
+     * órfão e continuava a somar no objetivo, e o mesmo dinheiro aparecia na
+     * conta (devolvido) e no objetivo. Só se apaga o ligado **a esta** transação:
+     * um movimento registado à mão no objetivo não tem `transactionId` e não é
+     * tocado.
+     */
+    await tx.goalMovement.deleteMany({ where: { userId: user.id, transactionId: id } });
     await tx.transaction.delete({ where: { id } });
   });
 

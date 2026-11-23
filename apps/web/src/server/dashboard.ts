@@ -23,6 +23,7 @@ import {
   type DashboardScopeChoices,
 } from './dashboard-scope';
 import { loadInvoiceContext } from './invoice-context';
+import { lastInvoiceByCard } from './invoices';
 import {
   toFinanceAccount,
   toFinanceCategory,
@@ -344,8 +345,14 @@ export async function getDashboard(scopeParams?: {
         recurrence.endDate === null ? undefined : recurrence.endDate.toISOString().slice(0, 10),
       isActive: recurrence.isActive,
     })),
-    unpaidInvoices: invoiceContext.summaries
-      .filter((invoice) => invoice.outstandingInCents > 0)
+    /*
+     * T105/C + D38: «faturas por pagar» é a **última fatura da cadeia** de cada
+     * cartão, e só conta depois de fechar — a mesma lista que a Revisão e o
+     * «Fechar o mês» usam. Somar a cadeia contava a mesma dívida uma vez por
+     * fatura (12 faturas a dar 6 390 € para 945 € em dívida).
+     */
+    unpaidInvoices: lastInvoiceByCard(invoiceContext.summaries)
+      .filter((invoice) => invoice.status === 'closed' && invoice.outstandingInCents > 0)
       .map((invoice) => ({
         id: invoice.id,
         cardName: invoice.cardName,

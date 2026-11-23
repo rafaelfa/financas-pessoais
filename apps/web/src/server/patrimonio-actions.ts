@@ -29,6 +29,22 @@ function revalidatePatrimonioViews() {
   revalidatePath('/');
 }
 
+/**
+ * A data de aquisição, ou `null` (T105/B).
+ *
+ * Um bem pode ter chegado aqui com `0001-01-05` — o zero de alguns formatos — e
+ * o cartão não mostra a data, por isso o erro ficava invisível. Qualquer valor
+ * fora de `AAAA-MM-DD` ou com ano < 1900 conta como «sem data», e o registo
+ * sujo corrige-se ao ser guardado.
+ */
+function dataNormalizada(value: string | null | undefined): Date | null {
+  if (value === null || value === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  return Number(value.slice(0, 4)) >= 1900 ? new Date(value) : null;
+}
+
 /** Cria um bem. */
 export async function createAsset(input: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
@@ -48,8 +64,8 @@ export async function createAsset(input: unknown): Promise<ActionResult<{ id: st
         name: value.name,
         description: value.description ?? null,
         valueInCents: value.valueInCents,
-        acquiredOn: value.acquiredOn === undefined ? null : new Date(value.acquiredOn),
-        valuedOn: value.valuedOn === undefined ? null : new Date(value.valuedOn),
+        acquiredOn: dataNormalizada(value.acquiredOn),
+        valuedOn: dataNormalizada(value.valuedOn),
       },
       select: { id: true },
     });
@@ -91,8 +107,10 @@ export async function updateAsset(input: unknown): Promise<ActionResult<{ id: st
         ...(value.name !== undefined ? { name: value.name } : {}),
         ...(value.description !== undefined ? { description: value.description } : {}),
         ...(value.valueInCents !== undefined ? { valueInCents: value.valueInCents } : {}),
-        ...(value.acquiredOn !== undefined ? { acquiredOn: new Date(value.acquiredOn) } : {}),
-        ...(value.valuedOn !== undefined ? { valuedOn: new Date(value.valuedOn) } : {}),
+        ...(value.acquiredOn !== undefined
+          ? { acquiredOn: dataNormalizada(value.acquiredOn) }
+          : {}),
+        ...(value.valuedOn !== undefined ? { valuedOn: dataNormalizada(value.valuedOn) } : {}),
       },
     });
   } catch (error) {

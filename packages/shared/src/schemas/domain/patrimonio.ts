@@ -36,8 +36,14 @@ const assetShape = z.object({
   description: descriptionSchema.optional(),
   // Zero é um estado legítimo: um bem sem valor de mercado e uma dívida paga.
   valueInCents: nonNegativeCentsSchema,
-  acquiredOn: calendarDateSchema.optional(),
-  valuedOn: calendarDateSchema.optional(),
+  /*
+   * «Sem data» é `null` (T105/B): o formulário manda `null` ao limpar o campo, e
+   * `.optional()` só aceita `undefined` — um bem sem data era recusado com erro
+   * no campo «Adquirido em». O contrato passa a aceitar as duas formas, e a ação
+   * normaliza ambas para `null`.
+   */
+  acquiredOn: calendarDateSchema.nullable().optional(),
+  valuedOn: calendarDateSchema.nullable().optional(),
 });
 
 const liabilityShape = z.object({
