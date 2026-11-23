@@ -438,3 +438,23 @@ subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/heal
    descreve nome, mensagem, origem, protocolo e URL (`components/pwa-register.tsx`) — a consola deixa de
    dizer só `[object DOMException]`.
 
+
+## Armadilhas medidas a 2026-11-23 (T106 — medir antes de decidir)
+
+4. **Um clique na barra lateral não dispara `load` outra vez.** A navegação do Next é
+   no cliente: o `performance.navigation` continua em 1 e o contador de `load` fica em
+   0. Quem esperar `load` depois de um clique espera para sempre — foi assim que a minha
+   varredura marcou **4 de 17** rotas como «nunca carregam». Medido pelo QA com
+   `page.goto` (documento novo): 342–695 ms até `load`, `readyState: complete`, 0
+   pedidos abertos. Antes de chamar lenta a uma rota, ver se o documento é novo ou se
+   estou a medir um SPA.
+5. **O service worker regista em 12 de 12 cargas limpas, e o aviso do meu browser não
+   se reproduz fora dele.** `/`, `/contas`, `/orcamento`, `/definicoes` × 3: 1 registo
+   `activated`, `controller: true`, 0 avisos — e continua vivo depois de 3 navegações
+   abortadas de propósito e das 17 rotas no mesmo separador. O aviso `[pwa]` visto na
+   varredura fica «não reproduzido»: não é prova de regressão nem de correção.
+6. **Os controlos das linhas da tabela abrem com rato real.** Com o input do Playwright,
+   a 1440 e a 390, o checkbox de seleção e o menu ⋮ respondem à primeira e o diálogo
+   «Editar» abre a seguir (0 erros de consola). O clique sintético do meu browser não
+   os acionava e, depois disso, os diálogos deixavam de abrir até recarregar — artefacto
+   meu, a não repetir como achado.

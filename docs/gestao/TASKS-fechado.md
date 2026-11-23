@@ -25,7 +25,11 @@ Ordem: mais recente primeiro.
   limites» e o total em linha própria; objetivo «Viagem ao Japão · Atrasado · 1 movimento» (correcto: tem
   histórico); «Avaliado em 20/11/2026», «Fim 01/02/2028», zero datas ISO; **(f) o service worker regista —
   `getRegistrations()` devolve 1 registo `activated` a servir `/sw.js` e `navigator.serviceWorker.controller`
-  é `true`, sem erros na consola**.
+  é `true`, sem erros na consola**. Ressalva medida depois do fecho: numa visita seguinte apareceu **um**
+  aviso `[pwa] não consegui registar o service worker` durante uma navegação que a minha ferramenta abortou
+  por tempo (o documento foi desmontado a meio do registo); em **quatro carregamentos limpos** (`/`,
+  `/contas`, `/orcamento`, `/definições`) o aviso não voltou e o registo continuou `activated`. Fica como
+  registo: (f) vale para um carregamento normal, não está provado em documento interrompido.
 - **O que isto não resolve:** (g) **não reproduzido** — o aviso `aria-hidden` não voltou em 3 sequências nem
   com o QA nem em produção; fica como vigia e o primeiro passo, se voltar, é gravar a sequência exacta. Os
   limites herdados da T103 continuam de pé: seis dígitos não cabem no cartão do KPI (D36) e entre 320 e 369 px
@@ -1913,3 +1917,106 @@ asserção no `e2e/` que olhe para o cartão, não para o documento.
 - **Aberto:** nada bloqueado nesta tarefa. A **T75** (alvos de toque do `Button`/`Input` base) continua de fora por decisão minha; os quatro `bg-primary` são candidatos a tarefa nova, **não abertos**.
 - **Repositório:** `main` em `d0ff511` e no `origin` (`git ls-remote` confirmado), deploy de produção **READY** a servir esse commit; sem tags.
 - **Decisão:** nenhuma pendente para fechar. A única coisa que peço é autorização se quiseres abrir a tarefa dos quatro `bg-primary`.
+
+---
+
+### Fecho da T106 — 2026-11-23
+
+- **Fechado:** T106 — medir as três dúvidas da varredura de produção: service worker, cliques reais nas linhas da tabela e as quatro rotas que nunca chegavam a `load`. **As três não se reproduzem**, e a terceira era do meu instrumento.
+- **Prova:** QA em `relatorios/T106-qa.md` — D: **12/12 cargas limpas** (`/`, `/contas`, `/orcamento`, `/definicoes` × 3) com 1 registo `activated` + `controller: true` e **0 avisos**, mais 3 cargas abortadas de propósito e as 17 rotas no mesmo separador, SW vivo; E: com rato real do Playwright a 1440 e a 390, checkboxes de duas linhas e o menu ⋮ abrem **à primeira**, diálogo «Editar» a seguir, 0 erros de consola; F: as quatro rotas chegam a `load` em **342–695 ms**, `readyState: complete`, **0 pedidos abertos**, repetido com SW a controlar (174–490 ms).
+- **O que isto não resolve:** o gatilho do aviso `[pwa]` no **meu** browser não ficou explicado; o QA diz que não o reproduz e que não vê o meu browser — fica «não reproduzido», não «corrigido». A causa do meu F está medida (clique na barra lateral não dispara `load` outra vez) e vale como armadilha, não como defeito.
+- **Aberto:** nada. O achado B da T105 (data `0001-01-05`) continua sem origem explicada, dentro da T105.
+- **Repositório:** nada commitado por esta tarefa; só `docs/gestao/` e `relatorios/`.
+- **Decisão:** nenhuma pendente.
+
+## T105 — Arrumar três defeitos medidos em produção (2026-11-23)
+
+**2026-11-23, volta 2 (Dev → QA):** A e C fechados com dois ficheiros autorizados pelo Lead
+(`server/transactions-actions.ts`, `server/cards.ts`); B com guarda no diálogo, sem a leitura do
+registo gravado que o critério 2 pede — fica ao QA produzir essa leitura. Gate verde, 598 testes,
+`e2e/T105-duplo-objetivo.spec.ts` novo (vermelho no código antigo, verde no novo). `relatorios/T105.md` §8.
+
+**2026-11-23, QA volta 2: FAIL** — A `PASS` (2 passed), B `PASS` no critério com lacuna medida (um bem
+que já tinha `0001-01-05` continua com ele ao guardar) e C provado ao vivo mas **a partir duas decisões**
+(`40:130` e `41:160` vermelhos): a regra «fatura mais antiga, qualquer estado» que eu fixei contraria a
+T60/T61. Suite de frio 158/160. Decisão tomada em **D38**: a dívida é a da **última fatura da cadeia** e só
+conta como «por pagar» depois de **fechar**; `invoicesInDebt` sai e os três ecrãs leem `lastInvoiceByCard`.
+Volta 3 ao Dev. `relatorios/T105-qa.md`.
+
+**2026-11-23, QA volta 3: PASS.** D38 aplicada (`grep` de `invoicesInDebt` = 0), B fechado nas duas metades
+(bem sem data grava `NULL`; semente com `0001-01-05` limpa-se ao guardar), C com 1 · 1 845,00 € nos três e o
+feche a bloquear/desbloquear, `40`/`41` **verdes e por alterar**, suite de frio **162 passed, 0 failed**,
+`BUILD_ID H6JD6W05WGCEhlBEPPH8x`. Produção continua por publicar. Em revisão.
+
+**Porque:** varredura completa da produção na conta de teste — 17 rotas, um gasto
+criado e apagado, um limite criado e removido, um depósito de objetivo, um bem e uma
+dívida. Cada número foi reconciliado à mão. Relatório com a medição:
+`relatorios/verificacao-2026-11-23-varredura.md`. Três defeitos ficaram provados:
+
+1. **A (alto) — dupla contagem ao apagar um depósito de objetivo.** Depósito de
+   100 € com conta Poupança: objetivo 1 100 → 1 200 €, conta 10 253,55 → 10 153,55 €.
+   Depois de apagar o lançamento em Transações: a conta volta aos 10 253,55 €, mas o
+   objetivo **continua nos 1 200 €** e o património sobe a **183 708,55 €** (partida
+   183 608,55 €). 10 253,55 + 1 200 + 180 000 − 945 − 6 800 = 183 708,55 — o mesmo
+   dinheiro fica contado na conta e no objetivo.
+2. **B (médio) — data de aquisição em `0001-01-05`.** No diálogo «Novo bem», o campo
+   «Adquirido em» abre com `0001-01-05` e grava esse valor sem aviso; o cartão do bem
+   não mostra a data, portanto o erro é invisível.
+3. **C (médio) — três ecrãs, três respostas para as faturas por pagar.** Painel:
+   «Faturas por pagar — 12 por resolver · 6390,00 €», e é o passo que bloqueia o
+   «Fechar o mês». Revisão: «Nenhuma fatura por pagar». Cartões: «Em dívida:
+   945,00 €», fatura que fecha a 10/11/27. Os 6 390 € são a soma de 12 saldos de
+   fatura que **cada um já inclui o transitado da anterior** (945 + 870 + 795 + …
+   + 120), portanto contam o mesmo dinheiro doze vezes.
+
+**Ficheiros que pode escrever:** `apps/web/src/server/{goals,goals-actions,dashboard,
+invoice-context,invoices,month-close,patrimonio,patrimonio-actions}.ts`,
+`apps/web/src/components/{goal-card,goal-detail-dialog,goal-movement-dialog,goal-progress,
+asset-dialog,patrimonio-list,month-close-checklist,dashboard-forecast*}.tsx`,
+`apps/web/src/app/(app)/{page.tsx,revisao/page.tsx,cartoes/page.tsx,patrimonio/page.tsx,
+objetivos/page.tsx}`, e `e2e/T105-*.spec.ts` (novos). Mais nada.
+
+**Critério de aceitação (verificável):**
+
+1. **A:** spec novo em `e2e/` que cria o objetivo, regista um depósito com conta, apaga
+   o lançamento em Transações e assere: o objetivo volta ao valor inicial, o património
+   volta ao valor inicial e o detalhe do objetivo já não lista o movimento órfão. No
+   relatório, os quatro números antes/depois, com a conta à mão. O spec tem de ficar
+   **vermelho no código anterior** — prova por corrida no código antigo, como na T104.
+2. **B:** abrir «Novo bem» → o campo «Adquirido em» não traz `0001-01-05` (vazio ou
+   data de hoje). O bem gravado não fica com ano 1 — leitura do registo criado no spec,
+   não do ecrã.
+3. **C:** os três ecrãs mostram o **mesmo número e a mesma contagem** para o mesmo dado,
+   e o total do Painel é igual à soma dos saldos em dívida das faturas que contam para o
+   fecho do mês, **sem somar saldos transitados de faturas diferentes**. Com o dado da
+   conta de teste o número deixa de ser 6 390 € e passa a ser o da próxima fatura em
+   dívida; cola os três textos e a reconciliação à mão. O «Fechar o mês» só fica
+   bloqueado se houver mesmo fatura por pagar.
+4. Gate do `AGENTS.md` verde (`format:check` → `lint` → `typecheck` → `test` → `build`),
+   com o número de testes dito por extenso.
+5. Nenhuma asserção antiga enfraquecida para passar; se tiveres de mexer numa, di-lo com
+   o antes/depois.
+6. Se algum dos três exigir mudar o significado de um número (por exemplo, o que é «por
+   pagar»), **paras e escreves a dúvida** em `relatorios/T105.md` §dúvidas; não decides
+   sozinho.
+
+**O que NÃO fazer:** não escrever na base de produção nem na conta de teste; não correr
+a suite e2e completa (é do QA no fecho); não apagar nem arquivar dados que já lá estão;
+não refactorizar o que não está no critério; no máximo 3 dependências novas; nada de
+git.
+
+**Prova esperada:** `relatorios/T105.md` com os três antes/depois, comandos e saída
+reais, os números reconciliados à mão e, para qualquer mudança de UI, screenshot a
+1440 e a 390 nos dois temas (skill `design-do-projeto`).
+
+**Fechado:** T105 — três defeitos medidos em produção: a dupla contagem ao apagar o lançamento de um depósito de objetivo, a data `0001-01-05` de um bem novo e as faturas por pagar em três ecrãs.
+
+**Prova:** A — `e2e/T105-duplo-objetivo.spec.ts` **2 passed** e **vermelho no código antigo** (`1 failed`, «Atrasado 100,00 € … Movimentos 1 movimento»); o 2.º teste prova que um movimento do objetivo **sem** `transactionId` sobrevive. B — `e2e/T105-bem-data.spec.ts` **3 passed**, registo lido por `to_char`: bem sem data grava `NULL` **sem erro no campo**, semente com `0001-01-05` fica `NULL` depois de «Editar» + guardar, data válida `2020-05-10` gravada. C — `e2e/T105-fecho-mes.spec.ts` **2 passed**: Painel «1 por resolver · 1 845,00 €», Revisão «1 fatura por pagar», fecho bloqueado; paga → «Concluído»; o spec exige que 2 745 € **não** apareça; segunda metade: última fatura por fechar → Painel/Revisão 0 e Cartões «Em dívida: 945,00 €» (D38 §4). `e2e/40` e `e2e/41` **verdes e por alterar** (diff vazio) — a D38 não reabre a T60/T61. Suite de frio **162 passed, 0 failed, EXIT=0**, `BUILD_ID H6JD6W05WGCEhlBEPPH8x`; gate do Dev **599 testes**. Relatórios: `relatorios/T105.md`, `relatorios/T105-qa.md`; decisão em `docs/gestao/DECISOES.md` §D38.
+
+**O que isto não resolve:** a **origem** do `0001-01-05` continua por explicar — a classe está fechada (não se grava e não sobrevive a um guardar), mas não se sabe quem o escreveu. Fica o OPCIONAL do Revisor: o corte «ano < 1900 = sem data» é silencioso e contradiz o schema (um bem de `1850-01-01` perde a data sem mensagem) — coerente com a guarda, mas devia recusar com erro; é candidato a tarefa nova. E a produção só recebe isto depois do deploy: até lá os três ecrãs continuam a discordar lá.
+
+**Aberto:** nada bloqueado. Os quatro diálogos com o teal no «selecionado», o log `[object Object]` do service worker e o OPCIONAL acima continuam à espera de vaga (autorização do utilizador).
+
+**Repositório:** nada commitado; 12 ficheiros versionados (+237/−15) e 3 specs novos na árvore, sobre `main @ d6f75a9`. Push e deploy por fazer.
+
+**Decisão:** autorização do utilizador para commit e push; depois, verificação de produção (skill `verificacao-po-s-deploy`).

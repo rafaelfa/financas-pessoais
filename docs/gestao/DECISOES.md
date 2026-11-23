@@ -963,3 +963,32 @@ total e diz «Tranquilo» enquanto a maior categoria está em «Atenção».
 - **O que a torna irreversível:** a regra «o estado é o pior das categorias» e a contagem total no
   calendário. Voltar a medir contra o total ou a contar só o pendente reabre este defeito com outra cara, e
   o próximo que o vir vai achar que encontrou algo novo.
+
+### D38 — «Faturas por pagar» é a última fatura da cadeia, e só depois de fechar (T105) — **decisão do Lead (2026-11-23)**
+
+O QA deu FAIL na T105 com a razão certa: a regra que eu mandei escrever (`invoicesInDebt`, uma fatura por
+cartão, **a mais antiga**) matava a dupla contagem mas partia duas decisões antigas — a T60 (pagar a fatura
+corrente tem de descer a contagem) e a T61 (a dívida transitada espera o fecho). O projeto **já tinha** a
+regra certa: `lastInvoiceByCard` em `server/invoices.ts`, que `getReviewCounts` já aplicava com o filtro
+`status === 'closed'`. A regra nova era desnecessária e a escolha da fatura estava errada.
+
+**Decisão, cinco regras:**
+1. **A dívida de um cartão é a da última fatura da cadeia** (pela `closingDate`) — nunca a soma de duas
+   faturas do mesmo cartão. É a regra do motor (`totalsByCard`) e a que a app usa para pagar.
+2. **«Por pagar»** = última fatura da cadeia **que já fechou** (`status === 'closed'`) e tem
+   `outstandingInCents > 0`. Uma fatura por fechar não conta: a dívida transitada espera o fecho (T61).
+   É a frase que o cartão da Revisão já mostra («Faturas de cartão já fechadas com valor por liquidar»).
+3. **Painel, Revisão e «Fechar o mês» leem a mesma lista** — `lastInvoiceByCard(...)` com o filtro acima,
+   em `server/invoices.ts`. `invoicesInDebt`/`countInvoicesInDebt` **saem**; não se inventa uma segunda regra
+   quando a primeira existe.
+4. **Cartões «Em dívida»** mostra o `outstanding` da última fatura da cadeia, fechada ou não: é a dívida do
+   cartão, não o que já venceu. Rótulo diferente, pergunta diferente — não entra na contagem «por pagar».
+5. **Um bem com data inválida já gravada** (`0001-01-05`) tem de a perder ao ser guardado: o formulário envia
+   `null` e a ação normaliza no servidor (fora de `AAAA-MM-DD` ou ano < 1900 → `null`).
+
+- **Porque:** os 6 390 € da varredura eram a cadeia somada doze vezes — isso é o defeito. O número certo do
+  cartão é o da última fatura (945 €), e ele só é «por pagar» depois de a fatura fechar.
+- **Alternativa rejeitada:** manter a regra nova e reescrever a T60/T61. Rejeitada porque reabria um defeito
+  já decidido para consertar outro, e porque faria o «Fechar o mês» bloquear por uma fatura a vencer em 2027.
+- **O que a torna irreversível:** a definição 2. Quem contar uma fatura por fechar como dívida a pagar
+  reabre a T61; quem somar duas faturas do mesmo cartão reabre os 6 390 €.
