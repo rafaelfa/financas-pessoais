@@ -9,6 +9,152 @@ Ordem: mais recente primeiro.
 
 ---
 
+## Bloco de fecho — T104 (fechada 2026-11-23)
+
+- **Fechado:** T104 — os sete números e frases que mentiam quando a conta tinha dados: o calendário contava
+  só o por-liquidar, a legenda do património nomeava três termos para uma soma de cinco, o resumo do
+  orçamento media contra o total do orçamento, um objetivo novo nascia «Atrasado», as datas saíam em ISO, o
+  service worker do PWA não registava e um `aria-hidden` escondia um `<select>` com foco.
+- **Prova:** `relatorios/T104-qa.md` (PASS nas voltas 1 e 2) e `relatorios/T104.md` (Dev). Suite de frio
+  **155 passed, 0 failed, EXIT=0**, `BUILD_ID GmgSvgVixj96_qR0BW1knP`; `format:check` 0. Specs novos
+  `104-calendario-dia`, `104-orcamento-resumo` e `104-orcamento-sem-limites` — o último **vermelho no código
+  anterior** numa cópia do repositório («0 % consumido, Tranquilo» → «130 % consumido, Excedido»). Em
+  produção (`f51dfee`, READY), com os dados da conta de teste: calendário «1 **item** · 0 por liquidar,
+  saldo 2200,00 €» no dia 2 e a legenda nova dos totais; património «contas + objetivos + bens − faturas do
+  cartão − dívidas» com o mesmo 183 608,55 €; orçamento «66 % · Atenção · 204,35 € de 310,00 € — a soma dos
+  limites» e o total em linha própria; objetivo «Viagem ao Japão · Atrasado · 1 movimento» (correcto: tem
+  histórico); «Avaliado em 20/11/2026», «Fim 01/02/2028», zero datas ISO; **(f) o service worker regista —
+  `getRegistrations()` devolve 1 registo `activated` a servir `/sw.js` e `navigator.serviceWorker.controller`
+  é `true`, sem erros na consola**.
+- **O que isto não resolve:** (g) **não reproduzido** — o aviso `aria-hidden` não voltou em 3 sequências nem
+  com o QA nem em produção; fica como vigia e o primeiro passo, se voltar, é gravar a sequência exacta. Os
+  limites herdados da T103 continuam de pé: seis dígitos não cabem no cartão do KPI (D36) e entre 320 e 369 px
+  o cabeçalho não mostra marca (D34). Quatro diálogos ainda usam o teal no «selecionado» (orçamento, movimento
+  de objetivo, preferências, base do relatório) — fora do critério desta tarefa.
+- **Aberto:** nada bloqueado. Os quatro diálogos do teal dão uma tarefa pequena e coerente, **não aberta** —
+  espera autorização do utilizador.
+- **Repositório:** `main`, `f51dfee` (código + specs + relatórios) enviado e confirmado por
+  `git ls-remote origin refs/heads/main`; produção READY a servir o commit. O commit dos docs de gestão segue
+  este bloco.
+- **Decisão:** nenhuma pendente da minha parte. O utilizador decide se abre a vaga dos quatro diálogos.
+
+---
+
+## Vaga 9 · T104 — o que só apareceu com dados na conta de teste (2026-11-23)
+
+Aberta a 2026-11-23, a pedido do utilizador: *«colocar informações em toda a conta de teste… para ver o
+comportamento, os cálculos»*, em vez de um relatório de visitas. Enchi a conta de teste e usei os ecrãs.
+**O que ficou lá:** objetivo «Viagem ao Japão» (5 000 €, prazo 30/04/2027, 800 reservados + um depósito de
+300 € saído da Poupança), orçamento «Dia a dia» (1 500 €/mês, limites: Alimentação 100, Restauração 60,
+Casa 150), bem «Apartamento» (180 000 €, avaliado 20/11/2026) e dívida «Crédito do carro» (6 800 € em dívida,
+capital 12 000, 6,9 %, 32/60). **Não apagar sem o utilizador pedir** — é a base das provas abaixo.
+
+**O que já se provou estar certo, para não se mexer:** objetivo 800→1 100 € (2 200 de 5 000 = 22 %), falta
+3 900, aporte necessário 650 €/mês (3 900 ÷ 6); depósito moveu 5 300 → 5 000 na Poupança e criou o movimento;
+limite de 100 € com 84,35 gastos → «Atenção, passaste o limiar de 80 % (84 % consumido)»; património líquido
+**10 253,55 + 1 100 + 180 000 − 945 − 6 800 = 183 608,55 €**, ao cêntimo; e o valor a seis dígitos a 375 mede
+152,7 px e fica **1,8 px** dentro do cartão (a D36 previa pior).
+
+### T104 — sete itens, todos medidos com dados (Dev) — **aberta 2026-11-23, em Dev**
+
+**(a) O calendário conta só os por liquidar.** O dia 02/11/2026 tem «Salário de novembro» 2 200 € **já
+liquidado**; a célula mostra «0» e «0,00 €», o `aria-label` diz «…: 0 itens, saldo 0,00 €» e o diálogo diz
+«0 itens por liquidar · 1 já liquidado». Sítios: `app/(app)/calendario/page.tsx:45-60` (`temMovimentos`,
+`dayLabel`) e `components/calendar-day-dialog.tsx:148` (a célula), com o comentário de `:45-49` a declarar a
+escolha. **Critério:** a célula e o `aria-label` contam **todos** os itens do dia (por liquidar + já
+liquidados + cartão) e o saldo do dia inclui os liquidados; a frase distingue-os («1 item · 0 por
+liquidar» no dia do salário, com «2 200,00 €»); os três números do topo (A pagar / A receber / Saldo
+previsto) podem continuar a ser só o que falta, **mas então dizem-no** numa legenda visível.
+
+**(b) A legenda do património não nomeia o que soma.** `app/(app)/patrimonio/page.tsx:70` diz «contas +
+bens − dívidas», e o número inclui objetivos (+1 100) e faturas do cartão (−945). **Critério (D37):** a
+legenda nomeia todos os termos que entram, e continua a caber numa linha a 375 sem cortar.
+
+**(c) O resumo do orçamento mede contra o total errado.** `components/budget-overview.tsx:109`:
+«Gastos nas categorias com limite: **9 %** · Tranquilo · 129,35 € de **1 500,00 €**» — 129,35/1 500. Ao lado,
+Alimentação está em «Atenção» (84 % de 100 €). Os limites somam 310 €, logo o consumo é 42 %. **Critério
+(D37):** o bloco mede contra a **soma dos limites** (129,35 de 310 = 42 %), o estado é o **pior** das
+categorias com limite (nunca «Tranquilo» com uma em «Atenção»), e o total do orçamento continua visível numa
+linha própria, com o gasto do mês (266,45 de 1 500).
+
+**(d) «Atrasado» no dia 0.** Um objetivo criado hoje, sem uma única contribuição, sai «Atrasado»
+(`components/goal-progress.tsx:22,80`; `packages/shared/src/finance/goal.ts:115`). **Critério:** sem
+histórico de contribuições o estado **não** é «Atrasado» — é «Sem histórico» (texto à escolha do Dev, com a
+frase do esforço necessário); «Atrasado» só depois de existir pelo menos um período com contribuições.
+
+**(e) Datas em ISO nas listas.** `components/patrimonio-list.tsx` mostra «Avaliado em **2026-11-20**» e
+«Fim **2028-02-01**». **Critério:** em pt-PT (20/11/2026) por um helper único; no HTML servido não aparece
+uma data em `AAAA-MM-DD` fora de atributos.
+
+**(f) O service worker do PWA não regista, em produção.** Consola: `[pwa] não consegui registar o service
+worker [object DOMException]` (`components/pwa-register.tsx`). **Critério:** depois de carregar a produção,
+`navigator.serviceWorker.getRegistrations()` devolve ≥1 e a consola fica **limpa**; se a causa for do
+ambiente e não do código, escreve a causa em `MAPA.md` e o erro deixa de ser silencioso na consola.
+
+**(g) `aria-hidden` com foco dentro.** Ao abrir e usar o diálogo do objetivo (e o do depósito) o browser
+avisa: «Blocked aria-hidden on an element because its descendant retained focus… Element with focus:
+`<select>`». **Critério:** abrir e usar os dois diálogos sem esse aviso, e o combobox continua a funcionar
+por teclado (Tab → setas → Enter).
+
+**Ficheiros que pode escrever:** `app/(app)/calendario/page.tsx`, `components/calendar-day-dialog.tsx`,
+`app/(app)/patrimonio/page.tsx`, `components/patrimonio-list.tsx`, `components/budget-overview.tsx`,
+`components/goal-progress.tsx`, `components/goal-card.tsx`, `components/goal-dialog.tsx`,
+`components/goal-movement-dialog.tsx`, `components/pwa-register.tsx`, `server/budgets.ts`,
+`packages/shared/src/finance/goal.ts`, um helper de datas em `lib/` se não existir, e `relatorios/T104.md`.
+Mais nada.
+
+**O que não fazer:** não mudar a fórmula do património (o número está certo — é a legenda que mente); não
+mexer na grelha 2×2 do KPI nem nos tokens (T103 fechada); não apagar os dados da conta de teste; não
+escrever em `e2e/` (é do QA); não correr a suite completa; zero dependências novas; zero git.
+
+**Prova esperada:** `relatorios/T104.md` com, por item (a)-(g), o **antes** medido (o texto ou o número) e o
+**depois**, capturas a **1440 e 390 nos dois temas** do calendário, do património e do orçamento, o gate
+verde com o `BUILD_ID`, e uma linha «o que não consegui medir».
+
+**No QA (passo 2):** asserção e2e para o **nome acessível do dia** (o rótulo esteve meses a dizer zero) e
+para a **percentagem do resumo do orçamento** contra a soma dos limites — são os dois números que voltam a
+mentir sem ninguém ver.
+
+**Volta 1 — 2026-11-23, em revisão.** Dev entregou (a)-(e) com antes/depois e capturas, (f) medido em local
+e (g) não reproduzido (`relatorios/T104.md`, 16 capturas, 8 ficheiros +155/−23). QA provou (a)-(e) com
+números seus e assinou **PASS** (`relatorios/T104-qa.md`): calendário «2 itens · 1 por liquidar, saldo
+20,00 €», património numa linha a 390 (324 px), orçamento 850/1200 = **71 % · Atenção**, objetivo novo
+«Sem histórico» e «Atrasado» só depois do depósito, 0 datas ISO em 6 rotas. **(f) por assinar** — só se
+prova em produção, depois do push. **(g) não reproduzido** em 3 sequências: não conta como corrigido.
+Duas asserções novas (`e2e/104-calendario-dia.spec.ts`, `e2e/104-orcamento-resumo.spec.ts`), 154 passed de
+frio (12,2 m), `format:check` 0, `BUILD_ID 39wqfyPmco0XW0d6fvdMwP`. **Nota de âmbito:** o Dev trabalhou na
+conta `demo@financas-pessoais.pt`, que não tem os dados da TASKS (limites somam 1 200 €, não 310) — mediu a
+mesma regra com outros números; os dados da conta de teste ficaram intocados.
+
+**Volta 2 — 2026-11-23, em Dev.** Revisor: **0 BLOQUEIA, 1 DEVE, 1 OPCIONAL, pode commitar: não**. DEVE
+`server/budgets.ts:246-247`: sem limites o divisor é 0, logo `usedPct` = 0 e `worstState([])` = `safe` — um
+orçamento de 1 200 € com 1 300 € gastos passa a dizer «0 % · Tranquilo» onde antes dizia «Passaste o limite
+definido» a 108 %. Regressão criada por esta tarefa, não defeito antigo. Escrito na D37 §3 (sem limites,
+mede-se contra o total). OPCIONAL `goal-progress.tsx:79`: `movementCount?` passa a obrigatório. Revisor
+confirmou que **nenhuma asserção dos três specs antigos foi enfraquecida** (o 39 ficou mais estrito; o 84
+fixa −42,34 porque a regra mudou; o `totaisDoMes` usa `:scope > [data-slot="card"]`). (a)-(e) por ele
+verificados no diff. (f) e (g) não assinados, como combinado.
+
+**Volta 2 — 2026-11-23, em QA (correção entregue).** Dev fechou o DEVE de `budgets.ts` e **corrigiu a minha
+instrução com razão**: `summary.spentInCents` é a soma das categorias **com limite**, portanto sem limites
+também é 0 — a minha correção teria dado 0 % na mesma. O consumo passa a ser `spentAllInCents` (o do cartão
+«Gasto no mês»). Prova do Dev: sem limites 1 300/1 200 → **108 % · exceeded** (era 0 % · Tranquilo), 900 →
+75 % warning, 600 → 50 % safe; **com limites 850/1 200 = 71 % Atenção, igual ao aprovado**. OPCIONAL feito
+(`movementCount` obrigatório, typecheck confirma os três chamadores). Nesta volta só `budgets.ts` (+18) e
+`goal-progress.tsx` (+5); gate verde, `BUILD_ID _SBrtVxRsdT7MD-fs97Qa`. Fica por medir o caso sem limites
+**ao vivo** — o Dev não pode escrever na conta de teste, e é o QA que o faz.
+
+**Volta 2 — 2026-11-23, em revisão.** QA **PASS** no código final (`relatorios/T104-qa.md` §«Volta 2»): (i)
+850 € gastos contra total 700 sem limites → **121 % · «Excedido» · «Passaste o limite definido.»**; (ii) os
+três degraus **ao vivo** (43 % Tranquilo / total 2 000, 77 % Atenção / 1 100, 121 % Excedido / 700); (iii)
+com limites continua **71 % · Atenção**; (iv) `typecheck` 0 e objetivo novo «Sem histórico». Spec novo
+`e2e/104-orcamento-sem-limites.spec.ts` **vermelho no código antigo por corrida real** (cópia do repo com o
+`budgets.ts` da volta 1: «0 % consumido, Tranquilo» onde agora diz «130 % consumido, Excedido»). O risco de
+verde por acidente foi descartado: só `40-orcamento.spec.ts` assere a barra **do limite**, nunca o `usedPct`
+do bloco. Suite de frio **155 passed (10,9 m)**, EXIT=0, `BUILD_ID GmgSvgVixj96_qR0BW1knP`, 0 restos.
+
+---
+
 ## Bloco de fecho — T77 (fechada 2026-11-21)
 
 - **Fechado:** T77 — *F9: o rodapé móvel é o único texto abaixo de 12 px da navegação*:

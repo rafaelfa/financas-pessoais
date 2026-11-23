@@ -4,7 +4,7 @@ Uma tarefa de cada vez. Uma tarefa só fecha com prova do QA.
 
 Contexto obrigatório antes de pegar numa tarefa: `AGENTS.md` e `docs/gestao/MAPA.md`.
 
-**Próximo ID livre: T103.** A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
+**Próximo ID livre: T105.** A **T104** foi aberta a 2026-11-23 com sete achados que só apareceram ao encher a conta de teste com dados (objetivo, orçamento com limites, bem e dívida) e usar os ecrãs; a **T103** foi fechada no mesmo dia e está em `TASKS-fechado.md`. A vaga 7 (auditoria de design) abriu **T72–T83** a 2026-11-20; a **T84**
 foi aberta a 2026-11-21 como âmbito novo (o N5 reescrito, autorizado pelo utilizador) e a **T85**
 registada no mesmo dia como achado fora do critério da T77, a **T86** como achado fora do âmbito da
 T84 — ambas à espera de autorização; a **T87** foi aberta e **fechada** a 2026-11-21 com a decisão D29
@@ -4131,6 +4131,7 @@ O critério «sem scroll» da T84 vale só **antes** desta tarefa.
 | T101 | **Provar que a falha de autorização da T45 está fechada:** o QA forjou o pedido em 2026-11-03 (confirmação aceitava o `cardId` de outra utilizadora). **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | QA | **fechada** 2026-11-22 (QA `PASS` por execução: `Cartão não encontrado.`, transações 2→2, cartão da vítima 0→0) | `relatorios/T45.md`, `relatorios/T101.md` |
 | T102 | **Os diálogos sem limite de altura:** `ui/dialog.tsx` tinha **0** ocorrências de `max-h`/`overflow-y-auto`. **Decidida por mim a 2026-11-22, aprovada pelo utilizador** | Dev | **fechada** 2026-11-22 (`5dd9646`; Dev 2 voltas — o Revisor apanhou o `max-h-full` do `calendar-day` — + QA `PASS` + Revisor «pode commitar: sim»; 150) | `relatorios/T102.md`, `relatorios/T102-qa.md` |
 | T103 | **O design em uso:** sete itens que só apareceram a navegar a produção com a conta de teste — tipo de conta em inglês (defeito), `A preensar`, seleção a `bg-primary` no lançamento rápido, bordas de controlo a 1,23/1,57:1 no escuro, dois pesos de contorno de cartão, previsão a 2,00:1, KPI empilhados a 375. **Pedida pelo utilizador a 2026-11-23** | Dev | **reaberta** 2026-11-23 — publicada em `ce5742a`, mas a verificação de produção encontrou o valor proeminente cortado 7,2 px dentro do cartão a 375/390 (volta 5) | **fechada** 2026-11-23 — QA `PASS` (volta 7, 152/152) + Revisor «pode commitar: sim»; publicada em `d0ff511`, produção READY |
+| T104 | **O que só apareceu com dados:** o calendário conta só o por-liquidar, a legenda do património não nomeia os termos que entram, o resumo do orçamento mede contra o total, objetivo «Atrasado» no dia 0, datas em ISO, o service worker do PWA não regista e um `aria-hidden` com foco dentro dos diálogos. **Pedida pelo utilizador a 2026-11-23** | — | **fechada** 2026-11-23 | `TASKS-fechado.md` · `relatorios/T104-qa.md` |
 | T78 | **A4 + V2 + V1 + V4 + V3 + V7 → reduzida a A4 + V3 + V7 + texto pequeno:** o lote do tema (bordas, raios, `font-numeric`, `--text-caption`) num só passo | Dev | **fechada** 2026-11-22 (`3f76071`; Dev + QA `PASS` 146/146 de frio + Revisor «pode commitar: sim» na volta 3, 1 DEVE de comentário fechado) |
 
 ### T76 — F3 + F4 + R2 (Dev) — **fechada**

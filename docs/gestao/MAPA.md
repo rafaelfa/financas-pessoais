@@ -420,3 +420,21 @@ subiu 19 → 27 no destino, ficando **exatamente igual** na origem. O `/api/heal
    formulário deixa de existir). Numa Server Action chamada por formulário, o `try` tem de estar
    **dentro** do callback e à volta do `await` (T98) — e o mais estreito possível, para que um `toast`
    que lance não se disfarce de erro de rede.
+
+## Armadilhas medidas a 2026-11-23 (vaga 9, T103–T104)
+
+1. **Uma lista vazia num «pior de» devolve o melhor valor.** `worstState([])` com `some(...)` devolve
+   `safe`, porque não há categoria nenhuma que piorar. Aplicado a um orçamento **sem limites** (o estado
+   normal: o diálogo cria o orçamento e os limites vêm depois), deu «0 % · Tranquilo» num orçamento de
+   1 200 € com 1 300 € gastos. Quando o divisor é a soma de uma lista, tratar o caso vazio **antes** de
+   dividir, e dizer com que número se mede nesse ramo (T104/D37: contra o total do orçamento).
+2. **A soma «certa» pode ser a que já é 0.** Em `listBudgets`, `summary.spentInCents` é a soma dos status
+   das categorias **com** limite — sem limites é 0, portanto medir contra ela dá 0 % na mesma. O gasto do
+   mês é `spentAllInCents` (despesas do período, sem ignoradas nem transferências), o mesmo número do
+   cartão «Gasto no mês». Antes de usar um agregado, ler de que lista ele é a soma.
+3. **O service worker regista em produção e isto prova-se num comando.** Depois de carregar
+   `https://financas-pessoais-psi-lac.vercel.app/`, `navigator.serviceWorker.getRegistrations()` devolve
+   1 registo `activated` com `scriptURL …/sw.js` e `controller` é `true`. Se voltar a falhar, o erro novo
+   descreve nome, mensagem, origem, protocolo e URL (`components/pwa-register.tsx`) — a consola deixa de
+   dizer só `[object DOMException]`.
+

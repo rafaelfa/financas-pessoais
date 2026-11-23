@@ -931,3 +931,35 @@ push, e que o `document.scrollWidth` do QA não via porque o corte acontece **de
   uma volta desta.
 - **O que a torna irreversível:** a invariante e o piso. Um degrau novo que não a cumpra volta a cortar, e
   a lição desta vaga é sempre a mesma: o número tem de ser medido **no cartão**, não no documento.
+
+### D37 — O número e a frase ao lado dizem a mesma coisa (T104) — **decisão do Lead (2026-11-23)**
+
+Enchi a conta de teste com dados reais (objetivo com depósito, orçamento com três limites, um imóvel e uma
+dívida) e usei os ecrãs como um utilizador. Três sítios mostram um número certo com uma frase que o
+desmente: o calendário conta só o que falta pagar mas apresenta-se como «o dia»; a legenda do património
+enumera três termos quando o número soma cinco; o resumo do orçamento mede o consumo contra o orçamento
+total e diz «Tranquilo» enquanto a maior categoria está em «Atenção».
+
+**Decisão, quatro regras:**
+1. **Calendário:** a célula do dia e o nome acessível contam **todos** os itens daquele dia — por liquidar,
+   já liquidados e cartão — e o saldo do dia inclui-os; a frase distingue o que falta. Os três números do
+   topo (A pagar / A receber / Saldo previsto) podem continuar a ser só o que falta, mas então uma legenda
+   di-lo por palavras.
+2. **Património:** a legenda nomeia **todos** os termos que entram — contas, objetivos, bens, faturas do
+   cartão e dívidas. A fórmula não muda: o número está certo.
+3. **Orçamento:** o consumo mede-se contra a **soma dos limites**, e o estado do bloco é o **pior** das
+   categorias com limite. Foi-se embora o «média que tranquiliza». **Sem limites definidos não há soma**
+   (divisor 0): aí o consumo volta a medir-se contra o **total do orçamento**, como antes da T104 — um
+   orçamento de 1 200 € com 1 300 € gastos e zero limites diz «Passaste o limite definido», nunca «0 % ·
+   Tranquilo». O total é sempre positivo, portanto o divisor existe.
+4. **Objetivos e datas:** um objetivo sem nenhuma contribuição registada não é «Atrasado» — não há ritmo
+   para estar atrasado; e todas as datas em lista são pt-PT (20/11/2026), por um helper único.
+
+- **Porque:** um número certo com a frase errada é pior do que os dois errados, porque ninguém desconfia
+  dele. E estes três números só se viram com dados: com a conta vazia, tudo dizia zero e nada mentia.
+- **Alternativa rejeitada:** mudar a fórmula do património para caber na legenda antiga (tirar os objetivos
+  do cálculo). Rejeitada: o dinheiro guardado num objetivo não desapareceu, e tirá-lo faria o património
+  cair quando alguém poupa.
+- **O que a torna irreversível:** a regra «o estado é o pior das categorias» e a contagem total no
+  calendário. Voltar a medir contra o total ou a contar só o pendente reabre este defeito com outra cara, e
+  o próximo que o vir vai achar que encontrou algo novo.
