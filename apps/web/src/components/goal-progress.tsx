@@ -12,14 +12,21 @@ import { cn } from '@/lib/utils';
  * veredicto **por palavras**, com a razão, em vez de confiar numa cor.
  */
 
-/** Veredicto de acompanhamento de um objetivo. */
-export type GoalVerdict = 'completed' | 'on-track' | 'late';
+/**
+ * Veredicto de acompanhamento de um objetivo.
+ *
+ * `no-history` existe desde a T104/D37: sem uma única contribuição registada não
+ * há ritmo para estar atrasado, e o cartão dizia «Atrasado» no dia em que o
+ * objetivo nasceu.
+ */
+export type GoalVerdict = 'completed' | 'on-track' | 'late' | 'no-history';
 
 /** Nome legível de cada veredicto. */
 export const GOAL_VERDICT_LABELS: Readonly<Record<GoalVerdict, string>> = {
   completed: 'Concluído',
   'on-track': 'No bom caminho',
   late: 'Atrasado',
+  'no-history': 'Sem histórico',
 };
 
 /** Frequência do aporte, como se diz em português. */
@@ -72,9 +79,19 @@ export function goalVerdict(goal: {
   readonly state: string;
   readonly onTrack: boolean;
   readonly remainingInCents: number;
+  /**
+   * Obrigatório de propósito (T104/D37): um chamador que se esqueça mantinha
+   * «Atrasado» no dia 0 em silêncio, que é exactamente o defeito que isto veio
+   * corrigir. Sem histórico, o veredicto é `no-history`.
+   */
+  readonly movementCount: number;
 }): GoalVerdict {
   if (goal.state === 'completed' || goal.remainingInCents <= 0) {
     return 'completed';
+  }
+
+  if (goal.movementCount === 0) {
+    return 'no-history';
   }
 
   return goal.onTrack ? 'on-track' : 'late';
@@ -102,8 +119,11 @@ export function goalVerdictSentence(goal: {
     return 'Ao ritmo de poupança que já mostraste, chegas ao valor antes do prazo.';
   }
 
-  if (goal.movementCount === 0 && goal.accumulatedInCents === 0) {
-    return `Ainda não há poupança registada. Para cumprires o prazo, começa a aportar ${perPeriod}.`;
+  if (
+    goal.verdict === 'no-history' ||
+    (goal.movementCount === 0 && goal.accumulatedInCents === 0)
+  ) {
+    return `Ainda não há poupança registada, por isso não há ritmo para comparar. Para cumprires o prazo, começa a aportar ${perPeriod}.`;
   }
 
   return `Ao ritmo atual não chegas ao prazo. Para o cumprires, precisas de aportar mais ${perPeriod}.`;
@@ -125,6 +145,15 @@ export function GoalVerdictBadge({ verdict }: { readonly verdict: GoalVerdict })
     return (
       <Badge variant="destructive" className="font-normal">
         <TriangleAlert className="size-3" aria-hidden />
+        {label}
+      </Badge>
+    );
+  }
+
+  if (verdict === 'no-history') {
+    return (
+      <Badge variant="outline" className="font-normal text-muted-foreground">
+        <Clock className="size-3" aria-hidden />
         {label}
       </Badge>
     );
@@ -159,7 +188,13 @@ export function GoalMeter({
 }) {
   const clamped = Math.max(0, Math.min(progressPct, 100));
   const tone =
-    verdict === 'completed' ? 'bg-income' : verdict === 'late' ? 'bg-warning' : 'bg-primary';
+    verdict === 'completed'
+      ? 'bg-income'
+      : verdict === 'late'
+        ? 'bg-warning'
+        : verdict === 'no-history'
+          ? 'bg-muted-foreground/40'
+          : 'bg-primary';
 
   return (
     <div

@@ -113,11 +113,21 @@ export function BudgetOverview({
 
           <BudgetMeter usedPct={budget.usedPct} state={budget.state} label={budget.name} />
 
+          {/*
+            T104/D37: o denominador é a **soma dos limites**, e o estado é o pior
+            das categorias. O total do orçamento não desaparece — passa a ter a
+            sua própria linha, com o gasto do mês ao lado.
+          */}
           <p className="text-xs text-muted-foreground">
             <Amount amountInCents={budget.spentInCents} tone="neutral" /> de{' '}
-            <Amount amountInCents={budget.totalAmountInCents} tone="neutral" /> —{' '}
-            {BUDGET_STATE_DESCRIPTIONS[budget.state] ?? ''} A diferença entre este valor e o “Gasto
-            no mês” são as categorias que ainda não têm limite.
+            <Amount amountInCents={budget.allocatedInCents} tone="neutral" /> — a soma dos limites
+            das categorias. {BUDGET_STATE_DESCRIPTIONS[budget.state] ?? ''} A diferença entre este
+            valor e o “Gasto no mês” são as categorias que ainda não têm limite.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Orçamento “{budget.name}”:{' '}
+            <Amount amountInCents={budget.spentAllInCents} tone="neutral" /> de{' '}
+            <Amount amountInCents={budget.totalAmountInCents} tone="neutral" /> este mês.
           </p>
         </div>
       </CardContent>

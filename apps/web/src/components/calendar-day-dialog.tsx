@@ -145,7 +145,16 @@ export function CalendarDayDialog({
     setView('day');
   }
 
-  const count = day.items.length === 1 ? '1 item' : `${day.items.length} itens`;
+  /*
+   * T104/D37: a célula e o nome acessível contam **todos** os itens do dia e o
+   * saldo inclui os já liquidados; a frase distingue o que falta. Antes, um dia
+   * com o salário já pago mostrava «0 itens» e «0,00 €» ao lado de 2 200 €.
+   */
+  const totalItens = day.items.length + day.settledItems.length + day.cardItems.length;
+  const count = totalItens === 1 ? '1 item' : `${totalItens} itens`;
+  const pendentes = day.items.length === 1 ? '1 por liquidar' : `${day.items.length} por liquidar`;
+  const saldoDoDia =
+    day.balanceInCents + day.settledItems.reduce((total, item) => total + item.amountInCents, 0);
   const dayNumber = Number(day.date.slice(8));
 
   const dialogo = (
@@ -173,7 +182,7 @@ export function CalendarDayDialog({
             className="flex min-h-11 w-full items-baseline justify-between gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <span className="text-sm font-semibold first-letter:uppercase">{label}</span>
-            <Amount amountInCents={day.balanceInCents} withSign className="text-sm" />
+            <Amount amountInCents={saldoDoDia} withSign className="text-sm" />
           </button>
         </DialogTrigger>
       )}
@@ -186,7 +195,7 @@ export function CalendarDayDialog({
             <DialogHeader>
               <DialogTitle className="first-letter:uppercase">{title}</DialogTitle>
               <DialogDescription>
-                {count} por liquidar
+                {count} · {pendentes}
                 {day.cardItems.length === 0
                   ? null
                   : ` · ${day.cardItems.length === 1 ? '1 no cartão' : `${day.cardItems.length} no cartão`}`}
@@ -194,7 +203,7 @@ export function CalendarDayDialog({
                   ? null
                   : ` · ${day.settledItems.length === 1 ? '1 já liquidado' : `${day.settledItems.length} já liquidados`}`}
                 {' · '}saldo{' '}
-                <span className="tabular-nums">{formatCurrency(day.balanceInCents, 'EUR')}</span>
+                <span className="tabular-nums">{formatCurrency(saldoDoDia, 'EUR')}</span>
               </DialogDescription>
             </DialogHeader>
 
@@ -331,7 +340,7 @@ export function CalendarDayDialog({
     >
       {dialogo}
       <p className="mt-1 text-[0.7rem] font-medium">
-        <Amount amountInCents={day.balanceInCents} withSign />
+        <Amount amountInCents={saldoDoDia} withSign />
       </p>
       <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto">
         {day.items.map((item) => (

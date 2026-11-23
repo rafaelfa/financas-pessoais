@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDate } from '@repo/shared';
 import { Archive, ArchiveRestore, Gem, Pencil, Receipt, Trash } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -153,7 +154,7 @@ export function PatrimonioList({
                   <p className="text-xs text-muted-foreground">
                     {asset.valuedOn === null
                       ? 'Sem data de avaliação'
-                      : `Avaliado em ${asset.valuedOn}`}
+                      : `Avaliado em ${formatDate(asset.valuedOn)}`}
                   </p>
                 </CardContent>
               </Card>
@@ -280,7 +281,7 @@ export function PatrimonioList({
                     {liability.endDate === null ? null : (
                       <>
                         <dt>Fim</dt>
-                        <dd className="text-right">{liability.endDate}</dd>
+                        <dd className="text-right">{formatDate(liability.endDate)}</dd>
                       </>
                     )}
                   </dl>

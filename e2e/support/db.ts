@@ -1067,3 +1067,22 @@ export async function limparPatrimonioDoSpec(
     return { bens: bens.rowCount ?? 0, dividas: dividas.rowCount ?? 0 };
   });
 }
+
+/**
+ * Apaga os orçamentos do spec (os limites caem por cascata).
+ *
+ * O `limparDadosDoSpec` não toca em orçamentos, e um orçamento deixado no
+ * utilizador partilhado muda a lista que as specs de orçamento leem.
+ */
+export async function apagarOrcamentosDoSpec(email: string, prefixo: string): Promise<number> {
+  return withClient(async (client) => {
+    const result = await client.query(
+      `DELETE FROM budget
+        WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)
+          AND name LIKE $2`,
+      [email, `${prefixo}%`],
+    );
+
+    return result.rowCount ?? 0;
+  });
+}

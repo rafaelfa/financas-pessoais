@@ -44,17 +44,38 @@ function longDate(date: string): string {
 
 /**
  * Um dia abre quando tem qualquer movimento — por liquidar, no cartão ou já
- * liquidado. O nome acessível continua a contar só os por liquidar.
+ * liquidado.
  */
 function temMovimentos(day: CalendarDay): boolean {
   return day.items.length + day.cardItems.length + day.settledItems.length > 0;
 }
 
-/** Nome acessível de um dia: data, número de itens e saldo. */
-function dayLabel(day: CalendarDay): string {
-  const count = day.items.length === 1 ? '1 item' : `${day.items.length} itens`;
+/**
+ * O saldo do dia conta **tudo** o que lá está (T104/D37).
+ *
+ * O motor devolve `balanceInCents` só com o que falta liquidar — é o que os
+ * totais do mês usam. Para o dia, o número tem de incluir o que já foi pago:
+ * senão a célula de um dia com o salário já liquidado dizia «0,00 €» ao lado de
+ * um item de 2 200 €.
+ */
+function dayBalanceInCents(day: CalendarDay): number {
+  return (
+    day.balanceInCents + day.settledItems.reduce((total, item) => total + item.amountInCents, 0)
+  );
+}
 
-  return `${longDate(day.date)}: ${count}, saldo ${formatCurrency(day.balanceInCents, 'EUR')}`;
+/**
+ * Nome acessível de um dia: data, itens (total e por liquidar) e saldo do dia.
+ *
+ * O total primeiro diz o que o dia tem; «por liquidar» diz o que ainda falta,
+ * que é a distinção que faltava quando a célula mostrava zero num dia cheio.
+ */
+function dayLabel(day: CalendarDay): string {
+  const total = day.items.length + day.settledItems.length + day.cardItems.length;
+  const itens = total === 1 ? '1 item' : `${total} itens`;
+  const pendentes = day.items.length === 1 ? '1 por liquidar' : `${day.items.length} por liquidar`;
+
+  return `${longDate(day.date)}: ${itens} · ${pendentes}, saldo ${formatCurrency(dayBalanceInCents(day), 'EUR')}`;
 }
 
 /** A faixa «em atraso» diz o que lá está: conta, fatura ou as duas coisas. */
@@ -142,6 +163,15 @@ function Totals({ calendar }: { readonly calendar: CalendarMonth }) {
           <Amount amountInCents={calendar.balanceInCents} withSign className="text-2xl" />
         </CardContent>
       </Card>
+      {/*
+        T104/D37: os três números do topo medem só o que falta. Sem esta linha,
+        um dia com tudo pago aparecia a zero nos totais e cheio na célula — e a
+        diferença não tinha nome em sítio nenhum.
+      */}
+      <p className="text-xs text-muted-foreground sm:col-span-3">
+        Estes três números contam só o que falta pagar ou receber neste mês. Os dias contam tudo o
+        que lá está, incluindo o que já foi liquidado.
+      </p>
     </section>
   );
 }

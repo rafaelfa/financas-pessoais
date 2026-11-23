@@ -107,7 +107,9 @@ test.describe('calendário do mês (T55)', () => {
 
     for (const dia of comItens) {
       /* O nome acessível traz data, número de itens e saldo. */
-      expect(dia.nome, 'nome do dia com data, itens e saldo').toMatch(/\d+ items?, saldo/);
+      expect(dia.nome, 'nome do dia com data, itens, por liquidar e saldo').toMatch(
+        /\d+ (?:item|itens) · \d+ por liquidar, saldo/,
+      );
     }
 
     const t = await totais(page);

@@ -72,6 +72,29 @@ export interface BudgetView {
   readonly alertsEnabled: boolean;
 }
 
+/**
+ * O estado do bloco é o **pior** das categorias com limite (T104/D37).
+ *
+ * Uma média que tranquiliza esconde a categoria que já passou do limiar: era o
+ * que acontecia com «Tranquilo» ao lado de «Alimentação · Atenção 84 %».
+ *
+ * **Sem limites não há categorias para piorar** — e aí o estado vem do consumo
+ * do mês contra o total do orçamento, por `stateFor`. Este ramo existe porque a
+ * primeira versão da T104 devolvia `safe` sempre que `limits` estava vazio, e um
+ * orçamento de 1 200 € com 1 300 € gastos dizia «0 % · Tranquilo».
+ */
+function worstState(limits: readonly BudgetLimitView[]): BudgetState {
+  if (limits.some((limit) => limit.state === 'exceeded')) {
+    return 'exceeded';
+  }
+
+  if (limits.some((limit) => limit.state === 'warning')) {
+    return 'warning';
+  }
+
+  return 'safe';
+}
+
 /** Percentagem de consumo de um total, arredondada e sem estourar no zero. */
 function usedPctFor(spentInCents: number, totalInCents: number): number {
   return totalInCents <= 0 ? 0 : Math.round((spentInCents / totalInCents) * 100);
@@ -200,6 +223,20 @@ export async function listBudgets(): Promise<BudgetView[]> {
       noLimitStatuses.map((status) => [status.categoryId, status.spentInCents]),
     );
 
+    /*
+     * Sem limites de categoria, `summary.spentInCents` é 0 (é a soma dos status
+     * das categorias com limite) e `allocatedInCents` também — medir contra eles
+     * dava «0 % · Tranquilo» com o orçamento estourado. Nesse caso o consumo é o
+     * **gasto do mês** (`spentAllInCents`) contra o total, que é sempre positivo.
+     * Com limites, o caminho é o que o QA aprovou: 850 de 1 200 = 71 %.
+     */
+    const semLimites = limits.length === 0 || summary.allocatedInCents <= 0;
+    const usadoPct = usedPctFor(
+      semLimites ? spentAllInCents : summary.spentInCents,
+      semLimites ? budget.totalAmountInCents : summary.allocatedInCents,
+    );
+    const estadoDoBloco = semLimites ? stateFor(usadoPct) : worstState(limits);
+
     return {
       id: budget.id,
       name: budget.name,
@@ -218,8 +255,14 @@ export async function listBudgets(): Promise<BudgetView[]> {
       allocatedInCents: summary.allocatedInCents,
       remainingInCents: summary.remainingInCents,
       projectedInCents: summary.projectedSpentInCents,
-      usedPct: usedPctFor(summary.spentInCents, budget.totalAmountInCents),
-      state: stateFor(usedPctFor(summary.spentInCents, budget.totalAmountInCents)),
+      /*
+       * T104/D37: o consumo mede-se contra a **soma dos limites**, não contra o
+       * total do orçamento — 129,35 de 310 é 42 %, e 129,35 de 1 500 é 9 % («e
+       * está tudo tranquilo») com uma categoria a 84 %. O total continua a
+       * aparecer, mas numa linha própria, ao lado do gasto do mês.
+       */
+      usedPct: usadoPct,
+      state: estadoDoBloco,
       overBudgetCategories: summary.overBudgetCategories,
       warningCategories: summary.warningCategories,
       alertsEnabled: budget.alertsEnabled,

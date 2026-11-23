@@ -67,7 +67,14 @@ export default async function PatrimonioPage() {
           <div className={`mt-1 text-2xl font-bold ${liquido < 0 ? 'text-destructive' : ''}`}>
             <Amount amountInCents={liquido} tone="neutral" />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">contas + bens − dívidas</p>
+          {/*
+            T104/D37: a fórmula não muda — o número está certo ao cêntimo — mas a
+            legenda tem de nomear **todos** os termos que entram, objetivos e
+            faturas do cartão incluídos.
+          */}
+          <p className="mt-1 text-xs text-muted-foreground">
+            contas + objetivos + bens − faturas do cartão − dívidas
+          </p>
         </div>
       </div>
 

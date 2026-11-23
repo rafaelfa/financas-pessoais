@@ -22,7 +22,9 @@ import {
  * Cobre o que a T84 acrescentou e o que pode desaparecer sem ninguém dar por
  * isso: a **célula inteira** abrir o dia (o `onClick` que ignora as ligações),
  * o caminho de teclado, os dois grupos de itens, e o **lançamento com a data do
- * dia** (`initialDate`), com o saldo do dia a não mexer.
+ * dia** (`initialDate`). Desde a T104/D37 o saldo do dia inclui também o que já
+ * está liquidado (o dia soma tudo o que tem); os três totais do mês continuam a
+ * contar só o pendente.
  *
  * Se o `onClick` da célula desaparecer, o primeiro teste falha (não abre); se o
  * `initialDate` desaparecer, o terceiro falha duas vezes: o campo «Data» deixa
@@ -64,7 +66,11 @@ async function totaisDoMes(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const seccao = document.querySelector('section[aria-label="Totais do mês"]');
 
-    return [...(seccao?.children ?? [])].map((d) =>
+    /*
+     * Só os três cartões: desde a T104 a secção tem também uma linha de legenda
+     * («Estes três números contam só o que falta…»), que não é um total.
+     */
+    return [...(seccao?.querySelectorAll(':scope > [data-slot="card"]') ?? [])].map((d) =>
       (d.textContent ?? '').replace(/\s+/g, ' ').trim(),
     );
   });
@@ -144,7 +150,10 @@ test.describe('painel de dia do calendário (T84)', () => {
     const controlo = page.getByRole('button', { name: DIA_LONGO });
     await expect(controlo).toHaveAttribute('aria-haspopup', 'dialog');
     /* O nome acessível traz a data, o número de itens e o saldo. */
-    await expect(controlo).toHaveAttribute('aria-label', /2 itens, saldo\s*-30,00\s*€/);
+    await expect(controlo).toHaveAttribute(
+      'aria-label',
+      /2 itens · 2 por liquidar, saldo\s*-30,00\s*€/,
+    );
 
     for (const tecla of ['Enter', ' ']) {
       await controlo.focus();
@@ -155,7 +164,7 @@ test.describe('painel de dia do calendário (T84)', () => {
     }
   });
 
-  test('lança com a data do dia, o item cai em «Já liquidado» e o saldo do dia não muda', async ({
+  test('lança com a data do dia, o item cai em «Já liquidado» e entra no saldo do dia', async ({
     page,
   }) => {
     await abrirRota(page, `/calendario?mes=${MES}`);
@@ -193,8 +202,13 @@ test.describe('painel de dia do calendário (T84)', () => {
     await expect(jaLiquidado).toContainText(`${PREFIXO} lançamento`);
     await expect(porLiquidar).not.toContainText(`${PREFIXO} lançamento`);
 
-    /* O saldo do dia continua a ser o dos itens por liquidar: não muda. */
-    await expect(descricao).toContainText(/saldo\s*-30,00\s*€/);
+    /*
+     * T104/D37: o saldo do dia passou a incluir o que já está liquidado — o dia
+     * tinha −30,00 por liquidar e o lançamento de −12,34 é gravado liquidado,
+     * logo o saldo do dia é −42,34. Os três totais do mês é que continuam a
+     * contar só o pendente (a última asserção deste teste).
+     */
+    await expect(descricao).toContainText(/saldo\s*-42,34\s*€/);
   });
 
   test('um dia vazio não tem controlo, não abre por toque e fica fora do Tab', async ({ page }) => {
@@ -351,7 +365,10 @@ test.describe('painel de dia do calendário (T84)', () => {
     /* O dia só tem compras no cartão: é controlo, conta 0 por liquidar e abre. */
     await abrirRota(page, `/calendario?mes=${MES}`);
     const controlo10 = page.getByRole('button', { name: /10 de março/ }).first();
-    await expect(controlo10).toHaveAttribute('aria-label', /0 itens, saldo 0,00\s*€/);
+    await expect(controlo10).toHaveAttribute(
+      'aria-label',
+      /1 item · 0 por liquidar, saldo 0,00\s*€/,
+    );
     await controlo10.click();
 
     let d = dialogo(page);
@@ -407,7 +424,7 @@ test.describe('painel de dia do calendário (T84)', () => {
     await expect(jaLiquidado).toContainText(`${PREFIXO} pagamento`);
     await expect(d.getByRole('region', { name: 'No cartão' })).toHaveCount(0);
     await expect(d.locator('[data-slot="dialog-description"]')).toContainText(
-      /0 itens por liquidar · 1 já liquidado/,
+      /1 item · 0 por liquidar · 1 já liquidado/,
     );
 
     /* Nada disto soma: os três totais do mês iguais. */

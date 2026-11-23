@@ -87,7 +87,12 @@ export function PwaRegister() {
         registration.addEventListener('updatefound', () => trackInstalling(registration));
       })
       .catch((error: unknown) => {
-        console.warn('[pwa] não consegui registar o service worker', error);
+        /*
+         * T104: «[object DOMException]» não diz nada a quem lê a consola. O nome
+         * e a mensagem dizem — e o contexto diz se o problema é do browser, do
+         * servidor do `sw.js` ou da origem.
+         */
+        console.warn('[pwa] não consegui registar o service worker', describeWorkerError(error));
       });
 
     return () => {
@@ -113,6 +118,21 @@ export function PwaRegister() {
   }
 
   return <PwaUpdateBanner onUpdate={applyUpdate} onDismiss={dismiss} pending={applying} />;
+}
+
+/** O erro de registo, por palavras: nome, mensagem e o sítio de onde se tentou. */
+function describeWorkerError(error: unknown): Record<string, string> {
+  const base: Record<string, string> = {
+    origem: window.location.origin,
+    protocolo: window.location.protocol,
+    sw: new URL('/sw.js', window.location.origin).href,
+  };
+
+  if (error instanceof DOMException || error instanceof Error) {
+    return { ...base, nome: error.name, mensagem: error.message };
+  }
+
+  return { ...base, mensagem: String(error) };
 }
 
 /**
