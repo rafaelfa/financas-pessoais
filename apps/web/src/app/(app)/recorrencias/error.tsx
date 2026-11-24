@@ -22,6 +22,12 @@ export default function RecorrenciasError({
   readonly reset: () => void;
 }) {
   useEffect(() => {
+    // O servidor já reportou este erro (`onRequestError` do instrumentation.ts);
+    // o cliente só reporta o que apanhou, e um erro de cliente não traz `digest`.
+    if (error.digest !== undefined) {
+      return;
+    }
+
     Sentry.captureException(error);
   }, [error]);
 
