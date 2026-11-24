@@ -992,3 +992,27 @@ regra certa: `lastInvoiceByCard` em `server/invoices.ts`, que `getReviewCounts` 
   já decidido para consertar outro, e porque faria o «Fechar o mês» bloquear por uma fatura a vencer em 2027.
 - **O que a torna irreversível:** a definição 2. Quem contar uma fatura por fechar como dívida a pagar
   reabre a T61; quem somar duas faturas do mesmo cartão reabre os 6 390 €.
+
+### D39 — O Sentry reporta erros e não recolhe finanças pessoais (T108) — **decisão do Lead, pedida pelo Dr. Eggbot (2026-11-24)**
+
+A app não tinha para onde reportar um erro em produção. O Sentry entra com o DSN já posto na Vercel pelo
+utilizador, mas uma ferramenta de erros recolhe por omissão mais do que aquilo a que uma app de finanças
+pessoais se pode expor: IP, cookies, cabeçalhos, corpos de pedido, parâmetros de URL e dados de consultas.
+
+**Decisão, quatro regras:**
+1. **Só o que serve para depurar sai:** erro, stack trace, release e ambiente. `lib/sentry-options.ts` é o
+   sítio único da política e mantém `userInfo`, `cookies`, `httpHeaders`, `urlQueryParams` e
+   `databaseQueryData` a `false` e `httpBodies: []`.
+2. **O Session Replay é mascarado por inteiro** (`maskAllText`, `maskAllInputs`, `blockAllMedia`, sem corpos
+   de rede). Se o plano não der Replay, o código fica pronto e não produz dados — aceite.
+3. **Sem DSN, o SDK desliga-se** (`enabled: Boolean(dsn)`) em vez de rebentar o build: CI e clones novos
+   continuam a construir sem segredos.
+4. **O `app/global-error.tsx` usa estilos inline com hex, e é a exceção autorizada:** substitui o layout
+   raiz e não herda o `globals.css`, logo não há tokens disponíveis. Não é achado de design.
+
+- **Porque:** o valor está no stack trace, não nos dados do utilizador. Afrouxar isto transforma um serviço
+  de monitorização num segundo sítio onde estão as finanças de alguém.
+- **Alternativa rejeitada:** aceitar as opções por omissão do SDK e «ver depois». Rejeitada porque o que é
+  recolhido por omissão já saiu quando alguém repara nele — e o Replay é o pior caso (grava o ecrã).
+- **O que a torna irreversível:** as regras 1 e 2. Quem as afrouxar para «ver melhor o erro» está a exportar
+  dados financeiros para fora; a mudança passa a ser decisão do utilizador, não do agente de turno.

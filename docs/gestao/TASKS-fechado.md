@@ -2303,3 +2303,157 @@ reais, os números reconciliados à mão e, para qualquer mudança de UI, screen
 **Repositório:** nada commitado; 12 ficheiros versionados (+237/−15) e 3 specs novos na árvore, sobre `main @ d6f75a9`. Push e deploy por fazer.
 
 **Decisão:** autorização do utilizador para commit e push; depois, verificação de produção (skill `verificacao-po-s-deploy`).
+
+## T108 — A produção reporta os erros ao Sentry (2026-11-24)
+
+**Porque:** hoje um erro em produção morre no browser do utilizador. O `(app)/error.tsx` mostra um ecrã
+de erro e não sobra nada: nenhum stack, nenhum release, nenhuma contagem. O Dr. Eggbot escreveu a
+instrumentação e provou dois eventos reais no projeto `aguiar-gz/financas-pessoais` (`FINANCAS-PESSOAIS-1`
+e `-2`); o DSN já está na Vercel (`NEXT_PUBLIC_SENTRY_DSN`, Production + Preview) **posto com aprovação do
+utilizador**. O que falta é entrar no fluxo: gate, prova do QA, leitura do Revisor e commit.
+
+**Estado de partida, medido por mim a 2026-11-24:** branch `feat/sentry-instrumentacao`, criada sobre
+`7680375`, **sem commits**. Na árvore: 4 ficheiros alterados (`.env.example`, `apps/web/next.config.ts`,
+`apps/web/package.json`, `pnpm-lock.yaml`) e 6 novos (`instrumentation.ts`, `instrumentation-client.ts`,
+`sentry.server.config.ts`, `sentry.edge.config.ts`, `lib/sentry-options.ts`, `app/global-error.tsx`).
+O `pnpm-lock.yaml` mexe em 882 linhas, mas **nenhuma versão sobe**: `next` fica em 16.4.6 e `vitest` em
+5.0.3 — o que muda são as chaves de resolução de peers por causa do `@opentelemetry/api` que o Sentry traz.
+**Fora do âmbito, e fica fora deste commit:** `relatorios/verificacao-2026-11-23-t107.md` (meu, da
+verificação da T107) está na árvore por commitar e não entra na T108.
+
+**Ficheiros que pode escrever:** os 10 acima, e mais nada — **sem schema, sem rota nova, sem segunda
+dependência nova** (`@sentry/nextjs@11.17.0` é a única, 51 transitivas). O `.env` local da raiz é
+git-ignored: o DSN que lá está fica.
+
+**Âmbito ampliado a 2026-11-24 (volta 3, autorizada pelo utilizador):** entram os **11 `error.tsx` de
+segmento** — `app/(app)/error.tsx` e os 10 irmãos (`cartoes`, `categorias`, `contas`, `importar`, `objetivos`,
+`orcamento`, `recorrencias`, `regras`, `relatorios`, `transacoes`) —, **21 ficheiros no total**. Cada um leva
+**uma linha** (`useEffect` + `captureException`), sem componente partilhado, sem `onCaughtError` novo e sem
+refactor. Motivo: o achado do Revisor — nenhum boundary reportava, e o caso que o «Porque» nomeia é esse.
+
+**Critério de aceitação (verificável):**
+
+1. **Gate de frio verde, com as saídas coladas:** `pnpm format:check && pnpm lint && pnpm typecheck &&
+   pnpm test && pnpm build --force` → `EXIT=0`, **605 testes** e o `BUILD_ID` escrito no relatório.
+2. **O install do CI continua a passar:** `pnpm install --frozen-lockfile` → `EXIT=0` (o lockfile tem de
+   bater com o `package.json`; é o primeiro passo do `ci.yml` e falha de propósito quando não bate).
+3. **Sem DSN não rebenta nada:** com `NEXT_PUBLIC_SENTRY_DSN` vazio no ambiente, o `build` passa e o SDK
+   fica desligado (`enabled: false`) — provar que não sai um único pedido para `*.ingest.sentry.io`.
+4. **Com DSN, um evento chega de facto:** um erro de servidor e um erro de browser produzem um `POST` de
+   envelope para `*.ingest.sentry.io` com resposta **200** (medido na rede, não no dashboard: o QA não tem
+   login do Sentry). Registar o `event_id` de cada um.
+5. **Política de dados restrita, provada por leitura do ficheiro:** `lib/sentry-options.ts` mantém
+   `userInfo`, `cookies`, `httpHeaders`, `urlQueryParams` e `databaseQueryData` a `false`, `httpBodies: []`,
+   e o Replay com `maskAllText`, `maskAllInputs`, `blockAllMedia` a `true` e `networkCaptureBodies: false`.
+   Nenhum destes valores afrouxa nesta tarefa (D39).
+6. **`app/global-error.tsx`:** substitui o layout raiz, tem `lang="pt-PT"`, texto em pt-PT, botão de
+   recarregar e a referência do `digest`; chama `captureException` num `useEffect`. **Os hex inline são
+   aceites e são decisão minha (D39):** o ficheiro não herda o `globals.css`, logo não há tokens — não é
+   achado de design.
+7. **Nada mais muda:** `git diff --stat` mostra os 10 ficheiros do âmbito original **mais os 11 `error.tsx`**
+   (21 no total, todos dentro do âmbito declarado) e nenhum outro; as 17 rotas autenticadas continuam a abrir
+   (a suite e2e do QA é a prova).
+8. **Achado do Revisor fechado (acrescentado a 2026-11-24):** um erro de render apanhado por um `error.tsx`
+   de segmento produz envelope **200** com `event_id` — medido na rede por um `throw` num componente cliente
+   de `/transacoes`, não no dashboard. Os 11 boundaries chamam `captureException` em `useEffect`, com o
+   `error` nas dependências, e os que já mostram `error.digest` continuam a mostrá-lo.
+
+**O que NÃO fazer:** não tocar em lógica de negócio, em `packages/`, no schema ou em migrações; não subir
+versões de dependências; não afrouxar a política de dados do ponto 5 (é decisão do utilizador, D39); não
+commitar, não fazer push, não mexer no `relatorios/verificacao-2026-11-23-t107.md`; não correr e2e ao
+mesmo tempo que o QA.
+
+**Prova esperada:** `relatorios/T108.md` com (a) o gate e o `BUILD_ID`; (b) o `--frozen-lockfile`; (c) os
+dois `event_id` e a resposta 200 do ingest, com o método de medição; (d) o caso sem DSN; (e) a lista dos
+10 ficheiros de `git diff --stat`; (f) uma linha de justificação do lockfile para a mensagem do commit
+(a dependência nova e as 51 transitivas). Sem commit.
+
+**Volta 1 (2026-11-24, Lead):** o Dev adotou a árvore e entregou com prova em `relatorios/T108.md` §1–§12 — gate de
+frio `EXIT=0` com 605 testes e `BUILD_ID 54-owv5bbfi3ZE3-99xXd`; `pnpm install --frozen-lockfile` `EXIT=0` sem
+subir `next` nem `vitest`; **sem DSN**, 0 pedidos a `*ingest*` e `hasClient:false`; **com DSN**, envelope 200 com
+`event_id f98f0f0c21154fec945ab537109c018d` (servidor) e `4e246546c3d347358fa8112d57455932` (browser); D39 intacta
+por leitura; `git diff --stat` nos 10. Corrigiu o `.env.example` que vinha em CRLF. **Devolvi-lhe uma coisa:** o
+`@sentry/nextjs` estava com caret e o `AGENTS.md:89` pede versões exatas — sai antes do QA.
+
+**Volta 2 (2026-11-24, Lead):** caret fora — `@sentry/nextjs` fica `11.17.0` exato. Um `pnpm install` completo
+arrastava 21 linhas alheias, por isso o Dev repôs o lockfile e escreveu à mão a única linha do `specifier`;
+`--frozen-lockfile` `EXIT=0` e gate de frio `EXIT=0` com 605 testes e `BUILD_ID OYON1dLXLmE0OBb4Q3Fdu`.
+
+**QA — PASS (2026-11-24):** suite de frio **162 passed, 0 failed** (13,5 min, `BUILD_ID -T3QGV-Skq-PrcMx5B5ME`)
+com **17/17** rotas autenticadas `200` e `h1`; eventos do próprio QA — servidor `af3e76ad8d92451991acf5c9d4c02b2a`
+(P1001, HTTP 500, envelope 200) e browser `2c534640b7b940d3924bb9a059861af2`; **sem DSN** 0 pedidos a `*ingest*`
+e `hasClient:false` (DSN neutralizado por ambiente, `.env` nunca editado — 11 linhas, reposto); D39 por leitura;
+`--frozen-lockfile` 0, `next` 16.4.6, `vitest` 5.0.3; 4 alterados + 6 novos. **Ressalva do QA:** o lockfile ganha
+uma entrada **nova** `@types/estree@1.0.10` (só o `rollup@4.68.8` novo, de `@sentry/bundler-plugins`) — nada
+existente subiu, mas o §10 do `relatorios/T108.md` dizia «continua 1.0.9». `global-error` verificado por leitura, sem
+captura: não é alcançável sem editar o layout raiz — registado como não medido. 2 utilizadores do QA apagados, 0
+restos `e2e-%`, portas 3000 e 3100 fechadas, produção não tocada.
+
+**Volta 3 (2026-11-24, Lead):** a frase imprecisa do §10/§11 devolvida ao Dev — as duas entradas de `estree`
+descritas como são (9 `+`, 0 `−`), o «uma linha» qualificado como comparação contra o lockfile que já trazia o Sentry
+e os 882 (`845` / `37`) contra HEAD. Só `relatorios/T108.md` tocado, `prettier --check` 0, sem commit. Sem re-correr
+gate, build, frozen nem e2e: já pagos e provados pelo QA.
+
+**Volta 3 (2026-11-24, Revisor → utilizador → Dev):** o Revisor deu **0 BLOQUEIA, 1 DEVE, 0 OPCIONAIS** e
+«pode commitar: não»: nenhum dos **11 `error.tsx`** de segmento chama `captureException` (`grep -rn
+captureException apps/web/src` só dava `global-error.tsx`), e no Next 16 o `onCaughtError` por omissão só faz
+`console.error`, sem `window.reportError` — um erro apanhado por boundary de segmento mostra «Referência:
+<digest>» e não existe no Sentry. É o caso que o «Porque» desta tarefa nomeia. **Medi-o eu (`find` = 11
+`error.tsx`, `grep` = 0 chamadas) e levei a escolha ao utilizador**, porque ampliar o âmbito é decisão dele:
+**autorizou fechar na TASKS**, com uma linha por boundary e sem refactor partilhado. Âmbito passa a 21 ficheiros
+e o critério ganha o ponto 8. O resto do parecer foi confirmado sem achado: D39 intacta (`dataCollection` é
+opção real do 11.17.0; `stackFrameVariables` não é buraco porque `includeLocalVariables` não está posto), hex
+inline só no `global-error` (0 em `rgb(`/hex nos outros cinco), 10 ficheiros sem CRLF, `@sentry/nextjs` exato em
+`package.json:17` e `specifier: 11.17.0` no importer do lockfile. `global-error` continua não medido por captura.
+
+**Volta 3 — entrega do Dev (2026-11-24):** os 11 `error.tsx` chamam `captureException(error)` num `useEffect`
+com `[error]`: `git diff --numstat HEAD -- apps/web/src/app` dá `6 0` nos 11 (só inserções), `grep -rn
+"captureException" apps/web/src` = **12** (as 11 novas + `global-error`), `reset`/`digest`/texto/ícones
+intocados. Gate de frio `EXIT=0`, **605 testes**, **`BUILD_ID shA4wlLCYrYpQ9eD8MrYb`**, turbo `0 cached`;
+`prettier --check "apps/web/src/app/**/error.tsx"` 0. Verifiquei eu o `numstat`, o `grep` e o `BUILD_ID` no
+`.next`. Sem commit. Segue para QA com o critério 8: o envelope do boundary medido na rede.
+
+**Volta 3 — QA PASS (2026-11-24):** critério 8 provado na rede, com par controlado no mesmo build e
+utilizador (`BUILD_ID 46splI46YrZI-F0f8biIM`): erro de render de cliente em `/contas` (getter
+`Intl.NumberFormat.prototype.format` a lançar por `addInitScript`, sem editar código) → o `error.tsx` do
+segmento renderiza e sai `{"type":"event"}` `POST` **200**, `event_id 11e134943cce4f32bd53334e6246823c` (bytes
+6340); **sem o patch, 0** envelopes `event` (só `session`/`replay_event`), **com o patch, 1** — o pedido é deste
+caminho e o `global-error` não é alcançado. Suite de frio sobre o código novo: **162 passed, 0 failed**
+(12,8 min), 17/17 rotas `200` com `h1`, `Cached: 0 cached`. `.env` intacto (11 linhas, DSN definido), 4
+utilizadores de teste apagados, 0 restos `e2e-%`, portas 3000/3100 fechadas, produção não tocada. **Duas coisas
+registadas como não medidas, sem arredondar:** a via do `DATABASE_URL` morto que eu sugeri **não** dá o boundary
+de segmento — o layout lança primeiro e o ecrã é o `global-error` (`Referência: 3914836991`); e um erro apanhado
+no cliente **não tem `digest`** no Next 16, logo não existe captura com «Referência:» num ecrã de segmento.
+Segue para o Revisor.
+
+**Fechado:** T108 — a produção reporta os erros ao Sentry: `@sentry/nextjs@11.17.0` (versão exata) nos três
+runtimes, `global-error` em pt-PT e os 11 `error.tsx` de segmento a reportar, com a política de dados restrita
+(D39); 21 ficheiros e uma dependência nova.
+
+**Prova:** gate de frio `EXIT=0` com **605 testes** e `BUILD_ID shA4wlLCYrYpQ9eD8MrYb`; `pnpm install
+--frozen-lockfile` 0; **sem DSN** 0 pedidos a `*ingest*` e `hasClient:false`; **com DSN** envelope 200 de servidor
+(`event_id af3e76ad8d92451991acf5c9d4c02b2a`, P1001) e de browser (`2c534640b7b940d3924bb9a059861af2`); **critério 8
+com par controlado** — erro de render de cliente em `/contas`, **0** envelopes `event` sem o patch e **1** com ele
+(`event_id 11e134943cce4f32bd53334e6246823c`, 200, 6340 bytes); suite de frio **162 passed, 0 failed** (12,8 min),
+17/17 rotas autenticadas `200` com `h1`; Revisor **0 BLOQUEIA, 0 DEVE, 1 OPCIONAL**, «pode commitar: sim».
+Relatórios `relatorios/T108.md` (§1–§14) e `relatorios/T108-qa.md`.
+
+**O que isto não resolve:** (1) **os erros de servidor são reportados duas vezes** — `onRequestError` no servidor e
+o boundary no cliente, que recebe o erro do RSC com `digest`; as mensagens diferem e o `dedupeIntegration` não as
+junta. A correção é uma linha por ficheiro (`if (error.digest !== undefined) return;`) — OPCIONAL do Revisor,
+**candidata a T109, sem autorização**. (2) O `global-error` não é alcançável sem editar o layout raiz: verificado
+por leitura, **não medido por captura**. (3) Um erro apanhado no cliente não tem `digest` no Next 16, logo nunca há
+«Referência:» nesse ecrã — é o comportamento certo do ficheiro. (4) Os stacks em produção vêm minificados até
+existir `SENTRY_AUTH_TOKEN` na Vercel, que só o utilizador pode criar; e o Replay está no código mas o plano não
+inclui Session Replay.
+
+**Aberto:** a T109 (duplicação servidor/cliente) à espera de vaga autorizada; e o `SENTRY_AUTH_TOKEN` na Vercel,
+que depende do utilizador.
+
+**Repositório:** `693b2cb` em `main` — commit feito em `feat/sentry-instrumentacao` e levado a `main` por
+`--ff-only`; push feito e `origin/main` confirmado no mesmo commit; 23 ficheiros (+1891/−38). A branch
+`feat/sentry-instrumentacao` fica local, igual a `main`. O `relatorios/verificacao-2026-11-23-t107.md` continua
+por commitar.
+
+**Decisão:** o deploy publica sozinho, mas tem de ser verificado (skill `verificacao-po-s-deploy`); o
+`SENTRY_AUTH_TOKEN` é do utilizador; e a T109 só abre com a palavra dele.
