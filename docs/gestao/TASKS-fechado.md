@@ -2457,3 +2457,138 @@ por commitar.
 
 **Decisão:** o deploy publica sozinho, mas tem de ser verificado (skill `verificacao-po-s-deploy`); o
 `SENTRY_AUTH_TOKEN` é do utilizador; e a T109 só abre com a palavra dele.
+
+## T109 — Um erro de servidor não se reporta duas vezes (2026-11-24)
+
+**Porque:** com a T108 em produção, um erro do servidor é reportado **duas vezes** — uma pelo `onRequestError` do
+`instrumentation.ts`, outra pelo boundary do cliente, que recebe o erro do RSC já com `digest`. São dois eventos
+para o mesmo erro, com mensagens diferentes (logo o `dedupeIntegration` não os junta) e o segundo sem stack útil.
+Num mês de produção isto duplica metade do sinal e estraga qualquer contagem. É o OPCIONAL que o Revisor deixou
+na T108, e o utilizador autorizou abrir a vaga.
+
+**Estado de partida, medido por mim a 2026-11-24:** `main @ 8d8ecc7`. Os 11 `error.tsx` de segmento e o
+`app/global-error.tsx` chamam `Sentry.captureException(error)` num `useEffect` com `[error]`
+(`apps/web/src/app/global-error.tsx:12-14`), e `apps/web/src/instrumentation.ts:18` exporta
+`onRequestError = Sentry.captureRequestError` — o reporte do lado do servidor. Um erro apanhado no **cliente**
+não tem `digest` no Next 16 (medido na T108); um erro que vem do **servidor** chega ao boundary **com** `digest`
+— é o que faz aparecer «Referência: <digest>». O caso é hoje alcançável e já foi medido: base inalcançável →
+`global-error` com `Referência: 3914836991` e envelope `event` `cc87bd7f0e254cecbc0a9d61fd3e7698` **do browser**,
+a somar ao evento do servidor.
+
+**Ficheiros que pode escrever:** os **12** — os 11 `error.tsx` de segmento (`app/(app)/error.tsx`, `cartoes`,
+`categorias`, `contas`, `importar`, `objetivos`, `orcamento`, `recorrencias`, `regras`, `relatorios`, `transacoes`)
+e `app/global-error.tsx` —, mais o `relatorios/T109.md`. Mais nada: sem `lib/sentry-options.ts` (D39 não se toca),
+sem `next.config.ts`, `package.json` ou lockfile, sem schema, sem dependências novas.
+
+**Âmbito ampliado a 2026-11-24 (volta 2, autorizada pelo utilizador):** entra um **13.º ficheiro**,
+`apps/web/src/instrumentation.ts` — o `onRequestError` passa a pôr o `digest` do erro como etiqueta
+`nextjs.digest` antes de delegar no `Sentry.captureRequestError`. Motivo: o evento do servidor **não** leva o
+`digest` (`@sentry/nextjs build/cjs/common/captureRequestError.js:8-27` só põe contexto `nextjs` e
+`SDKProcessingMetadata`; o serializador de exceções guarda `type`, `value` e `stacktrace`), portanto o
+«Referência: <digest>» do ecrã não se encontrava no Sentry. Sem isto, a T109 calava o duplicado e deixava a
+referência do utilizador sem utilidade.
+
+**Critério de aceitação (verificável):**
+
+1. **A guarda existe nos 12:** o `captureException` só corre quando o erro **não** trouxe `digest` — um `return`
+   cedo antes da chamada, dentro do `useEffect`, com um comentário de uma ou duas linhas a dizer porquê.
+   `grep` nos 12 tem de mostrar a guarda em todos.
+2. **Um erro de servidor deixa de duplicar:** com a base inalcançável (o mesmo artifício reversível da T108, pelo
+   ambiente, sem editar o `.env`), o `global-error` renderiza com `Referência: <digest>` e o **browser** produz
+   **0** envelopes `{"type":"event"}` — hoje produz 1.
+3. **O reporte do servidor continua a sair:** no mesmo cenário, o processo do servidor continua a produzir o
+   envelope de erro com resposta 200 (medido na rede do servidor, não no dashboard). Sem isto a guarda está a
+   apagar sinal em vez de ruído.
+4. **Um erro apanhado no cliente continua a reportar exatamente um:** o método da T108
+   (`Intl.NumberFormat.prototype.format` a lançar na hidratação de `/contas`) produz **1** envelope `event` com
+   `event_id` registado, tal como antes.
+5. **Os ecrãs não mudam:** nos 12, o mesmo texto, os mesmos botões e a linha «Referência: <digest>» quando o
+   `digest` existe (incluindo o «O erro foi registado» do `global-error`, que continua verdadeiro — com `digest` o
+   servidor já reportou, sem `digest` o cliente reporta).
+6. **Gate de frio verde, com as saídas coladas:** `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test
+   && pnpm build --force` → `EXIT=0`, com a contagem de testes e o `BUILD_ID`.
+7. **Nada mais muda:** `git diff --stat` mostra os **13** ficheiros do âmbito e nenhum outro; as 17 rotas
+   autenticadas continuam a abrir (suite e2e do QA no fecho).
+8. **O `digest` do ecrã é procurável no Sentry** (acrescentado a 2026-11-24): no cenário da base inalcançável, o
+   **corpo do envelope do servidor** leva a etiqueta `nextjs.digest` com o **mesmo valor** que o `global-error`
+   mostra na linha «Referência:» (`3914836991` no cenário medido). Prova por leitura do envelope capturado na
+   rede do servidor, não no dashboard — o QA não tem conta Sentry. A alínea (a) continua a valer: o browser
+   mantém **0** envelopes `event`, e (c) mantém **1** no erro de cliente.
+
+**O que NÃO fazer:** não tires o `captureException` de nenhum boundary — é o único reporte de erros apanhados no
+cliente; não refactorizes os 12 para um componente partilhado; não afrouxes a política de dados (D39); não
+provoques o evento com um `throw` no código da app (a prova é do QA, por fora); não corras e2e ao mesmo tempo que
+o QA; não commites nem faças push.
+
+**Prova esperada:** `relatorios/T109.md` com (a) o `git diff` de um dos segmentos e do `global-error` colados, e
+o `grep` da guarda nos 12; (b) o gate com a contagem de testes e o `BUILD_ID`; (c) `git diff --stat` nos 12; (d)
+`pnpm exec prettier --check` nos ficheiros tocados.
+
+**Volta 1 — entrega do Dev (2026-11-24):** a guarda está nos **12** (`grep` meu: 12 ficheiros com
+`if (error.digest !== undefined)` dentro do `useEffect`, com um comentário de duas linhas a dizer que o servidor
+já reportou), `git diff --numstat` dá `6 0` em cada um e nenhum outro ficheiro de código; os ecrãs ficam iguais;
+gate de frio `EXIT=0`, **605 testes**, **`BUILD_ID Oit7A9GeZTiuyLSPg9KYB`**, turbo `0 cached`; prettier 0.
+Branch criada por mim, `feat/t109-sem-duplicar`, sobre `main @ 8d8ecc7` (o Dev não a cria — é do Lead). Sem
+commit. Os três critérios de rede ficam para o QA.
+
+**Volta 1 — QA PASS (2026-11-24):** os cinco critérios medidos na rede. Erro de servidor (base morta pelo
+ambiente, `.env` não editado): `global-error` com «Referência: 3914836991» e o browser a produzir **0** envelopes
+`event` — o antes era **1** (`cc87bd7f0e254cecbc0a9d61fd3e7698`), com o **mesmo `digest`** nos dois; o servidor
+continua a reportar com envelope **200** (`event_id 9f177a30d428430882ea168a4e3aad89`, 6330 B, `release
+8d8ecc74…`), o que impede a guarda de ser máscara. Erro de cliente em `/contas`: **exatamente 1**
+(`2227eebd78234286800dd5d0d9e30616`, 200), logo a guarda não corta o caminho da T108. Ecrãs iguais a 1440 e 375.
+Suite de frio **162 passed, 0 failed** (12,5 min), `BUILD_ID 6xVGd2OedbqbiZID1IHSp`, 17/17 rotas `200` com `h1`.
+2 utilizadores apagados, 0 restos `e2e-%`, `.env` intacto, produção não tocada. Sem commit.
+
+**Volta 2 (2026-11-24, Revisor → utilizador → Dev):** o Revisor respondeu à pergunta do Lead com um **DEVE**: o
+evento do servidor **não leva o `digest`** — nem etiqueta, nem contexto, nem título (`captureRequestError.js:8-27`,
+`nextNavigationErrorUtils.js:4-9` e o serializador de exceções do `@sentry/core`; confirmado por execução com
+`beforeSend`). Logo o «Referência: 3914836991» que o utilizador lê não se encontrava no Sentry. Não é regressão
+desta tarefa — o duplicado que a guarda cortou também não o levava —, é um buraco que a T108 deixou e que o
+critério (d) assumia resolvido. **Levei a escolha ao utilizador, que autorizou fechar aqui:** âmbito passa a
+**13** ficheiros, com `instrumentation.ts` a pôr a etiqueta `nextjs.digest` num `withScope` antes de delegar, e o
+critério ganha o ponto 8 (o envelope do servidor tem de levar a etiqueta com o mesmo valor do ecrã).
+
+**Volta 2 — entrega do Dev (2026-11-24):** `instrumentation.ts` passa a pôr `nextjs.digest` num `withScope` e
+delegar no `Sentry.captureRequestError` (sem `digest`, delega direto); `register()` e os 12 boundaries intactos,
+D39 sem toques, nenhum contexto com dados do utilizador. Numstat: os 12 continuam `6 0` e o `instrumentation.ts`
+`+38/−1` — **13 ficheiros**. Gate `EXIT=0`, **605 testes**, `BUILD_ID aTIxxlBes5Q3H8QGYfIlK`, turbo `0 cached`,
+`typecheck` 0; `onRequestError(error: unknown, request: Parameters<...>[1], errorContext: Parameters<...>[2])`,
+tipos do próprio SDK. O Dev provou localmente, sem rede, que o `withScope` interno herda a etiqueta
+(`getScopeData().tags` = `{"nextjs.digest":"3914836991"}`); o valor no envelope é do QA.
+
+**Volta 2 — QA PASS (2026-11-24):** corrida com a base inalcançável pelo ambiente (`.env` não editado): o ecrã
+mostra «Referência: **3914836991**» e o corpo do envelope do processo do servidor (`envelope-1.txt`, 6917 B, POST
+**200**, `event_id 416545e5dcb144309d80f7acea9dca3a`) traz `"tags":{"turbopack":true,"nextjs.digest":"3914836991"}`
+e `"transaction":"GET /transacoes"` — **o mesmo número, na mesma execução**. O browser mantém **0** envelopes
+`event` nesse cenário. O erro de cliente em `/contas` continua **exatamente 1** (`event_id
+5ad782d9718c40778459efedc251248d`, 200) e **sem** a etiqueta (`nextjs.digest` com 0 ocorrências no corpo, tags só
+`turbopack` e `replayId`) — não vaza para o browser. Suite de frio sobre os 13 ficheiros: **162 passed, 0 failed**
+(10,3 min), `BUILD_ID CGb4xYz9FLNQUbdAhPBU4`, 17/17 rotas `200` com `h1`. 2 utilizadores apagados, 0 restos
+`e2e-%`, `.env` intacto, produção não tocada. Sem commit. Segue para o Revisor.
+
+**Fechado:** T109 — um erro de servidor deixa de se reportar duas vezes, e a referência do ecrã passa a ser
+procurável: a guarda do `digest` nos 12 boundaries e o `nextjs.digest` no evento do servidor; 13 ficheiros.
+
+**Prova:** QA PASS nas duas voltas — erro de servidor (base morta pelo ambiente, `.env` não editado) com o
+`global-error` a mostrar «Referência: **3914836991**» e o **browser a produzir 0** envelopes `event` (antes: 1,
+`cc87bd7f…`, mesmo `digest`), o **servidor a reportar com 200** (`event_id 416545e5dcb144309d80f7acea9dca3a`) e o
+corpo do envelope com `"tags":{"turbopack":true,"nextjs.digest":"3914836991"}` — o mesmo número do ecrã; erro de
+cliente em `/contas` com **exatamente 1** envelope (`5ad782d9718c40778459efedc251248d`) e **sem** a etiqueta; suite
+de frio **162 passed, 0 failed** (10,3 min), 17/17 rotas `200` com `h1`; gate do Dev 605 testes. Revisor
+**0 BLOQUEIA, 0 DEVE, 0 OPCIONAIS**, «pode commitar: sim». Relatórios `relatorios/T109.md` e `relatorios/T109-qa.md`.
+
+**O que isto não resolve:** (1) a etiqueta num erro de runtime **edge** não foi medida — o código é o mesmo
+`withScope`, mas não se provou; (2) o `onRequestError` sem DSN ficou por leitura (`setTag` sem cliente não lança);
+(3) o `global-error` continua a não ser alcançável por captura sem partir o layout raiz; (4) os stacks de produção
+continuam minificados até existir `SENTRY_AUTH_TOKEN` na Vercel, que só o utilizador cria; (5) um erro apanhado no
+cliente nunca tem «Referência:» — não há `digest` no Next 16 para esse caminho.
+
+**Aberto:** o `SENTRY_AUTH_TOKEN` na Vercel, do utilizador. Nada mais bloqueado.
+
+**Repositório:** `327a4d7` em `main` — commit em `feat/t109-sem-duplicar` e `--ff-only` para `main`, push feito e
+`origin/main` confirmado no mesmo commit; 15 ficheiros (+611/−1). A branch fica local, igual a `main`. Os dois
+relatórios de verificação (`t107`, `t108`) continuam por commitar.
+
+**Decisão:** verificar o deploy em produção (skill `verificacao-po-s-deploy`); autorizar o commit dos dois
+relatórios de verificação, se os quiseres no repositório.
