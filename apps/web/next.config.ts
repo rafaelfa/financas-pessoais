@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
 /**
@@ -26,4 +27,14 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@repo/db', '@repo/shared'],
 };
 
-export default nextConfig;
+/**
+ * Sentry build wrapper. It uploads source maps when `SENTRY_AUTH_TOKEN` is set
+ * (CI/Vercel) so production stack traces stay readable; without the token it
+ * still instruments the build and only skips the upload.
+ */
+export default withSentryConfig(nextConfig, {
+  org: 'aguiar-gz',
+  project: 'financas-pessoais',
+  // Keep the build quiet locally; print the upload logs in CI.
+  silent: !process.env.CI,
+});

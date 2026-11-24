@@ -1,7 +1,9 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { CircleAlert, LayoutDashboard, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect } from 'react';
 
 import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -25,6 +27,10 @@ export default function AppError({
   readonly error: Error & { digest?: string };
   readonly reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <EmptyState
       icon={CircleAlert}
